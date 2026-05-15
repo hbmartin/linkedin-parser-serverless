@@ -3,7 +3,8 @@ export const REGEX_PATTERNS = {
   LINKEDIN: /linkedin\.com\/in\/([\w-]+)/i,
   PHONE: /(\+\d{1,3}\s?)?(\(?\d{2,3}\)?[\s-]?)?\d{4,5}[\s-]?\d{4}/,
   PAGE_NUMBERS: /Page \d+ of \d+/gi,
-  TOP_SKILLS: /Top Skills\s+([\s\S]+?)(?:Languages)/i,
+  TOP_SKILLS:
+    /(?:^|\n)[^\S\r\n]*Top Skills[^\S\r\n]*\n([\s\S]*?)(?=\n[^\S\r\n]*(?:Languages|Certifications|Summary|Experience|Education)\b|$)/i,
   LANGUAGES:
     /(?:^|\n)[^\S\r\n]*Languages[^\S\r\n]*\n([\s\S]*?)(?=\n[^\S\r\n]*(?:Summary|Experience|Education)\b|$)/i,
   SUMMARY: /Summary\s+([\s\S]+?)(?:Experience|Education|$)/i,

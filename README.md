@@ -97,6 +97,33 @@ linkedin-pdf-parser resume.pdf | jq '.profile.experience[].company'
 - `--raw-text` - Include raw extracted text in output
 - `--help, -h` - Show help message
 
+### Developing and Testing the CLI
+
+The local CLI script loads the built package from `dist/`, so build the project before running it from a checkout:
+
+```bash
+pnpm install
+pnpm build
+
+# Run the local CLI directly against the included fixture
+node bin/cli.js Profile.pdf
+
+# Check compact output and raw text output
+node bin/cli.js Profile.pdf --compact
+node bin/cli.js Profile.pdf --raw-text
+
+# Check usage output
+node bin/cli.js --help
+```
+
+For a quick smoke test, assert a few expected fields with `jq`:
+
+```bash
+node bin/cli.js Profile.pdf | jq '.profile.name'
+node bin/cli.js Profile.pdf | jq '.profile.contact.email'
+node bin/cli.js Profile.pdf | jq '.profile.experience[0]'
+```
+
 **📖 See [CLI_USAGE.md](CLI_USAGE.md) for complete CLI documentation**
 
 **Note:** PDF extraction is powered by `unpdf`, which includes a serverless PDF.js build.

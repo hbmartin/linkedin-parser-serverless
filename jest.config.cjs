@@ -24,4 +24,11 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
+  coverageThreshold: {
+    global: {
+      lines: 80,
+      branches: 70,
+      functions: 85,
+    },
+  },
 };

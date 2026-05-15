@@ -59,10 +59,13 @@ export class ExperienceParser {
           line.toLowerCase().includes(company.toLowerCase())
         )
       ) {
-        // Save previous position
-        if (currentPosition && currentPosition.title) {
-          currentPosition.description = descriptionLines.join(' ').trim();
-          experiences.push(currentPosition as Experience);
+        const completedPosition = this.completeExperience({
+          position: currentPosition,
+          descriptionLines,
+        });
+
+        if (completedPosition) {
+          experiences.push(completedPosition);
         }
 
         currentCompany = line;
@@ -73,10 +76,13 @@ export class ExperienceParser {
 
       // Check for job titles - be more specific
       if (this.isJobTitle(line) && currentCompany) {
-        // Save previous position
-        if (currentPosition && currentPosition.title) {
-          currentPosition.description = descriptionLines.join(' ').trim();
-          experiences.push(currentPosition as Experience);
+        const completedPosition = this.completeExperience({
+          position: currentPosition,
+          descriptionLines,
+        });
+
+        if (completedPosition) {
+          experiences.push(completedPosition);
         }
 
         // Create new position
@@ -104,12 +110,36 @@ export class ExperienceParser {
     }
 
     // Add final position
-    if (currentPosition && currentPosition.title) {
-      currentPosition.description = descriptionLines.join(' ').trim();
-      experiences.push(currentPosition as Experience);
+    const completedPosition = this.completeExperience({
+      position: currentPosition,
+      descriptionLines,
+    });
+
+    if (completedPosition) {
+      experiences.push(completedPosition);
     }
 
     return experiences;
+  }
+
+  private static completeExperience({
+    position,
+    descriptionLines,
+  }: {
+    position: Partial<Experience> | null;
+    descriptionLines: string[];
+  }): Experience | undefined {
+    if (!position?.title || !position.company) {
+      return undefined;
+    }
+
+    return {
+      title: position.title,
+      company: position.company,
+      duration: position.duration ?? '',
+      location: position.location,
+      description: descriptionLines.join(' ').trim(),
+    };
   }
 
   private static isJobTitle(line: string): boolean {

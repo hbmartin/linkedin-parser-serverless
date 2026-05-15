@@ -1,6 +1,54 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseLinkedInPDF } from '../../src/index.js';
+import {
+  parseLinkedInPDF,
+  type Language,
+  type LinkedInProfile,
+} from '../../src/index.js';
+
+const expectedTestResumeProfile = {
+  name: 'John Silva',
+  headline: 'Senior Product Manager @ TechCorp | Building scalable products and',
+  location: 'New York, New York, United States',
+  contact: {
+    email: 'john.silva@email.com',
+    linkedin_url: 'https://linkedin.com/in/johnsilva',
+  },
+  top_skills: [
+    'Strategic Planning',
+    'Product Development',
+    'Team Leadership',
+  ],
+  languages: [
+    {
+      language: 'English',
+      proficiency: 'Native or Bilingual',
+    },
+    {
+      language: 'Spanish',
+      proficiency: 'Professional Working',
+    },
+    {
+      language: 'Portuguese',
+      proficiency: 'Elementary',
+    },
+  ] satisfies Language[],
+  firstExperience: {
+    title: 'Senior Product Manager',
+    company: 'DataFlow Inc',
+    duration: 'October 2021 - Present',
+    location: 'San Francisco, CA',
+  },
+  seniorEngineerExperience: {
+    title: 'Senior Software Engineer',
+    company: 'DataFlow Inc',
+    duration: 'October 2017 - June 2019',
+    location: 'Austin, TX',
+  },
+  firstEducation: {
+    institution: 'Austin Business School',
+  },
+};
 
 describe('LinkedIn PDF Parser Library', () => {
   const testPdfPath = path.join(process.cwd(), 'test_resume.pdf');
@@ -17,31 +65,33 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should parse Node Buffer successfully', async () => {
       const result = await parseLinkedInPDF(pdfBuffer);
 
-      expect(result.profile).toBeDefined();
-      expect(result.profile.name).toBeTruthy();
-      expect(result.profile.contact).toBeDefined();
-      expect(result.profile.contact.email).toBeTruthy();
-      expect(result.profile.contact.email).toContain('@');
+      expect(result.profile.name).toBe(expectedTestResumeProfile.name);
+      expect(result.profile.contact.email).toBe(
+        expectedTestResumeProfile.contact.email
+      );
+      expect(result.profile.contact.linkedin_url).toBe(
+        expectedTestResumeProfile.contact.linkedin_url
+      );
     });
 
     test('should parse Uint8Array successfully', async () => {
       const result = await parseLinkedInPDF(new Uint8Array(pdfBuffer));
 
-      expect(result.profile).toBeDefined();
-      expect(result.profile.name).toBeTruthy();
-      expect(result.profile.contact.email).toContain('@');
+      expect(result.profile.name).toBe(expectedTestResumeProfile.name);
+      expect(result.profile.contact.email).toBe(
+        expectedTestResumeProfile.contact.email
+      );
     });
 
     test('should parse ArrayBuffer successfully', async () => {
-      const arrayBuffer = pdfBuffer.buffer.slice(
-        pdfBuffer.byteOffset,
-        pdfBuffer.byteOffset + pdfBuffer.byteLength
-      ) as ArrayBuffer;
+      const arrayBuffer = new ArrayBuffer(pdfBuffer.byteLength);
+      new Uint8Array(arrayBuffer).set(pdfBuffer);
       const result = await parseLinkedInPDF(arrayBuffer);
 
-      expect(result.profile).toBeDefined();
-      expect(result.profile.name).toBeTruthy();
-      expect(result.profile.contact.email).toContain('@');
+      expect(result.profile.name).toBe(expectedTestResumeProfile.name);
+      expect(result.profile.contact.email).toBe(
+        expectedTestResumeProfile.contact.email
+      );
     });
 
     test('should parse extracted text directly', async () => {
@@ -55,8 +105,7 @@ describe('LinkedIn PDF Parser Library', () => {
         2021-2024
       `);
 
-      expect(result.profile).toBeDefined();
-      expect(result.profile.name).toBeTruthy();
+      expect(result.profile.name).toBe('Text Input User');
       expect(result.profile.contact.email).toBe('text.input@example.com');
     });
 
@@ -65,15 +114,14 @@ describe('LinkedIn PDF Parser Library', () => {
         includeRawText: true,
       });
 
-      expect(result.profile).toBeDefined();
-      expect(result.rawText).toBeDefined();
+      expect(result.profile.name).toBe(expectedTestResumeProfile.name);
       expect(typeof result.rawText).toBe('string');
       expect(result.rawText!.length).toBeGreaterThan(100);
     });
   });
 
   describe('Profile Structure Validation', () => {
-    let profile: any;
+    let profile: LinkedInProfile;
 
     beforeAll(async () => {
       const result = await parseLinkedInPDF(pdfBuffer);
@@ -81,10 +129,10 @@ describe('LinkedIn PDF Parser Library', () => {
     });
 
     test('should have required fields', () => {
-      expect(profile.name).toBeTruthy();
-      expect(profile.contact).toBeDefined();
-      expect(profile.experience).toBeDefined();
-      expect(profile.education).toBeDefined();
+      expect(profile.name).toBe(expectedTestResumeProfile.name);
+      expect(profile.headline).toBe(expectedTestResumeProfile.headline);
+      expect(profile.location).toBe(expectedTestResumeProfile.location);
+      expect(profile.contact).toEqual(expectedTestResumeProfile.contact);
     });
 
     test('should have correct data types', () => {
@@ -100,27 +148,23 @@ describe('LinkedIn PDF Parser Library', () => {
 
     test('should extract contact information', () => {
       const contact = profile.contact;
-      expect(contact.email).toBeTruthy();
-      expect(contact.email).toContain('@');
-
-      if (contact.linkedin_url) {
-        expect(contact.linkedin_url).toContain('linkedin.com');
-      }
+      expect(contact).toEqual(expectedTestResumeProfile.contact);
     });
 
     test('should have reasonable data completeness', () => {
-      expect(profile.experience.length).toBeGreaterThanOrEqual(0);
-      expect(profile.education.length).toBeGreaterThanOrEqual(0);
-
-      if (profile.experience.length > 0) {
-        const firstExp = profile.experience[0];
-        expect(firstExp.title).toBeTruthy();
-      }
-
-      if (profile.education.length > 0) {
-        const firstEdu = profile.education[0];
-        expect(firstEdu.institution).toBeTruthy();
-      }
+      expect(profile.top_skills).toEqual(expectedTestResumeProfile.top_skills);
+      expect(profile.languages).toEqual(expectedTestResumeProfile.languages);
+      expect(profile.experience[0]).toEqual(
+        expect.objectContaining(expectedTestResumeProfile.firstExperience)
+      );
+      expect(profile.experience[2]).toEqual(
+        expect.objectContaining(
+          expectedTestResumeProfile.seniorEngineerExperience
+        )
+      );
+      expect(profile.education[0]).toEqual(
+        expect.objectContaining(expectedTestResumeProfile.firstEducation)
+      );
     });
   });
 
@@ -129,30 +173,24 @@ describe('LinkedIn PDF Parser Library', () => {
       const result = await parseLinkedInPDF(pdfBuffer, { includeRawText: true });
       const profile = result.profile;
 
-      // Test email
-      expect(profile.contact.email).toContain('john.silva@email.com');
-
-      // Test companies in experience or raw text (companies should be extractable)
-      const experienceText = JSON.stringify(profile.experience);
-      const rawText = result.rawText || '';
-
-      // Check for companies in the extracted data
-
-      const hasTestCompany =
-        experienceText.includes('DataFlow Inc') ||
-        experienceText.includes('TechFlow Systems') ||
-        experienceText.includes('InnovateTech Solutions') ||
-        rawText.includes('DataFlow Inc') ||
-        rawText.includes('DataFlow') ||  // Simpler check
-        rawText.includes('FreshBrew');
-      expect(hasTestCompany).toBe(true);
-
-      // Test education
-      const educationText = JSON.stringify(profile.education);
-      const hasEducationInfo =
-        educationText.toLowerCase().includes('austin') ||
-        rawText.toLowerCase().includes('austin');
-      expect(hasEducationInfo).toBe(true);
+      expect(profile.name).toBe(expectedTestResumeProfile.name);
+      expect(profile.contact).toEqual(expectedTestResumeProfile.contact);
+      expect(profile.top_skills).toEqual(expectedTestResumeProfile.top_skills);
+      expect(profile.experience[0]).toEqual(
+        expect.objectContaining(expectedTestResumeProfile.firstExperience)
+      );
+      expect(profile.experience[2]).toEqual(
+        expect.objectContaining(
+          expectedTestResumeProfile.seniorEngineerExperience
+        )
+      );
+      expect(profile.education[0]).toEqual(
+        expect.objectContaining(expectedTestResumeProfile.firstEducation)
+      );
+      expect(result.rawText).toEqual(expect.stringContaining('DataFlow Inc'));
+      expect(result.rawText).toEqual(
+        expect.stringContaining('Austin Business School')
+      );
     });
   });
 
