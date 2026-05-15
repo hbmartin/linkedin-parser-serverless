@@ -536,6 +536,7 @@ interface MemoryCliDependencies {
 
 const defaultParseResult: ParseResult = {
   profile: {
+    certifications: [],
     contact: {
       email: 'fixture@example.com',
     },
@@ -545,8 +546,11 @@ const defaultParseResult: ParseResult = {
     languages: [],
     location: 'San Francisco, CA',
     name: 'Fixture User',
+    projects: [],
     top_skills: [],
+    volunteer_work: [],
   },
+  warnings: [],
 };
 
 function createMemoryCliDependencies(

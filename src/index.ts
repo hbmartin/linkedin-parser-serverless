@@ -3,12 +3,14 @@ import { ExperienceStructuralParser } from './parsers/experience-structural.js';
 import { BasicInfoParser } from './parsers/basic-info.js';
 import { ListParser } from './parsers/lists.js';
 import { EducationParser } from './parsers/education.js';
+import { ExtraSectionParser } from './parsers/extra-sections.js';
+import { IdentityStructuralParser } from './parsers/identity-structural.js';
 import { cleanPDFText } from './utils/text-utils.js';
-import { TOP_SKILLS_LIMIT } from './utils/parser-limits.js';
+import { createStructuralLines } from './utils/structural-lines.js';
 import type { LayoutInfo, TextItem } from './types/structural.js';
 
 export interface Contact {
-  email: string;
+  email?: string;
   phone?: string;
   linkedin_url?: string;
   location?: string;
@@ -36,12 +38,15 @@ export interface Education {
 }
 
 export interface LinkedInProfile {
-  name: string;
-  headline: string;
-  location: string;
+  name?: string;
+  headline?: string;
+  location?: string;
   contact: Contact;
   top_skills: string[];
   languages: Language[];
+  certifications: string[];
+  volunteer_work: string[];
+  projects: string[];
   summary?: string;
   experience: Experience[];
   education: Education[];
@@ -51,23 +56,18 @@ export interface ParseOptions {
   includeRawText?: boolean;
 }
 
+export interface MissingProfileFieldWarning {
+  code: 'missing_profile_field';
+  field: 'profile.name' | 'profile.contact.email';
+  message: string;
+}
+
+export type ParseWarning = MissingProfileFieldWarning;
+
 export interface ParseResult {
   profile: LinkedInProfile;
+  warnings: ParseWarning[];
   rawText?: string;
-}
-
-interface StructuralLine {
-  text: string;
-  y: number;
-  fontSize: number;
-}
-
-interface StructuralOverrides {
-  name?: string;
-  headline?: string;
-  location?: string;
-  linkedinUrl?: string;
-  topSkills: string[];
 }
 
 /**
@@ -116,9 +116,18 @@ export async function parseLinkedInPDF(
   const basicInfo = BasicInfoParser.parse(cleanedText);
   const topSkills = ListParser.parseSkills(cleanedText);
   const languages = ListParser.parseLanguages(cleanedText);
-  const structuralOverrides = structuralData
-    ? extractStructuralOverrides(structuralData.textItems)
+  const structuralLines = structuralData
+    ? createStructuralLines({
+        layout: structuralData.layout,
+        textItems: structuralData.textItems,
+      })
     : undefined;
+  const structuralIdentity = structuralLines
+    ? IdentityStructuralParser.parse(structuralLines)
+    : undefined;
+  const extraSections = structuralLines
+    ? ExtraSectionParser.parseStructural(structuralLines)
+    : ExtraSectionParser.parseText(cleanedText);
 
   // Use structural parser for experience if available, otherwise fallback
   let experience: Experience[];
@@ -143,14 +152,19 @@ export async function parseLinkedInPDF(
     experience = ExperienceParser.parse(cleanedText);
   }
 
-  const education = EducationParser.parse(cleanedText);
+  const structuralEducation = structuralLines
+    ? EducationParser.parseStructural(structuralLines)
+    : [];
+  const education = structuralEducation.length
+    ? structuralEducation
+    : EducationParser.parse(cleanedText);
 
   const contact: Contact = {
     ...basicInfo.contact,
   };
 
-  if (structuralOverrides?.linkedinUrl) {
-    contact.linkedin_url = structuralOverrides.linkedinUrl;
+  if (structuralIdentity?.linkedinUrl) {
+    contact.linkedin_url = structuralIdentity.linkedinUrl;
   }
 
   if (
@@ -162,27 +176,26 @@ export async function parseLinkedInPDF(
 
   // Combine into final profile
   const profile: LinkedInProfile = {
-    name: structuralOverrides?.name ?? basicInfo.name,
-    headline: structuralOverrides?.headline ?? basicInfo.headline,
-    location: structuralOverrides?.location ?? basicInfo.location,
+    name: structuralIdentity?.name ?? basicInfo.name,
+    headline: structuralIdentity?.headline ?? basicInfo.headline,
+    location: structuralIdentity?.location ?? basicInfo.location,
     contact,
-    top_skills: structuralOverrides?.topSkills.length
-      ? structuralOverrides.topSkills
+    top_skills: structuralIdentity?.topSkills.length
+      ? structuralIdentity.topSkills
       : topSkills,
     languages,
+    certifications: extraSections.certifications,
+    volunteer_work: extraSections.volunteer_work,
+    projects: extraSections.projects,
     summary: basicInfo.summary,
     experience,
     education,
   };
 
-  // Basic validation
-  if (!profile.name || !profile.contact.email) {
-    throw new Error(
-      'Could not extract basic profile information (name or email missing)'
-    );
-  }
-
-  const result: ParseResult = { profile };
+  const result: ParseResult = {
+    profile,
+    warnings: createParseWarnings(profile),
+  };
 
   if (options.includeRawText) {
     result.rawText = text;
@@ -191,117 +204,24 @@ export async function parseLinkedInPDF(
   return result;
 }
 
-function extractStructuralOverrides(
-  textItems: TextItem[]
-): StructuralOverrides {
-  const leftLines = createColumnLines(textItems, 'left');
-  const rightLines = createColumnLines(textItems, 'right').filter(
-    line => !/^page\s+\d+\s+of\s+\d+$/i.test(line.text)
-  );
-  const experienceIndex = rightLines.findIndex(line =>
-    /^experience$/i.test(line.text)
-  );
-  const identityLines = rightLines.slice(
-    0,
-    experienceIndex === -1 ? rightLines.length : experienceIndex
-  );
-  const nameIndex = identityLines.findIndex(line => line.fontSize >= 20);
-  const name = nameIndex === -1 ? undefined : identityLines[nameIndex].text;
-  const headline = identityLines
-    .slice(nameIndex === -1 ? 0 : nameIndex + 1)
-    .find(line => !isLocationLine(line.text))?.text;
-  const location = identityLines.find(line => isLocationLine(line.text))?.text;
+function createParseWarnings(profile: LinkedInProfile): ParseWarning[] {
+  const warnings: ParseWarning[] = [];
 
-  return {
-    name,
-    headline,
-    location,
-    linkedinUrl: extractLinkedInUrlFromLines(leftLines.map(line => line.text)),
-    topSkills: extractTopSkills(leftLines),
-  };
-}
-
-function createColumnLines(
-  textItems: TextItem[],
-  column: 'left' | 'right'
-): StructuralLine[] {
-  const columnItems = textItems.filter(item =>
-    column === 'left' ? item.x < 150 : item.x >= 150
-  );
-  const groups = StructuralParser.groupTextByProximity(columnItems, 3);
-  const lines = StructuralParser.combineGroupedText(groups);
-
-  return lines.map((text, index) => {
-    const group = groups[index];
-
-    return {
-      text,
-      y: group.reduce((sum, item) => sum + item.y, 0) / group.length,
-      fontSize:
-        group.reduce((sum, item) => sum + item.fontSize, 0) / group.length,
-    };
-  });
-}
-
-function extractTopSkills(lines: StructuralLine[]): string[] {
-  const topSkillsIndex = lines.findIndex(line =>
-    /^top skills$/i.test(line.text)
-  );
-
-  if (topSkillsIndex === -1) {
-    return [];
+  if (!profile.name) {
+    warnings.push({
+      code: 'missing_profile_field',
+      field: 'profile.name',
+      message: 'Could not extract profile name',
+    });
   }
 
-  const followingLines = lines.slice(topSkillsIndex + 1);
-  const endIndex = followingLines.findIndex(line =>
-    isSidebarSectionHeader(line.text)
-  );
-  const skillLines =
-    endIndex === -1 ? followingLines : followingLines.slice(0, endIndex);
-
-  return skillLines
-    .map(line => line.text)
-    .filter(skill => skill.length > 1 && skill.length < 50)
-    .slice(0, TOP_SKILLS_LIMIT);
-}
-
-function extractLinkedInUrlFromLines(lines: string[]): string | undefined {
-  const linkedInIndex = lines.findIndex(line =>
-    /linkedin\.com\/in\//i.test(line)
-  );
-
-  if (linkedInIndex === -1) {
-    return undefined;
+  if (!profile.contact.email) {
+    warnings.push({
+      code: 'missing_profile_field',
+      field: 'profile.contact.email',
+      message: 'Could not extract contact email',
+    });
   }
 
-  const linkedInLine = lines[linkedInIndex];
-  const nextLine = lines[linkedInIndex + 1] ?? '';
-  const combinedLine =
-    linkedInLine.trim().endsWith('-') || /\(LinkedIn\)/i.test(nextLine)
-      ? `${linkedInLine}${nextLine}`
-      : linkedInLine;
-  const compactLine = combinedLine
-    .replace(/\s+/g, '')
-    .replace(/\(LinkedIn\)/i, '');
-  const match = compactLine.match(
-    /(?:www\.)?linkedin\.com\/in\/([a-zA-Z0-9-]+)/
-  );
-
-  return match ? `https://linkedin.com/in/${match[1]}` : undefined;
+  return warnings;
 }
-
-function isSidebarSectionHeader(text: string): boolean {
-  return /^(languages|certifications|summary|experience|education)$/i.test(
-    text
-  );
-}
-
-function isLocationLine(text: string): boolean {
-  return (
-    /^[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*,\s*[A-Z][A-Za-z]+(?:,\s*[A-Z][A-Za-z\s]+)?$/.test(
-      text
-    ) || /^[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*,\s*[A-Z]{2}$/.test(text)
-  );
-}
-
-// All types are already exported above

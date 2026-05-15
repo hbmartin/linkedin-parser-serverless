@@ -24,6 +24,17 @@ const SECTION_HEADER_TEXT = new Set([
   'competências',
   'habilidades',
   'certifications',
+  'licenses & certifications',
+  'licenses and certifications',
+  'certificacoes',
+  'certificações',
+  'projects',
+  'projetos',
+  'volunteer experience',
+  'volunteer work',
+  'volunteering',
+  'experiencia voluntaria',
+  'experiência voluntária',
 ]);
 
 const ORGANIZATION_WORDS = new Set([
@@ -101,15 +112,30 @@ const POSITION_KEYWORDS = [
 ];
 
 const LOWERCASE_CONNECTOR_WORDS = new Set([
+  'al',
   'and',
+  'bin',
+  'binti',
   'da',
   'das',
   'de',
+  'del',
+  'della',
+  'den',
+  'der',
+  'di',
   'do',
   'dos',
+  'du',
   'e',
+  'el',
+  'la',
+  'le',
   'of',
   'the',
+  'van',
+  'von',
+  'y',
 ]);
 
 const SINGLE_WORD_LOCATION_TEXT = new Set([
@@ -275,12 +301,20 @@ export function looksLikePersonNameText(text: string): boolean {
   const hasOrganizationWord = words.some(word =>
     ORGANIZATION_WORDS.has(word.toLowerCase())
   );
+  const meaningfulWords = words.filter(
+    word => !LOWERCASE_CONNECTOR_WORDS.has(word.toLowerCase())
+  );
+  const hasShortAcronymWord = meaningfulWords.some(word =>
+    /^[A-Z]{2,3}$/.test(word)
+  );
 
   return (
     !hasOrganizationWord &&
+    !hasShortAcronymWord &&
     words.length >= 2 &&
-    words.length <= 3 &&
-    words.every(word => /^[A-Z][a-z]+(?:[-'][A-Z][a-z]+)?$/.test(word))
+    words.length <= 6 &&
+    meaningfulWords.length >= 2 &&
+    words.every(word => looksLikePersonNameWord(word))
   );
 }
 
@@ -336,7 +370,7 @@ function hasDistinctiveBrandWord(words: string[]): boolean {
   });
 }
 
-function isLikelyLocationText(text: string): boolean {
+export function isLikelyLocationText(text: string): boolean {
   const normalizedText = normalizeProfileText(text);
   const lowerText = normalizedText.toLowerCase();
 
@@ -346,6 +380,18 @@ function isLikelyLocationText(text: string): boolean {
     /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}]{2}$/u.test(normalizedText) ||
     looksLikeCommaSeparatedLocationText(normalizedText)
   );
+}
+
+function looksLikePersonNameWord(word: string): boolean {
+  if (LOWERCASE_CONNECTOR_WORDS.has(word.toLowerCase())) {
+    return true;
+  }
+
+  if (!/^[\p{L}\p{M}]+(?:[.'-][\p{L}\p{M}]+)*\.?$/u.test(word)) {
+    return false;
+  }
+
+  return /[\p{Lu}]/u.test(word) || word === word.toLocaleUpperCase();
 }
 
 function includesWholeKeyword(text: string, keyword: string): boolean {

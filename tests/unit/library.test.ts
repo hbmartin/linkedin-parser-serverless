@@ -8,7 +8,8 @@ import {
 
 const expectedTestResumeProfile = {
   name: 'John Silva',
-  headline: 'Senior Product Manager @ TechCorp | Building scalable products and',
+  headline:
+    'Senior Product Manager @ TechCorp | Building scalable products and leading high-performance teams | MBA in Technology Management',
   location: 'New York, New York, United States',
   contact: {
     email: 'john.silva@email.com',
@@ -522,7 +523,6 @@ describe('LinkedIn PDF Parser Library', () => {
     });
 
     test('should handle profile validation edge case', async () => {
-      // Test the profile validation in index.ts (line 110)
       const noEmailText = `
         No Email User
         Software Engineer at Company
@@ -531,14 +531,39 @@ describe('LinkedIn PDF Parser Library', () => {
         Developer
       `;
 
-      try {
-        await parseLinkedInPDF(noEmailText);
-        // If it doesn't throw, that's also valid (means it found some email)
-      } catch (error) {
-        expect((error as Error).message).toContain(
-          'Could not extract basic profile information'
-        );
-      }
+      const result = await parseLinkedInPDF(noEmailText);
+
+      expect(result.profile.contact.email).toBeUndefined();
+      expect(result.warnings).toEqual([
+        {
+          code: 'missing_profile_field',
+          field: 'profile.contact.email',
+          message: 'Could not extract contact email',
+        },
+      ]);
+    });
+
+    test('should return partial results with warnings when the name is missing', async () => {
+      const noNameText = `
+        noname@example.com
+        Building durable backend systems for document parsing workflows
+
+        Experience
+        Principal Engineer
+        2020 - 2024
+      `;
+
+      const result = await parseLinkedInPDF(noNameText);
+
+      expect(result.profile.contact.email).toBe('noname@example.com');
+      expect(result.profile.name).toBeUndefined();
+      expect(result.warnings).toEqual([
+        {
+          code: 'missing_profile_field',
+          field: 'profile.name',
+          message: 'Could not extract profile name',
+        },
+      ]);
     });
 
     test('should handle basic-info edge cases for name extraction', async () => {

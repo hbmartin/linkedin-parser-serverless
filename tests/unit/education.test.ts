@@ -1,4 +1,5 @@
 import { EducationParser } from '../../src/parsers/education.js';
+import type { StructuralLine } from '../../src/utils/structural-lines.js';
 
 describe('EducationParser', () => {
   test('removes extracted years from degree text', () => {
@@ -23,4 +24,85 @@ describe('EducationParser', () => {
       }),
     ]);
   });
+
+  test('recognizes Brazilian Portuguese degree names', () => {
+    const educations = EducationParser.parse(`
+      Education
+      Universidade Federal Exemplo
+      Bacharelado em Engenharia de Computação · (2010 - 2014)
+      Faculdade Municipal
+      Mestrado em Ciência de Dados 2018
+      Instituto Técnico
+      Tecnólogo em Sistemas para Internet
+    `);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'Bacharelado em Engenharia de Computação',
+        institution: 'Universidade Federal Exemplo',
+        year: '2010 - 2014',
+      }),
+      expect.objectContaining({
+        degree: 'Mestrado em Ciência de Dados',
+        institution: 'Faculdade Municipal',
+        year: '2018',
+      }),
+      expect.objectContaining({
+        degree: 'Tecnólogo em Sistemas para Internet',
+        institution: 'Instituto Técnico',
+      }),
+    ]);
+  });
+
+  test('parses structural education by visual hierarchy', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({ fontSize: 14, text: 'Universidade Exemplo', y: 730 }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Licenciatura em Matemática · (2012 - 2016)',
+        y: 710,
+      }),
+      structuralLine({ fontSize: 14, text: 'Instituto Exemplo', y: 680 }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Pós-graduação em Gestão de Produto 2018',
+        y: 660,
+      }),
+      structuralLine({ fontSize: 16, text: 'Projects', y: 620 }),
+    ]);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'Licenciatura em Matemática',
+        institution: 'Universidade Exemplo',
+        year: '2012 - 2016',
+      }),
+      expect.objectContaining({
+        degree: 'Pós-graduação em Gestão de Produto',
+        institution: 'Instituto Exemplo',
+        year: '2018',
+      }),
+    ]);
+  });
 });
+
+function structuralLine({
+  fontSize,
+  text,
+  y,
+}: {
+  fontSize: number;
+  text: string;
+  y: number;
+}): StructuralLine {
+  return {
+    column: 'right',
+    fontSize,
+    height: fontSize,
+    text,
+    width: text.length * 5,
+    x: 220,
+    y,
+  };
+}
