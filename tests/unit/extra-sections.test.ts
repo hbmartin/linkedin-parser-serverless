@@ -63,4 +63,21 @@ describe('ExtraSectionParser', () => {
     expect(sections.projects).toEqual(['Revenue Forecasting Tool']);
     expect(sections.volunteer_work).toEqual(['Open Source Mentor']);
   });
+
+  test('returns warnings for detected empty extra sections', () => {
+    const result = ExtraSectionParser.parseTextWithWarnings(`
+      Certifications
+
+      Experience
+      Example Labs
+    `);
+
+    expect(result.value.certifications).toEqual([]);
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'section',
+        section: 'certifications',
+      }),
+    ]);
+  });
 });

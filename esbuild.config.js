@@ -13,7 +13,7 @@ esbuild.build({
   minifyIdentifiers: true,
   minifySyntax: true,
   sourcemap: true,
-  external: ['unpdf'],
+  external: ['chrono-node', 'unpdf', 'zod'],
   tsconfig: 'tsconfig.json',
   treeShaking: true,
   drop: ['console', 'debugger'],

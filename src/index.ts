@@ -8,67 +8,43 @@ import { IdentityStructuralParser } from './parsers/identity-structural.js';
 import { cleanPDFText } from './utils/text-utils.js';
 import { createStructuralLines } from './utils/structural-lines.js';
 import type { LayoutInfo, TextItem } from './types/structural.js';
+import type {
+  Contact,
+  Experience,
+  LinkedInProfile,
+  ParseOptions,
+  ParseResult,
+  ParseWarning,
+  SectionParseWarning,
+} from './types/profile.js';
 
-export interface Contact {
-  email?: string;
-  phone?: string;
-  linkedin_url?: string;
-  location?: string;
-}
-
-export interface Language {
-  language: string;
-  proficiency: string;
-}
-
-export interface Experience {
-  title: string;
-  company: string;
-  duration: string;
-  location?: string;
-  description?: string;
-}
-
-export interface Education {
-  degree: string;
-  institution: string;
-  year?: string;
-  location?: string;
-  description?: string;
-}
-
-export interface LinkedInProfile {
-  name?: string;
-  headline?: string;
-  location?: string;
-  contact: Contact;
-  top_skills: string[];
-  languages: Language[];
-  certifications: string[];
-  volunteer_work: string[];
-  projects: string[];
-  summary?: string;
-  experience: Experience[];
-  education: Education[];
-}
-
-export interface ParseOptions {
-  includeRawText?: boolean;
-}
-
-export interface MissingProfileFieldWarning {
-  code: 'missing_profile_field';
-  field: 'profile.name' | 'profile.contact.email';
-  message: string;
-}
-
-export type ParseWarning = MissingProfileFieldWarning;
-
-export interface ParseResult {
-  profile: LinkedInProfile;
-  warnings: ParseWarning[];
-  rawText?: string;
-}
+export type {
+  Contact,
+  Education,
+  Experience,
+  Language,
+  LinkedInProfile,
+  MissingProfileFieldWarning,
+  ParseOptions,
+  ParseResult,
+  ParseWarning,
+  ParsedDateRange,
+  ParsedProfileDate,
+  ParsedProfileDatePrecision,
+  SectionParseWarning,
+  WarningSection,
+} from './types/profile.js';
+export {
+  ContactSchema,
+  EducationSchema,
+  ExperienceSchema,
+  LanguageSchema,
+  LinkedInProfileSchema,
+  ParseResultSchema,
+  ParseWarningSchema,
+  ParsedDateRangeSchema,
+  ParsedProfileDateSchema,
+} from './schemas.js';
 
 /**
  * Parses a LinkedIn PDF resume and extracts structured profile data
@@ -111,34 +87,56 @@ export async function parseLinkedInPDF(
 
   // Clean and parse the text
   const cleanedText = cleanPDFText(text);
+  const sectionWarnings: SectionParseWarning[] = [];
 
   // Parse all sections using specialized parsers
-  const basicInfo = BasicInfoParser.parse(cleanedText);
-  const topSkills = ListParser.parseSkills(cleanedText);
-  const languages = ListParser.parseLanguages(cleanedText);
+  const basicInfoResult = BasicInfoParser.parseWithWarnings(cleanedText);
+  const basicInfo = basicInfoResult.value;
+  sectionWarnings.push(...basicInfoResult.warnings);
+
+  const topSkillsResult = ListParser.parseSkillsWithWarnings(cleanedText);
+  const topSkills = topSkillsResult.value;
+  sectionWarnings.push(...topSkillsResult.warnings);
+
+  const languagesResult = ListParser.parseLanguagesWithWarnings(cleanedText);
+  const languages = languagesResult.value;
+  sectionWarnings.push(...languagesResult.warnings);
+
   const structuralLines = structuralData
     ? createStructuralLines({
         layout: structuralData.layout,
         textItems: structuralData.textItems,
       })
     : undefined;
-  const structuralIdentity = structuralLines
-    ? IdentityStructuralParser.parse(structuralLines)
+  const structuralIdentityResult = structuralLines
+    ? IdentityStructuralParser.parseWithWarnings(structuralLines)
     : undefined;
-  const extraSections = structuralLines
-    ? ExtraSectionParser.parseStructural(structuralLines)
-    : ExtraSectionParser.parseText(cleanedText);
+  const structuralIdentity = structuralIdentityResult?.value;
+
+  if (structuralIdentityResult) {
+    sectionWarnings.push(...structuralIdentityResult.warnings);
+  }
+
+  const extraSectionsResult = structuralLines
+    ? ExtraSectionParser.parseStructuralWithWarnings(structuralLines)
+    : ExtraSectionParser.parseTextWithWarnings(cleanedText);
+  const extraSections = extraSectionsResult.value;
+  sectionWarnings.push(...extraSectionsResult.warnings);
 
   // Use structural parser for experience if available, otherwise fallback
   let experience: Experience[];
   if (structuralData) {
-    const workExperiences = ExperienceStructuralParser.parseExperience(
-      structuralData.textItems
-    );
+    const workExperienceResult =
+      ExperienceStructuralParser.parseExperienceWithWarnings(
+        structuralData.textItems
+      );
+    const workExperiences = workExperienceResult.value;
+    sectionWarnings.push(...workExperienceResult.warnings);
 
     // Convert WorkExperience[] to Experience[] for compatibility
     experience = workExperiences.flatMap(workExp =>
       workExp.positions.map(position => ({
+        ...(position.dates ? { dates: position.dates } : {}),
         title: position.title,
         company: workExp.organization,
         duration: position.duration,
@@ -149,15 +147,30 @@ export async function parseLinkedInPDF(
   } else {
     // Fallback to old parser for string inputs
     const { ExperienceParser } = await import('./parsers/experience.js');
-    experience = ExperienceParser.parse(cleanedText);
+    const experienceResult = ExperienceParser.parseWithWarnings(cleanedText);
+    experience = experienceResult.value;
+    sectionWarnings.push(...experienceResult.warnings);
   }
 
-  const structuralEducation = structuralLines
-    ? EducationParser.parseStructural(structuralLines)
-    : [];
-  const education = structuralEducation.length
-    ? structuralEducation
-    : EducationParser.parse(cleanedText);
+  const structuralEducationResult = structuralLines
+    ? EducationParser.parseStructuralWithWarnings(structuralLines)
+    : undefined;
+  const fallbackEducationResult =
+    !structuralEducationResult || structuralEducationResult.value.length === 0
+      ? EducationParser.parseWithWarnings(cleanedText)
+      : undefined;
+  const education =
+    structuralEducationResult && structuralEducationResult.value.length > 0
+      ? structuralEducationResult.value
+      : (fallbackEducationResult?.value ?? []);
+
+  if (structuralEducationResult) {
+    sectionWarnings.push(...structuralEducationResult.warnings);
+  }
+
+  if (fallbackEducationResult) {
+    sectionWarnings.push(...fallbackEducationResult.warnings);
+  }
 
   const contact: Contact = {
     ...basicInfo.contact,
@@ -194,7 +207,7 @@ export async function parseLinkedInPDF(
 
   const result: ParseResult = {
     profile,
-    warnings: createParseWarnings(profile),
+    warnings: [...createParseWarnings(profile), ...sectionWarnings],
   };
 
   if (options.includeRawText) {

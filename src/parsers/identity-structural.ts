@@ -1,4 +1,8 @@
 import type { StructuralLine } from '../utils/structural-lines.js';
+import type {
+  ParsedSectionResult,
+  SectionParseWarning,
+} from '../types/profile.js';
 import { TOP_SKILLS_LIMIT } from '../utils/parser-limits.js';
 import {
   isLikelyLocationText,
@@ -16,6 +20,12 @@ export interface StructuralIdentity {
 
 export class IdentityStructuralParser {
   static parse(lines: StructuralLine[]): StructuralIdentity {
+    return this.parseWithWarnings(lines).value;
+  }
+
+  static parseWithWarnings(
+    lines: StructuralLine[]
+  ): ParsedSectionResult<StructuralIdentity> {
     const leftLines = lines.filter(line => line.column === 'left');
     const mainLines = lines.filter(
       line => line.column === 'right' || line.column === 'single'
@@ -28,7 +38,7 @@ export class IdentityStructuralParser {
       ? identityLines.indexOf(locationLine)
       : -1;
 
-    return {
+    const value: StructuralIdentity = {
       name: nameLine?.text,
       headline: this.extractHeadline({
         identityLines,
@@ -38,6 +48,11 @@ export class IdentityStructuralParser {
       location: locationLine?.text,
       linkedinUrl: this.extractLinkedInUrl(leftLines.map(line => line.text)),
       topSkills: this.extractTopSkills(leftLines),
+    };
+
+    return {
+      value,
+      warnings: this.createStructuralIdentityWarnings(leftLines, value),
     };
   }
 
@@ -169,6 +184,42 @@ export class IdentityStructuralParser {
       /(?:^|\s)www\./i.test(text) ||
       /^page\s+\d+\s+of\s+\d+$/i.test(text)
     );
+  }
+
+  private static createStructuralIdentityWarnings(
+    leftLines: StructuralLine[],
+    identity: StructuralIdentity
+  ): SectionParseWarning[] {
+    const warnings: SectionParseWarning[] = [];
+    const hasTopSkillsSection = leftLines.some(line =>
+      /^top skills$/i.test(line.text)
+    );
+    const hasContactSection = leftLines.some(line =>
+      /^contact$/i.test(line.text)
+    );
+    const hasLinkedInText = leftLines.some(line =>
+      /linkedin\.com\/in\//i.test(line.text)
+    );
+
+    if (hasTopSkillsSection && identity.topSkills.length === 0) {
+      warnings.push({
+        code: 'section_parse_warning',
+        field: 'section',
+        message: 'Detected a top skills section but could not extract skills',
+        section: 'top_skills',
+      });
+    }
+
+    if (hasContactSection && hasLinkedInText && !identity.linkedinUrl) {
+      warnings.push({
+        code: 'section_parse_warning',
+        field: 'linkedin_url',
+        message: 'Detected a LinkedIn URL but could not normalize it',
+        section: 'contact',
+      });
+    }
+
+    return warnings;
   }
 }
 

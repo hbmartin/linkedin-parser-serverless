@@ -46,6 +46,20 @@ describe('ExperienceStructuralParser', () => {
       {
         title: 'Principal Engineer',
         duration: 'January 2020 - March 2024',
+        dates: {
+          originalText: 'January 2020 - March 2024',
+          start: {
+            iso: '2020-01',
+            precision: 'month',
+            text: 'january 2020',
+          },
+          end: {
+            iso: '2024-03',
+            precision: 'month',
+            text: 'march 2024',
+          },
+          isCurrent: false,
+        },
         location: 'Austin, TX',
         description: 'Built data products for enterprise teams.',
       },
@@ -186,6 +200,20 @@ describe('ExperienceStructuralParser', () => {
         {
           description: 'Austin, TX Kept platform work moving.',
           duration: '2020 - 2024',
+          dates: {
+            originalText: '2020 - 2024',
+            start: {
+              iso: '2020',
+              precision: 'year',
+              text: '2020',
+            },
+            end: {
+              iso: '2024',
+              precision: 'year',
+              text: '2024',
+            },
+            isCurrent: false,
+          },
           title: 'Principal Engineer',
         },
       ],
@@ -209,6 +237,26 @@ describe('ExperienceStructuralParser', () => {
         location: 'New York, NY',
       })
     );
+  });
+
+  test('exposes warnings through the structural parser result API', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Research Systems Group', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+    ]);
+
+    expect(result.value[0]).toEqual(
+      expect.objectContaining({
+        organization: 'Research Systems Group',
+      })
+    );
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'dates',
+        section: 'experience',
+      }),
+    ]);
   });
 });
 

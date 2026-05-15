@@ -540,6 +540,13 @@ describe('LinkedIn PDF Parser Library', () => {
           field: 'profile.contact.email',
           message: 'Could not extract contact email',
         },
+        {
+          code: 'section_parse_warning',
+          field: 'entry',
+          message: 'Detected an experience section but could not extract entries',
+          rawText: 'Developer',
+          section: 'experience',
+        },
       ]);
     });
 
@@ -562,6 +569,13 @@ describe('LinkedIn PDF Parser Library', () => {
           code: 'missing_profile_field',
           field: 'profile.name',
           message: 'Could not extract profile name',
+        },
+        {
+          code: 'section_parse_warning',
+          field: 'entry',
+          message: 'Detected an experience section but could not extract entries',
+          rawText: 'Principal Engineer 2020 - 2024',
+          section: 'experience',
         },
       ]);
     });

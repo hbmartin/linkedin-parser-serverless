@@ -1,9 +1,15 @@
 import { REGEX_PATTERNS } from '../utils/regex-patterns.js';
+import { normalizeWhitespace } from '../utils/text-utils.js';
+import type {
+  Experience,
+  ParsedSectionResult,
+  SectionParseWarning,
+} from '../types/profile.js';
 import {
-  extractSection,
-  splitLines,
-  normalizeWhitespace,
-} from '../utils/text-utils.js';
+  looksLikeDateRangeText,
+  parseProfileDateRange,
+} from '../utils/date-parser.js';
+import { createTextParserLines } from '../utils/parser-lines.js';
 import {
   cleanOrganizationNameText,
   isSectionHeaderText,
@@ -11,30 +17,32 @@ import {
   looksLikePositionTitleText,
 } from '../utils/profile-text.js';
 
-export interface Experience {
-  title: string;
-  company: string;
-  duration: string;
-  location?: string;
-  description?: string;
-}
+type TextExperienceState =
+  | 'seeking_company'
+  | 'seeking_title'
+  | 'seeking_dates'
+  | 'in_description';
 
 export class ExperienceParser {
   static parse(text: string): Experience[] {
-    const experienceSection = extractSection(text, REGEX_PATTERNS.EXPERIENCE);
+    return this.parseWithWarnings(text).value;
+  }
 
-    if (!experienceSection) {
-      return [];
-    }
+  static parseWithWarnings(text: string): ParsedSectionResult<Experience[]> {
+    const parserLines = createTextParserLines(text).filter(
+      line => line.section === 'experience'
+    );
 
     const experiences: Experience[] = [];
-    const lines = splitLines(experienceSection)
-      .map(line => normalizeWhitespace(line))
+    const warnings: SectionParseWarning[] = [];
+    const lines = parserLines
+      .map(line => line.text)
       .filter(line => line.length > 0);
 
     let currentCompany = '';
     let currentPosition: Partial<Experience> | null = null;
     let descriptionLines: string[] = [];
+    let state: TextExperienceState = 'seeking_company';
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -57,6 +65,7 @@ export class ExperienceParser {
         currentCompany = inlineExperience.company;
         currentPosition = inlineExperience;
         descriptionLines = [];
+        state = 'seeking_dates';
         continue;
       }
 
@@ -73,6 +82,7 @@ export class ExperienceParser {
         currentCompany = cleanOrganizationNameText(line) ?? line;
         currentPosition = null;
         descriptionLines = [];
+        state = 'seeking_title';
         continue;
       }
 
@@ -95,6 +105,7 @@ export class ExperienceParser {
           description: '',
         };
         descriptionLines = [];
+        state = 'seeking_dates';
         continue;
       }
 
@@ -102,11 +113,24 @@ export class ExperienceParser {
       if (currentPosition) {
         if (this.looksLikeDuration(line)) {
           currentPosition.duration = line;
+          currentPosition.dates = parseProfileDateRange(line);
+          state = 'in_description';
         } else if (this.looksLikeLocation(line) && !currentPosition.location) {
           currentPosition.location = line;
+          state = 'in_description';
         } else if (line.length > 15 && !line.includes('Page')) {
           descriptionLines.push(line);
+          state = 'in_description';
         }
+      } else if (state !== 'seeking_company' && line.length > 2) {
+        warnings.push({
+          code: 'section_parse_warning',
+          field: 'entry',
+          message:
+            'Discarded experience line that did not fit the expected state',
+          rawText: line,
+          section: 'experience',
+        });
       }
     }
 
@@ -120,7 +144,12 @@ export class ExperienceParser {
       experiences.push(completedPosition);
     }
 
-    return experiences;
+    warnings.push(...this.createExperienceWarnings(experiences, lines));
+
+    return {
+      value: experiences,
+      warnings,
+    };
   }
 
   private static completeExperience({
@@ -135,6 +164,7 @@ export class ExperienceParser {
     }
 
     return {
+      ...(position.dates ? { dates: position.dates } : {}),
       title: position.title,
       company: position.company,
       duration: position.duration ?? '',
@@ -206,17 +236,9 @@ export class ExperienceParser {
   }
 
   private static looksLikeDuration(line: string): boolean {
-    return (
-      REGEX_PATTERNS.DATE_RANGE.test(line) ||
-      /\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(
-        line
-      ) ||
-      /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(line) ||
-      /\b\d{4}\s*-\s*\d{4}\b/.test(line) ||
-      /\b\d{4}\s*-\s*(present|current)\b/i.test(line) ||
-      /\(\d+\s+years?\s+\d+\s+months?\)/i.test(line) ||
-      (/present|atual|current/i.test(line) && line.length < 50)
-    );
+    REGEX_PATTERNS.DATE_RANGE.lastIndex = 0;
+
+    return REGEX_PATTERNS.DATE_RANGE.test(line) || looksLikeDateRangeText(line);
   }
 
   private static looksLikeLocation(line: string): boolean {
@@ -233,5 +255,46 @@ export class ExperienceParser {
       !line.includes('@') &&
       !line.includes('|')
     );
+  }
+
+  private static createExperienceWarnings(
+    experiences: Experience[],
+    lines: string[]
+  ): SectionParseWarning[] {
+    const warnings: SectionParseWarning[] = [];
+
+    if (lines.length > 0 && experiences.length === 0) {
+      warnings.push({
+        code: 'section_parse_warning',
+        field: 'entry',
+        message: 'Detected an experience section but could not extract entries',
+        rawText: lines.join(' '),
+        section: 'experience',
+      });
+    }
+
+    experiences.forEach((experience, entry) => {
+      if (!experience.duration) {
+        warnings.push({
+          code: 'section_parse_warning',
+          entry,
+          field: 'dates',
+          message: 'Could not extract date range for experience entry',
+          rawText: experience.title,
+          section: 'experience',
+        });
+      } else if (!experience.dates) {
+        warnings.push({
+          code: 'section_parse_warning',
+          entry,
+          field: 'dates',
+          message: 'Could not parse date range',
+          rawText: experience.duration,
+          section: 'experience',
+        });
+      }
+    });
+
+    return warnings;
   }
 }

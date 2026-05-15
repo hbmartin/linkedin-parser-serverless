@@ -1,3 +1,5 @@
+import type { ParsedDateRange } from './profile.js';
+
 export interface TextItem {
   text: string;
   x: number;
@@ -33,6 +35,7 @@ export interface WorkExperience {
 export interface Position {
   title: string;
   duration: string;
+  dates?: ParsedDateRange;
   location?: string;
   description?: string;
 }

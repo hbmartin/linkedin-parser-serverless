@@ -18,6 +18,20 @@ describe('ExperienceParser', () => {
       title: 'Principal Software Engineer',
       company: 'Northstar AI',
       duration: '2021 - 2024',
+      dates: {
+        originalText: '2021 - 2024',
+        start: {
+          iso: '2021',
+          precision: 'year',
+          text: '2021',
+        },
+        end: {
+          iso: '2024',
+          precision: 'year',
+          text: '2024',
+        },
+        isCurrent: false,
+      },
       location: 'Austin, TX',
       description: 'Built platform services for customer-facing products.',
     });
@@ -56,8 +70,39 @@ describe('ExperienceParser', () => {
       title: 'Product Manager',
       company: 'Blue Oak Labs',
       duration: '2020 - 2022',
+      dates: {
+        originalText: '2020 - 2022',
+        start: {
+          iso: '2020',
+          precision: 'year',
+          text: '2020',
+        },
+        end: {
+          iso: '2022',
+          precision: 'year',
+          text: '2022',
+        },
+        isCurrent: false,
+      },
       location: '',
       description: 'Led delivery for customer-facing products.',
     });
+  });
+
+  test('returns section warnings when an experience section has no complete entries', () => {
+    const result = ExperienceParser.parseWithWarnings(`
+      Experience
+      Principal Engineer
+      2020 - 2024
+    `);
+
+    expect(result.value).toEqual([]);
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        code: 'section_parse_warning',
+        field: 'entry',
+        section: 'experience',
+      }),
+    ]);
   });
 });

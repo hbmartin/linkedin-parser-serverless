@@ -1,5 +1,9 @@
 import type { StructuralLine } from '../utils/structural-lines.js';
 import { normalizeWhitespace, splitLines } from '../utils/text-utils.js';
+import type {
+  ParsedSectionResult,
+  SectionParseWarning,
+} from '../types/profile.js';
 
 export interface ExtraProfileSections {
   certifications: string[];
@@ -57,11 +61,24 @@ const BOUNDARY_SECTION_HEADERS = new Set([
 
 export class ExtraSectionParser {
   static parseText(text: string): ExtraProfileSections {
+    return this.parseTextWithWarnings(text).value;
+  }
+
+  static parseTextWithWarnings(
+    text: string
+  ): ParsedSectionResult<ExtraProfileSections> {
     return parseSectionLines(splitLines(text).map(cleanSectionLine));
   }
 
   static parseStructural(lines: StructuralLine[]): ExtraProfileSections {
+    return this.parseStructuralWithWarnings(lines).value;
+  }
+
+  static parseStructuralWithWarnings(
+    lines: StructuralLine[]
+  ): ParsedSectionResult<ExtraProfileSections> {
     const sections = createEmptySections();
+    const warnings: SectionParseWarning[] = [];
     const columns: StructuralLine['column'][] = ['left', 'right', 'single'];
 
     for (const column of columns) {
@@ -70,17 +87,24 @@ export class ExtraSectionParser {
         .map(line => cleanSectionLine(line.text));
       const columnSections = parseSectionLines(columnLines);
 
-      sections.certifications.push(...columnSections.certifications);
-      sections.projects.push(...columnSections.projects);
-      sections.volunteer_work.push(...columnSections.volunteer_work);
+      sections.certifications.push(...columnSections.value.certifications);
+      sections.projects.push(...columnSections.value.projects);
+      sections.volunteer_work.push(...columnSections.value.volunteer_work);
+      warnings.push(...columnSections.warnings);
     }
 
-    return sections;
+    return {
+      value: sections,
+      warnings,
+    };
   }
 }
 
-function parseSectionLines(lines: string[]): ExtraProfileSections {
+function parseSectionLines(
+  lines: string[]
+): ParsedSectionResult<ExtraProfileSections> {
   const sections = createEmptySections();
+  const detectedSections = new Set<ExtraSectionKey>();
   let activeSection: ExtraSectionKey | undefined;
 
   for (const line of lines) {
@@ -92,6 +116,7 @@ function parseSectionLines(lines: string[]): ExtraProfileSections {
 
     if (header?.kind === 'target') {
       activeSection = header.key;
+      detectedSections.add(header.key);
       continue;
     }
 
@@ -105,7 +130,10 @@ function parseSectionLines(lines: string[]): ExtraProfileSections {
     }
   }
 
-  return sections;
+  return {
+    value: sections,
+    warnings: createExtraSectionWarnings(sections, detectedSections),
+  };
 }
 
 function createEmptySections(): ExtraProfileSections {
@@ -150,4 +178,26 @@ function normalizeSectionHeader(line: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+}
+
+function createExtraSectionWarnings(
+  sections: ExtraProfileSections,
+  detectedSections: Set<ExtraSectionKey>
+): SectionParseWarning[] {
+  const warnings: SectionParseWarning[] = [];
+
+  for (const section of detectedSections) {
+    if (sections[section].length > 0) {
+      continue;
+    }
+
+    warnings.push({
+      code: 'section_parse_warning',
+      field: 'section',
+      message: `Detected a ${section} section but could not extract entries`,
+      section,
+    });
+  }
+
+  return warnings;
 }

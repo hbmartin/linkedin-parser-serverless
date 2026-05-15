@@ -117,6 +117,20 @@ describe('Profile.pdf fixture', () => {
         institution: 'California Institute of Technology',
         degree: 'BS, Chemical Engineering',
         year: '2006 - 2012',
+        dates: {
+          originalText: '2006 - 2012',
+          start: {
+            iso: '2006',
+            precision: 'year',
+            text: '2006',
+          },
+          end: {
+            iso: '2012',
+            precision: 'year',
+            text: '2012',
+          },
+          isCurrent: false,
+        },
         location: '',
       },
     ]);

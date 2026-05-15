@@ -4,6 +4,15 @@ import {
   Position,
   StructuralSection,
 } from '../types/structural.js';
+import type {
+  ParsedSectionResult,
+  SectionParseWarning,
+} from '../types/profile.js';
+import {
+  extractProfileDateRangeText,
+  looksLikeDateRangeText,
+  parseProfileDateRange,
+} from '../utils/date-parser.js';
 import {
   cleanOrganizationNameText,
   isEducationSectionHeaderText,
@@ -13,7 +22,17 @@ import {
   looksLikePersonNameText,
   looksLikePositionTitleText,
 } from '../utils/profile-text.js';
+import {
+  createGroupedTextItemParserLines,
+  type NormalizedParserLine,
+} from '../utils/parser-lines.js';
 import { StructuralParser } from './structural-parser.js';
+
+type ExperienceLineState =
+  | 'seeking_company'
+  | 'seeking_title'
+  | 'seeking_dates'
+  | 'in_description';
 
 export class ExperienceStructuralParser {
   static parseExperience(
@@ -21,6 +40,18 @@ export class ExperienceStructuralParser {
     experienceStartY?: number,
     experienceEndY?: number
   ): WorkExperience[] {
+    return this.parseExperienceWithWarnings(
+      textItems,
+      experienceStartY,
+      experienceEndY
+    ).value;
+  }
+
+  static parseExperienceWithWarnings(
+    textItems: TextItem[],
+    experienceStartY?: number,
+    experienceEndY?: number
+  ): ParsedSectionResult<WorkExperience[]> {
     // Filter items within experience section and focus on main content area (right column)
     let relevantItems = textItems.filter(item => item.x >= 150); // Right column only
 
@@ -34,14 +65,33 @@ export class ExperienceStructuralParser {
     const allGroups = StructuralParser.groupTextByProximity(relevantItems, 3);
     const allLines = StructuralParser.combineGroupedText(allGroups);
     const { lines, groups } = this.extractExperienceLines(allLines, allGroups);
+    const parserLines = createGroupedTextItemParserLines(
+      lines.map((line, index) => {
+        const group = groups[index];
+        const x = Math.min(...group.map(item => item.x));
+        const y = group.reduce((sum, item) => sum + item.y, 0) / group.length;
+        const fontSize =
+          group.reduce((sum, item) => sum + item.fontSize, 0) / group.length;
+
+        return {
+          fontSize,
+          text: line,
+          x,
+          y,
+        };
+      })
+    );
 
     // Classify each line
-    const classifiedSections = this.classifyLines(lines, groups);
+    const classifiedSections = this.classifyLines(parserLines);
 
     // Build work experiences
     const workExperiences = this.buildWorkExperiences(classifiedSections);
 
-    return workExperiences;
+    return {
+      value: workExperiences,
+      warnings: this.createExperienceWarnings(workExperiences),
+    };
   }
 
   private static extractExperienceLines(
@@ -71,36 +121,39 @@ export class ExperienceStructuralParser {
   }
 
   private static classifyLines(
-    lines: string[],
-    groups: TextItem[][]
+    parserLines: NormalizedParserLine[]
   ): StructuralSection[] {
     const sections: StructuralSection[] = [];
+    let state: ExperienceLineState = 'seeking_company';
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const group = groups[i];
+    for (let index = 0; index < parserLines.length; index++) {
+      const parserLine = parserLines[index];
+      const line = parserLine.text;
 
       if (!line.trim() || line.length < 2) continue;
 
-      // Calculate average font size for the line
-      const avgFontSize =
-        group.reduce((sum, item) => sum + item.fontSize, 0) / group.length;
-      const avgY = group.reduce((sum, item) => sum + item.y, 0) / group.length;
+      const fontSize = parserLine.fontSize ?? 0;
+      const y = parserLine.y ?? 0;
 
       const section: StructuralSection = {
         type: 'other',
         text: line.trim(),
-        fontSize: avgFontSize,
-        y: avgY,
+        fontSize,
+        y,
         confidence: 0,
       };
 
-      // Classify based on content and structure
-      section.type = this.classifyLineType(line, avgFontSize, i, lines);
+      section.type = this.classifyLineType({
+        allLines: parserLines,
+        index,
+        line: parserLine,
+        state,
+      });
+      state = this.nextState(state, section.type);
       section.confidence = this.calculateConfidence(
         line,
         section.type,
-        avgFontSize
+        fontSize
       );
 
       sections.push(section);
@@ -109,45 +162,125 @@ export class ExperienceStructuralParser {
     return sections;
   }
 
-  private static classifyLineType(
-    line: string,
-    fontSize: number,
-    index: number,
-    allLines: string[]
-  ): StructuralSection['type'] {
-    const lowerLine = line.toLowerCase();
+  private static classifyLineType({
+    allLines,
+    index,
+    line,
+    state,
+  }: {
+    allLines: NormalizedParserLine[];
+    index: number;
+    line: NormalizedParserLine;
+    state: ExperienceLineState;
+  }): StructuralSection['type'] {
+    const text = line.text;
+    const lowerLine = text.toLowerCase();
 
     // Skip section headers
     if (lowerLine === 'experience' || lowerLine === 'experiência') {
       return 'other';
     }
 
-    // Duration detection
+    const lineTexts = allLines.map(candidate => candidate.text);
+
+    switch (state) {
+      case 'seeking_company':
+        return this.looksLikeOrganization(
+          text,
+          line.fontSize ?? 0,
+          index,
+          lineTexts
+        )
+          ? 'organization'
+          : this.fallbackLineType(text, line.fontSize ?? 0, index, lineTexts);
+      case 'seeking_title':
+        if (this.looksLikeDuration(text)) {
+          return 'duration';
+        }
+
+        if (this.looksLikePosition(text)) {
+          return 'position';
+        }
+
+        if (
+          this.looksLikeOrganization(text, line.fontSize ?? 0, index, lineTexts)
+        ) {
+          return 'organization';
+        }
+
+        return this.fallbackLineType(
+          text,
+          line.fontSize ?? 0,
+          index,
+          lineTexts
+        );
+      case 'seeking_dates':
+        if (this.looksLikeDuration(text)) {
+          return 'duration';
+        }
+
+        if (this.looksLikeLocation(text)) {
+          return 'location';
+        }
+
+        if (this.looksLikePosition(text)) {
+          return 'position';
+        }
+
+        return text.length > 15 ? 'description' : 'other';
+      case 'in_description':
+        return this.fallbackLineType(
+          text,
+          line.fontSize ?? 0,
+          index,
+          lineTexts
+        );
+    }
+  }
+
+  private static nextState(
+    currentState: ExperienceLineState,
+    sectionType: StructuralSection['type']
+  ): ExperienceLineState {
+    switch (sectionType) {
+      case 'organization':
+        return 'seeking_title';
+      case 'position':
+        return 'seeking_dates';
+      case 'duration':
+      case 'location':
+      case 'description':
+        return currentState === 'seeking_company'
+          ? 'seeking_company'
+          : 'in_description';
+      case 'other':
+        return currentState;
+    }
+  }
+
+  private static fallbackLineType(
+    line: string,
+    fontSize: number,
+    index: number,
+    allLines: string[]
+  ): StructuralSection['type'] {
     if (this.looksLikeDuration(line)) {
       return 'duration';
     }
 
-    // Position detection - job titles
-    if (this.looksLikePosition(line)) {
-      return 'position';
-    }
-
-    // Organization detection - usually larger font, short line, followed by duration or position
     if (this.looksLikeOrganization(line, fontSize, index, allLines)) {
       return 'organization';
     }
 
-    // Location detection
+    if (this.looksLikePosition(line)) {
+      return 'position';
+    }
+
     if (this.looksLikeLocation(line)) {
       return 'location';
     }
 
-    // Description - everything else with substantial content
-    if (line.length > 30) {
-      return 'description';
-    }
-
-    return 'other';
+    return line.length > 30 ? 'description' : 'other';
   }
 
   private static looksLikeOrganization(
@@ -194,21 +327,7 @@ export class ExperienceStructuralParser {
   }
 
   private static looksLikeDuration(line: string): boolean {
-    const durationPatterns = [
-      // English patterns
-      /\b\d{4}\s*-\s*\d{4}\b/,
-      /\b\d{4}\s*-\s*(present|current)\b/i,
-      /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}/i,
-      /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{4}/i,
-      /\(\d+\s+(years?|months?)\s*\d*\s*(months?)?\)/i,
-      /\d+\s+(years?|months?)\s+\d+\s+(months?|years?)/i,
-      // Portuguese patterns
-      /\b(janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+\d{4}/i,
-      /\(\d+\s+(anos?|meses?)\s*\d*\s*(meses?)?\)/i,
-      /\d+\s+(anos?|meses?)\s+\d+\s+(meses?|anos?)/i,
-    ];
-
-    return durationPatterns.some(pattern => pattern.test(line));
+    return looksLikeDateRangeText(line);
   }
 
   private static looksLikeLocation(line: string): boolean {
@@ -411,12 +530,17 @@ export class ExperienceStructuralParser {
       return undefined;
     }
 
+    const dates = position.duration
+      ? parseProfileDateRange(position.duration)
+      : undefined;
+
     return {
+      ...(dates ? { dates } : {}),
       title: position.title,
       duration: position.duration ?? '',
-      location: position.location
-        ? this.normalizeLocationText(position.location)
-        : undefined,
+      ...(position.location
+        ? { location: this.normalizeLocationText(position.location) }
+        : {}),
       description: descriptionLines.join(' ').trim(),
     };
   }
@@ -432,6 +556,11 @@ export class ExperienceStructuralParser {
       .replace(/[\uE000-\uF8FF]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+    const parsedDurationText = extractProfileDateRangeText(normalizedText);
+
+    if (parsedDurationText) {
+      return parsedDurationText;
+    }
 
     // Common duration patterns to extract
     const durationPatterns = [
@@ -502,5 +631,50 @@ export class ExperienceStructuralParser {
     }
 
     return normalizedText;
+  }
+
+  private static createExperienceWarnings(
+    workExperiences: WorkExperience[]
+  ): SectionParseWarning[] {
+    const warnings: SectionParseWarning[] = [];
+
+    workExperiences.forEach((workExperience, workExperienceIndex) => {
+      if (workExperience.positions.length === 0) {
+        warnings.push({
+          code: 'section_parse_warning',
+          entry: workExperienceIndex,
+          field: 'positions',
+          message: 'Could not extract any positions for experience entry',
+          rawText: workExperience.organization,
+          section: 'experience',
+        });
+      }
+
+      workExperience.positions.forEach((position, positionIndex) => {
+        const entry = workExperienceIndex + positionIndex;
+
+        if (!position.duration) {
+          warnings.push({
+            code: 'section_parse_warning',
+            entry,
+            field: 'dates',
+            message: 'Could not extract date range for experience entry',
+            rawText: position.title,
+            section: 'experience',
+          });
+        } else if (!position.dates) {
+          warnings.push({
+            code: 'section_parse_warning',
+            entry,
+            field: 'dates',
+            message: 'Could not parse date range',
+            rawText: position.duration,
+            section: 'experience',
+          });
+        }
+      });
+    });
+
+    return warnings;
   }
 }
