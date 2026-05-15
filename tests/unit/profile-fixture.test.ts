@@ -4,7 +4,7 @@ import { parseLinkedInPDF, type ParseResult } from '../../src/index.js';
 
 describe('Profile.pdf fixture', () => {
   const profilePdfPath = fileURLToPath(
-    new URL('../../Profile.pdf', import.meta.url)
+    new URL('../fixtures/Profile.pdf', import.meta.url)
   );
   let result: ParseResult;
 

@@ -166,7 +166,12 @@ async function runFullE2ETest() {
   try {
     // Test 1: Load the test PDF file
     console.log("\n📋 Test 1: Loading Test PDF");
-    const testPdfPath = path.join(process.cwd(), 'test_resume.pdf');
+    const testPdfPath = path.join(
+      process.cwd(),
+      'tests',
+      'fixtures',
+      'test_resume.pdf'
+    );
 
     if (!fs.existsSync(testPdfPath)) {
       throw new Error(`Test PDF file not found at ${testPdfPath}`);

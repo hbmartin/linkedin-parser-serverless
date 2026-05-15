@@ -5,9 +5,16 @@ import {
   normalizeWhitespace,
 } from '../utils/text-utils.js';
 import {
+  isSectionHeaderText,
   looksLikeExperienceDetailText,
   looksLikeOrganizationNameText,
 } from '../utils/profile-text.js';
+import { TOP_SKILLS_LIMIT } from '../utils/parser-limits.js';
+
+interface SkillCandidateContext {
+  skill: string;
+  followingLines: string[];
+}
 
 export interface Language {
   language: string;
@@ -22,17 +29,20 @@ export class ListParser {
       return [];
     }
 
-    const lines = splitLines(skillsSection);
+    const lines = splitLines(skillsSection).map(line =>
+      normalizeWhitespace(line)
+    );
     const skills: string[] = [];
 
-    for (const line of lines) {
-      const skill = normalizeWhitespace(line);
+    for (let index = 0; index < lines.length; index++) {
+      const skill = lines[index];
+      const followingLines = lines.slice(index + 1, index + 4);
 
-      if (this.isLikelySkill(skill)) {
+      if (this.isLikelySkill({ skill, followingLines })) {
         skills.push(skill);
       }
 
-      if (skills.length === 3) {
+      if (skills.length === TOP_SKILLS_LIMIT) {
         break;
       }
     }
@@ -117,22 +127,27 @@ export class ListParser {
     return null;
   }
 
-  private static isLikelySkill(skill: string): boolean {
-    const lowerSkill = skill.toLowerCase();
+  private static isLikelySkill({
+    skill,
+    followingLines,
+  }: SkillCandidateContext): boolean {
+    const nextLine = followingLines[0] ?? '';
+    const nextLineSuggestsExperience =
+      looksLikeExperienceDetailText(nextLine) ||
+      /^\d+\s+(years?|months?|anos?|meses?)/i.test(nextLine);
     const looksLikeCompanyOrInstitution =
-      /[\s,]/.test(skill) && looksLikeOrganizationNameText(skill);
+      /[\s,]/.test(skill) &&
+      looksLikeOrganizationNameText(skill) &&
+      nextLineSuggestsExperience;
 
     return (
       skill.length > 1 &&
       skill.length < 50 &&
       !looksLikeCompanyOrInstitution &&
       !looksLikeExperienceDetailText(skill) &&
-      !lowerSkill.includes('languages') &&
-      !lowerSkill.includes('summary') &&
-      !lowerSkill.includes('experience') &&
-      !lowerSkill.includes('education') &&
-      !lowerSkill.includes('page ') &&
-      !lowerSkill.match(/^\d+$/)
+      !isSectionHeaderText(skill) &&
+      !/^page\s+\d+/i.test(skill) &&
+      !/^\d+$/.test(skill)
     );
   }
 }

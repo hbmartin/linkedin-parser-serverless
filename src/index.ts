@@ -4,6 +4,7 @@ import { BasicInfoParser } from './parsers/basic-info.js';
 import { ListParser } from './parsers/lists.js';
 import { EducationParser } from './parsers/education.js';
 import { cleanPDFText } from './utils/text-utils.js';
+import { TOP_SKILLS_LIMIT } from './utils/parser-limits.js';
 import type { LayoutInfo, TextItem } from './types/structural.js';
 
 export interface Contact {
@@ -261,7 +262,7 @@ function extractTopSkills(lines: StructuralLine[]): string[] {
   return skillLines
     .map(line => line.text)
     .filter(skill => skill.length > 1 && skill.length < 50)
-    .slice(0, 10);
+    .slice(0, TOP_SKILLS_LIMIT);
 }
 
 function extractLinkedInUrlFromLines(lines: string[]): string | undefined {

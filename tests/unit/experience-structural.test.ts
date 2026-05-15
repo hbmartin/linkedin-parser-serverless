@@ -81,6 +81,28 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('ignores page footers between role details', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Staff Platform Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2024', y: 630 }),
+      textItem({ text: 'Page 1 of 2', y: 620 }),
+      textItem({ text: 'Austin, TX', y: 610 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.organization).toBe('Northstar Solutions');
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        duration: '2021 - 2024',
+        location: 'Austin, TX',
+        title: 'Staff Platform Engineer',
+      })
+    );
+  });
+
   test('keeps organization suffix terms when cleaning names', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -105,5 +127,26 @@ describe('ExperienceStructuralParser', () => {
     const [experience] = ExperienceStructuralParser.parseExperience(items);
 
     expect(experience.positions[0].duration).toBe('2019 - 2021');
+  });
+
+  test('uses localized section headers and accented organization names', () => {
+    const items = [
+      textItem({ text: 'Experiência', y: 700, fontSize: 16 }),
+      textItem({ text: 'Ação Labs', y: 670 }),
+      textItem({ text: 'Engenheiro de Software', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'janeiro de 2020 - março de 2024', y: 630 }),
+      textItem({ text: 'Formação', y: 500, fontSize: 16 }),
+      textItem({ text: 'Universidade Exemplo', y: 480 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.organization).toBe('Ação Labs');
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        title: 'Engenheiro de Software',
+        duration: 'janeiro de 2020 - março de 2024',
+      })
+    );
   });
 });
