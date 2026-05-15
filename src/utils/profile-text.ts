@@ -130,6 +130,8 @@ const SINGLE_WORD_LOCATION_TEXT = new Set([
   'portugal',
 ]);
 
+const wholeKeywordPatternCache = new Map<string, RegExp>();
+
 export function isSectionHeaderText(text: string): boolean {
   return SECTION_HEADER_TEXT.has(normalizeProfileText(text).toLowerCase());
 }
@@ -342,23 +344,67 @@ function isLikelyLocationText(text: string): boolean {
     SINGLE_WORD_LOCATION_TEXT.has(lowerText) ||
     /^greater\s+[\p{Lu}][\p{L}\s]+(?:area)?$/iu.test(normalizedText) ||
     /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}]{2}$/u.test(normalizedText) ||
-    /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}][\p{L}\s]+(?:,\s*[\p{Lu}][\p{L}\s]+)?$/u.test(
-      normalizedText
-    )
+    looksLikeCommaSeparatedLocationText(normalizedText)
   );
 }
 
 function includesWholeKeyword(text: string, keyword: string): boolean {
-  const keywordPattern = keyword
-    .split(/\s+/)
-    .map(part => escapeRegExp(part))
-    .join('\\s+');
-  const pattern = new RegExp(
-    `(^|[^\\p{L}\\p{N}])${keywordPattern}($|[^\\p{L}\\p{N}])`,
-    'iu'
-  );
+  let pattern = wholeKeywordPatternCache.get(keyword);
+
+  if (!pattern) {
+    const keywordPattern = keyword
+      .split(/\s+/)
+      .map(part => escapeRegExp(part))
+      .join('\\s+');
+
+    pattern = new RegExp(
+      `(^|[^\\p{L}\\p{N}])${keywordPattern}($|[^\\p{L}\\p{N}])`,
+      'iu'
+    );
+    wholeKeywordPatternCache.set(keyword, pattern);
+  }
 
   return pattern.test(text);
+}
+
+function looksLikeCommaSeparatedLocationText(text: string): boolean {
+  const parts = text.split(',').map(part => part.trim());
+  const hasOrganizationSuffix = parts
+    .slice(1)
+    .some(part =>
+      ORGANIZATION_WORDS.has(part.toLowerCase().replace(/[.]/g, ''))
+    );
+
+  return (
+    !hasOrganizationSuffix &&
+    parts.length >= 2 &&
+    parts.length <= 3 &&
+    parts.every(
+      (part, index) =>
+        (index > 0 && /^[\p{Lu}]{2}$/u.test(part)) ||
+        looksLikeLocationNamePart(part)
+    )
+  );
+}
+
+function looksLikeLocationNamePart(text: string): boolean {
+  const words = text.split(/\s+/).filter(Boolean);
+  const hasLocationWord = words.some(
+    word =>
+      !LOWERCASE_CONNECTOR_WORDS.has(word.toLowerCase()) &&
+      /^[\p{Lu}][\p{L}\p{M}'-]+$/u.test(word) &&
+      /[\p{Ll}]/u.test(word)
+  );
+
+  return (
+    hasLocationWord &&
+    words.length > 0 &&
+    words.every(
+      word =>
+        LOWERCASE_CONNECTOR_WORDS.has(word.toLowerCase()) ||
+        (/^[\p{Lu}][\p{L}\p{M}'-]+$/u.test(word) && /[\p{Ll}]/u.test(word))
+    )
+  );
 }
 
 function escapeRegExp(text: string): string {

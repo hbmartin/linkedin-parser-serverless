@@ -15,4 +15,15 @@ describe('profile text heuristics', () => {
     expect(looksLikeOrganizationNameText('São Paulo Tech')).toBe(true);
     expect(looksLikeOrganizationNameText('Remote')).toBe(false);
   });
+
+  test('does not mistake organization suffixes for locations', () => {
+    expect(looksLikeOrganizationNameText('Google, LLC')).toBe(true);
+    expect(looksLikeOrganizationNameText('Google, Inc')).toBe(true);
+    expect(looksLikeOrganizationNameText('Los Angeles, California')).toBe(
+      false
+    );
+    expect(
+      looksLikeOrganizationNameText('Los Angeles, California, United States')
+    ).toBe(false);
+  });
 });

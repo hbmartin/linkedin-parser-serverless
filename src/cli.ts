@@ -109,11 +109,7 @@ const nodeCliDependencies: CliDependencies = {
   fileExists: fs.existsSync,
   listDirectory: directoryPath =>
     fs.readdirSync(directoryPath, { withFileTypes: true }).map(entry => ({
-      kind: entry.isFile()
-        ? 'file'
-        : entry.isDirectory()
-          ? 'directory'
-          : 'other',
+      kind: getNodeDirectoryEntryKind(directoryPath, entry),
       name: entry.name,
     })),
   parsePdf: parseLinkedInPDF,
@@ -122,6 +118,39 @@ const nodeCliDependencies: CliDependencies = {
   resolvePath: path.resolve,
   writeTextFile: fs.writeFileSync,
 };
+
+function getNodeDirectoryEntryKind(
+  directoryPath: string,
+  entry: fs.Dirent
+): CliDirectoryEntry['kind'] {
+  if (entry.isFile()) {
+    return 'file';
+  }
+
+  if (entry.isDirectory()) {
+    return 'directory';
+  }
+
+  if (!entry.isSymbolicLink()) {
+    return 'other';
+  }
+
+  try {
+    const stats = fs.statSync(path.join(directoryPath, entry.name));
+
+    if (stats.isFile()) {
+      return 'file';
+    }
+
+    if (stats.isDirectory()) {
+      return 'directory';
+    }
+  } catch {
+    return 'other';
+  }
+
+  return 'other';
+}
 
 export async function runCli({
   args,
@@ -132,8 +161,8 @@ export async function runCli({
   if (command.kind === 'help') {
     return {
       exitCode: 0,
-      stderr: usageText,
-      stdout: '',
+      stderr: '',
+      stdout: usageText,
     };
   }
 
@@ -166,7 +195,7 @@ export async function runCli({
 
 export async function main(
   args: string[] = process.argv.slice(2)
-): Promise<void> {
+): Promise<CliExitCode> {
   const result = await runCli({ args });
 
   if (result.stdout) {
@@ -177,9 +206,7 @@ export async function main(
     process.stderr.write(result.stderr);
   }
 
-  if (result.exitCode !== 0) {
-    process.exit(result.exitCode);
-  }
+  return result.exitCode;
 }
 
 function parseCliCommand(args: string[]): CliCommand {
@@ -499,18 +526,14 @@ function resolveDirectory(
 ): InvalidDirectory | ResolvedDirectory {
   const resolvedPath = dependencies.resolvePath(folderPath);
 
-  if (!dependencies.fileExists(resolvedPath)) {
+  if (dependencies.directoryExists(resolvedPath)) {
     return {
-      kind: 'invalid',
-      result: {
-        exitCode: 1,
-        stderr: `Error: Directory not found: ${resolvedPath}\n`,
-        stdout: '',
-      },
+      kind: 'valid',
+      path: resolvedPath,
     };
   }
 
-  if (!dependencies.directoryExists(resolvedPath)) {
+  if (dependencies.fileExists(resolvedPath)) {
     return {
       kind: 'invalid',
       result: {
@@ -522,8 +545,12 @@ function resolveDirectory(
   }
 
   return {
-    kind: 'valid',
-    path: resolvedPath,
+    kind: 'invalid',
+    result: {
+      exitCode: 1,
+      stderr: `Error: Directory not found: ${resolvedPath}\n`,
+      stdout: '',
+    },
   };
 }
 
@@ -610,9 +637,9 @@ function findMatchingStemEntry(
   fileName: string,
   entries: CliDirectoryEntry[]
 ): CliDirectoryEntry | undefined {
-  const stem = getFileStem(fileName);
+  const stem = getFileStem(fileName).toLowerCase();
 
-  return entries.find(entry => getFileStem(entry.name) === stem);
+  return entries.find(entry => getFileStem(entry.name).toLowerCase() === stem);
 }
 
 function formatWrittenFiles(
