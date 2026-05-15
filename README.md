@@ -7,11 +7,9 @@
 [![Context7](https://img.shields.io/badge/[]-Context7-059669)](https://context7.com/hbmartin/linkedin-parser-serverless)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hbmartin/linkedin-parser-serverless)
 
-**A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsing LinkedIn PDF resumes and extracting structured profile data.**
+A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsing LinkedIn PDF resumes and extracting structured profile data.
 
-> ℹ️ **Note:** This is a newly published package. Download statistics may take 24-48 hours to populate. Some badges show "package not found or too new" until npm statistics are updated.
-
-[Installation](#installation) • [CLI Usage](#cli-usage) • [Quick Start](#quick-start) • [API Reference](#api-reference) • [Examples](#examples)
+[Installation](#installation) • [CLI Usage](#cli-usage) • [Quick Start](#quick-start) • [Examples](#examples) • [API Reference](#api-reference) • [Development](#development)
 
 ---
 
@@ -46,25 +44,31 @@
 
 ## 📦 Installation
 
+### Requirements
+
+- Node.js 22.0.0 or newer
+- pnpm 11.1.2 for local development
+- Supported runtimes: Node.js 22+, Vercel Edge, and serverless JavaScript runtimes that provide Web-standard binary types such as `ArrayBuffer`
+
 ### Library Usage
 ```bash
-npm install @zalko/linkedin-parser
+npm install linkedin-parser-serverless
 ```
 
 ### CLI Usage (Global)
 ```bash
 # Install globally for command-line usage
-npm install -g @zalko/linkedin-parser
+npm install -g linkedin-parser-serverless
 
 # Or use with npx (no installation required)
-npx @zalko/linkedin-parser path/to/resume.pdf
+npx -p linkedin-parser-serverless linkedin-pdf-parser path/to/resume.pdf
 ```
 
 ## 🖥️ CLI Usage
 
 The package includes a command-line interface for easy PDF processing:
 
-### Basic Usage
+### Command
 ```bash
 # Parse a LinkedIn PDF and output JSON
 linkedin-pdf-parser ./resume.pdf
@@ -104,16 +108,16 @@ linkedin-pdf-parser resume.pdf | jq '.profile.experience[].company'
 ## 🚀 Quick Start
 
 ```typescript
-import { parseLinkedInPDF } from '@zalko/linkedin-parser';
+import { parseLinkedInPDF } from 'linkedin-parser-serverless';
 import fs from 'fs';
 
-// Parse from PDF binary data
 const pdfBuffer = fs.readFileSync('resume.pdf');
-const result = await parseLinkedInPDF(pdfBuffer);
+const { profile } = await parseLinkedInPDF(pdfBuffer);
 
-console.log(result.profile.name);          // "John Silva"
-console.log(result.profile.contact.email); // "john.silva@email.com"
-console.log(result.profile.experience);    // [{ title: "...", company: "..." }]
+console.log(`Name: ${profile.name}`);
+console.log(`Email: ${profile.contact.email}`);
+console.log(`Skills: ${profile.top_skills.join(', ')}`);
+console.log(`Experience: ${profile.experience.length} positions`);
 ```
 
 ### Sample Output
@@ -162,22 +166,6 @@ console.log(result.profile.experience);    // [{ title: "...", company: "..." }]
 
 ## 📚 Examples
 
-### Basic Usage
-
-```typescript
-import { parseLinkedInPDF } from '@zalko/linkedin-parser';
-import fs from 'fs';
-
-const pdfData = fs.readFileSync('linkedin-resume.pdf');
-const { profile } = await parseLinkedInPDF(pdfData);
-
-// Access parsed data
-console.log(`Name: ${profile.name}`);
-console.log(`Email: ${profile.contact.email}`);
-console.log(`Skills: ${profile.top_skills.join(', ')}`);
-console.log(`Experience: ${profile.experience.length} positions`);
-```
-
 ### With Options
 
 ```typescript
@@ -201,7 +189,7 @@ const result = await parseLinkedInPDF(arrayBuffer);
 Create a Next.js App Router endpoint at `app/api/parse-linkedin/route.ts`:
 
 ```typescript
-import { parseLinkedInPDF } from '@zalko/linkedin-parser';
+import { parseLinkedInPDF } from 'linkedin-parser-serverless';
 
 export const runtime = 'edge';
 
@@ -375,23 +363,50 @@ interface ParseResult {
 
 ```bash
 # Clone repository
-git clone https://github.com/zalkowitsch/linkedin-parser.git
-cd linkedin-parser
+git clone https://github.com/hbmartin/linkedin-parser-serverless.git
+cd linkedin-parser-serverless
 
 # Install dependencies
-npm install
+pnpm install
 
 # Run tests
-npm test
+pnpm test
 
 # Build library
-npm run build
+pnpm run build
 
 # Run tests with coverage
-npm run test:coverage
+pnpm run test:coverage
 
 # Clean build artifacts
-npm run clean
+pnpm run clean
+```
+
+### Developing and Testing the CLI
+
+The local CLI script loads the built package from `dist/`, so build the project before running it from a checkout:
+
+```bash
+pnpm install
+pnpm run build
+
+# Run the local CLI directly against the included fixture
+node bin/cli.js Profile.pdf
+
+# Check compact output and raw text output
+node bin/cli.js Profile.pdf --compact
+node bin/cli.js Profile.pdf --raw-text
+
+# Check usage output
+node bin/cli.js --help
+```
+
+For a quick smoke test, assert a few expected fields with `jq`:
+
+```bash
+node bin/cli.js Profile.pdf | jq '.profile.name'
+node bin/cli.js Profile.pdf | jq '.profile.contact.email'
+node bin/cli.js Profile.pdf | jq '.profile.experience[0]'
 ```
 
 ## 📊 Performance

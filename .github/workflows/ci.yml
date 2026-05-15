@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -46,6 +46,12 @@ jobs:
 
       - name: Analyze TypeScript complexity
         run: pnpm run fta
+
+      - name: Check duplicate code
+        run: pnpm run dupes
+
+      - name: Check type coverage
+        run: pnpm run type-coverage
 
       - name: Build package
         run: pnpm run build

@@ -4,6 +4,13 @@ import {
   Position,
   StructuralSection,
 } from '../types/structural.js';
+import {
+  cleanOrganizationNameText,
+  isSectionHeaderText,
+  looksLikeOrganizationNameText,
+  looksLikePersonNameText,
+  looksLikePositionTitleText,
+} from '../utils/profile-text.js';
 import { StructuralParser } from './structural-parser.js';
 
 export class ExperienceStructuralParser {
@@ -17,13 +24,14 @@ export class ExperienceStructuralParser {
 
     if (experienceStartY !== undefined && experienceEndY !== undefined) {
       relevantItems = relevantItems.filter(
-        item => item.y <= experienceStartY && item.y >= experienceEndY
+        item => item.y < experienceStartY && item.y > experienceEndY
       );
     }
 
     // Group text by proximity with smaller Y distance for better line separation
-    const groups = StructuralParser.groupTextByProximity(relevantItems, 3);
-    const lines = StructuralParser.combineGroupedText(groups);
+    const allGroups = StructuralParser.groupTextByProximity(relevantItems, 3);
+    const allLines = StructuralParser.combineGroupedText(allGroups);
+    const { lines, groups } = this.extractExperienceLines(allLines, allGroups);
 
     // Classify each line
     const classifiedSections = this.classifyLines(lines, groups);
@@ -32,6 +40,32 @@ export class ExperienceStructuralParser {
     const workExperiences = this.buildWorkExperiences(classifiedSections);
 
     return workExperiences;
+  }
+
+  private static extractExperienceLines(
+    lines: string[],
+    groups: TextItem[][]
+  ): { lines: string[]; groups: TextItem[][] } {
+    const experienceStartIndex = lines.findIndex(line =>
+      /^experience$/i.test(line.trim())
+    );
+
+    if (experienceStartIndex === -1) {
+      return { lines, groups };
+    }
+
+    const educationStartOffset = lines
+      .slice(experienceStartIndex + 1)
+      .findIndex(line => /^education$/i.test(line.trim()));
+    const experienceEndIndex =
+      educationStartOffset === -1
+        ? lines.length
+        : experienceStartIndex + 1 + educationStartOffset;
+
+    return {
+      lines: lines.slice(experienceStartIndex + 1, experienceEndIndex),
+      groups: groups.slice(experienceStartIndex + 1, experienceEndIndex),
+    };
   }
 
   private static classifyLines(
@@ -82,13 +116,8 @@ export class ExperienceStructuralParser {
     const lowerLine = line.toLowerCase();
 
     // Skip section headers
-    if (lowerLine.includes('experience') || lowerLine.includes('experiência')) {
+    if (lowerLine === 'experience' || lowerLine === 'experiência') {
       return 'other';
-    }
-
-    // Organization detection - usually larger font, short line, followed by duration or position
-    if (this.looksLikeOrganization(line, fontSize, index, allLines)) {
-      return 'organization';
     }
 
     // Duration detection
@@ -99,6 +128,11 @@ export class ExperienceStructuralParser {
     // Position detection - job titles
     if (this.looksLikePosition(line)) {
       return 'position';
+    }
+
+    // Organization detection - usually larger font, short line, followed by duration or position
+    if (this.looksLikeOrganization(line, fontSize, index, allLines)) {
+      return 'organization';
     }
 
     // Location detection
@@ -120,8 +154,18 @@ export class ExperienceStructuralParser {
     index: number,
     allLines: string[]
   ): boolean {
-    // Short line (likely company name)
-    if (line.length > 50) return false;
+    const normalizedLine = line.trim();
+
+    if (
+      normalizedLine.length > 80 ||
+      this.looksLikeDuration(normalizedLine) ||
+      this.looksLikeLocation(normalizedLine) ||
+      this.looksLikePosition(normalizedLine) ||
+      isSectionHeaderText(normalizedLine) ||
+      looksLikePersonNameText(normalizedLine)
+    ) {
+      return false;
+    }
 
     // Look ahead for duration or position indicators
     const nextFewLines = allLines.slice(index + 1, index + 4);
@@ -132,173 +176,18 @@ export class ExperienceStructuralParser {
         /^\d+\s+(years?|months?|anos?|meses?)/.test(nextLine)
     );
 
-    // Skip common section headers that aren't companies
-    const nonCompanyHeaders = [
-      'contact',
-      'top skills',
-      'strategic roadmaps',
-      'electronic engineering',
-      'project planning',
-      'languages',
-      'summary',
-      'education',
-      'experience',
-      'experiência',
-      'formação',
-      'idiomas',
-      'competências',
-      'habilidades',
-    ];
-
-    if (
-      nonCompanyHeaders.some(
-        header =>
-          line.toLowerCase().includes(header) || line.toLowerCase() === header
-      )
-    ) {
-      return false;
-    }
-
-    // Known companies or pattern matching
-    const knownCompanies = [
-      'Carta',
-      'Boba Joy',
-      'Zestt',
-      'Guild',
-      'Liquido',
-      'Automox',
-      'AevoTech',
-      'Inovare',
-      'CEPEL',
-      'CPTI',
-      'Arena Games',
-      'PontoTel',
-      'Partiu',
-    ];
-    const foundKnownCompany = knownCompanies.find(company =>
-      line.toLowerCase().includes(company.toLowerCase())
+    return (
+      hasJobDetailsAfter &&
+      looksLikeOrganizationNameText(normalizedLine) &&
+      (fontSize > 10 || normalizedLine.length <= 40)
     );
-
-    // For known companies, the line should be just the company name (or very close to it)
-    if (foundKnownCompany) {
-      // Only accept if the line is primarily the company name (not mixed with other content)
-      const cleanLine = line.trim().toLowerCase();
-      const companyName = foundKnownCompany.toLowerCase();
-
-      // Line should either be exactly the company name, or start/end with it and be short
-      const isCleanCompanyName =
-        cleanLine === companyName ||
-        (cleanLine.startsWith(companyName) &&
-          line.length < companyName.length + 20) ||
-        (cleanLine.endsWith(companyName) &&
-          line.length < companyName.length + 20) ||
-        (line.length < 30 && cleanLine.includes(companyName));
-
-      return isCleanCompanyName && hasJobDetailsAfter;
-    }
-
-    // Better company patterns - focus on actual business names
-    const companyPatterns = [
-      /^[A-Z][A-Za-z\s&.,-]{2,25}$/, // Standard company names (shorter, cleaner)
-      /^[A-Z]{2,6}$/, // Acronyms (2-6 letters)
-      /^[A-Z][A-Za-z]+\s+(Inc|LLC|Ltd|Corp|Corporation|Company|Technologies|Tech|Solutions|Systems|Group|Labs|Studio)$/i, // Business with suffixes
-    ];
-
-    const matchesPattern = companyPatterns.some(pattern => pattern.test(line));
-
-    // Font size hint - company names are often larger
-    const isLargerFont = fontSize > 11;
-
-    return matchesPattern && isLargerFont && hasJobDetailsAfter;
   }
 
   private static looksLikePosition(line: string): boolean {
-    const positionKeywords = [
-      // English titles
-      'manager',
-      'engineer',
-      'director',
-      'lead',
-      'senior',
-      'principal',
-      'chief',
-      'head of',
-      'co-founder',
-      'founder',
-      'president',
-      'vice president',
-      'vp',
-      'analyst',
-      'specialist',
-      'developer',
-      'architect',
-      'consultant',
-      'coordinator',
-      'supervisor',
-      'specialist',
-      // Portuguese titles
-      'gerente',
-      'diretor',
-      'coordenador',
-      'analista',
-      'especialista',
-      'consultor',
-      'desenvolvedor',
-      'engenheiro',
-      'arquiteto',
-      'supervisor',
-      'assessor',
-      'gestor',
-      // Additional position indicators
-      'product manager',
-      'software engineer',
-      'tech lead',
-      'technical lead',
-      'scrum master',
-    ];
-
-    const lowerLine = line.toLowerCase();
-    const hasPositionKeyword = positionKeywords.some(keyword =>
-      lowerLine.includes(keyword)
-    );
-
-    // Avoid lines that are clearly durations or locations
-    const isDuration = this.looksLikeDuration(line);
-    const isLocation = this.looksLikeLocation(line);
-
-    // Exclude lines that are clearly descriptions (too long, have sentence structure)
-    const isDescription =
-      line.length > 80 || // Too long for a job title
-      line.toLowerCase().startsWith('i ') || // Starts with "I" (personal statement)
-      line.toLowerCase().includes('i lead') ||
-      line.toLowerCase().includes('i manage') ||
-      line.toLowerCase().includes('i work') ||
-      line.toLowerCase().includes('i was') ||
-      line.toLowerCase().includes('responsible for') ||
-      line.toLowerCase().includes('working as') ||
-      line.toLowerCase().includes('joined the') ||
-      line.toLowerCase().includes('my role') ||
-      line.includes('•') || // Contains bullet points
-      line.includes('...') || // Continuation
-      line.split(' ').length > 15; // Too many words for a title
-
-    // Must be a reasonable job title format
-    const hasValidTitleFormat =
-      line.length > 5 && // Not too short
-      line.length < 80 && // Not too long
-      !line.includes('(') &&
-      !line.includes(')') && // No parentheses
-      !line.includes('•') && // No bullets
-      !line.includes('http') && // No URLs
-      !line.includes('@') && // No email symbols
-      line.split(' ').length <= 12; // Reasonable word count
-
     return (
-      hasPositionKeyword &&
-      !isDuration &&
-      !isLocation &&
-      !isDescription &&
-      hasValidTitleFormat
+      looksLikePositionTitleText(line) &&
+      !this.looksLikeDuration(line) &&
+      !this.looksLikeLocation(line)
     );
   }
 
@@ -321,19 +210,31 @@ export class ExperienceStructuralParser {
   }
 
   private static looksLikeLocation(line: string): boolean {
+    const normalizedLine = this.normalizeLocationText(line);
+
     // Common location patterns
     const locationPatterns = [
-      /^[A-Z][a-z]+,\s*[A-Z]{2}$/, // City, ST
-      /^[A-Z][a-z]+,\s*[A-Z][a-z]+$/, // City, State
-      /^[A-Z][a-z]+,\s*[A-Z][a-z]+,\s*[A-Z][a-z]+/, // City, State, Country
-      /(California|New York|Texas|Florida|United States|Brasil|Brazil|Rio de Janeiro|São Paulo)/i,
+      /^[A-Z][A-Za-z\s]+,\s*[A-Z\s]{2,}$/, // City, ST
+      /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+$/, // City, State
+      /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+/, // City, State, Country
+      /^Greater\s+[A-Z][A-Za-z\s]+(?:Area|,\s*[A-Z\s]{2,})/,
+      /^(California|New York|Texas|Florida|United States|Brasil|Brazil|Rio de Janeiro|São Paulo)$/i,
     ];
 
     return (
-      line.length < 80 &&
-      locationPatterns.some(pattern => pattern.test(line)) &&
-      !this.looksLikeDuration(line)
+      normalizedLine.length < 80 &&
+      locationPatterns.some(pattern => pattern.test(normalizedLine)) &&
+      !this.looksLikeDuration(normalizedLine)
     );
+  }
+
+  private static normalizeLocationText(text: string): string {
+    return text
+      .replace(/\bY\s+ork\b/g, 'York')
+      .replace(/\bT\s+X\b/g, 'TX')
+      .replace(/\s+,/g, ',')
+      .replace(/,\s*/g, ', ')
+      .trim();
   }
 
   private static calculateConfidence(
@@ -377,15 +278,16 @@ export class ExperienceStructuralParser {
     for (const section of sections) {
       switch (section.type) {
         case 'organization':
-          // Save previous work experience
-          if (currentWorkExperience && currentWorkExperience.organization) {
-            if (currentPosition && currentPosition.title) {
-              currentPosition.description = descriptionLines.join(' ').trim();
-              currentWorkExperience.positions =
-                currentWorkExperience.positions || [];
-              currentWorkExperience.positions.push(currentPosition as Position);
+          {
+            const completedWorkExperience = this.completeWorkExperience({
+              workExperience: currentWorkExperience,
+              position: currentPosition,
+              descriptionLines,
+            });
+
+            if (completedWorkExperience) {
+              workExperiences.push(completedWorkExperience);
             }
-            workExperiences.push(currentWorkExperience as WorkExperience);
           }
 
           // Start new work experience with clean organization name
@@ -407,16 +309,18 @@ export class ExperienceStructuralParser {
           break;
 
         case 'position':
-          // Save previous position
-          if (
-            currentPosition &&
-            currentPosition.title &&
-            currentWorkExperience
-          ) {
-            currentPosition.description = descriptionLines.join(' ').trim();
-            currentWorkExperience.positions =
-              currentWorkExperience.positions || [];
-            currentWorkExperience.positions.push(currentPosition as Position);
+          {
+            const completedPosition = this.completePosition({
+              position: currentPosition,
+              descriptionLines,
+            });
+
+            if (completedPosition && currentWorkExperience) {
+              currentWorkExperience.positions = [
+                ...(currentWorkExperience.positions ?? []),
+                completedPosition,
+              ];
+            }
           }
 
           // Start new position
@@ -441,7 +345,7 @@ export class ExperienceStructuralParser {
 
         case 'location':
           if (currentPosition) {
-            currentPosition.location = section.text;
+            currentPosition.location = this.normalizeLocationText(section.text);
           }
           break;
 
@@ -452,110 +356,81 @@ export class ExperienceStructuralParser {
     }
 
     // Save final work experience
-    if (currentWorkExperience && currentWorkExperience.organization) {
-      if (currentPosition && currentPosition.title) {
-        currentPosition.description = descriptionLines.join(' ').trim();
-        currentWorkExperience.positions = currentWorkExperience.positions || [];
-        currentWorkExperience.positions.push(currentPosition as Position);
-      }
-      workExperiences.push(currentWorkExperience as WorkExperience);
+    const completedWorkExperience = this.completeWorkExperience({
+      workExperience: currentWorkExperience,
+      position: currentPosition,
+      descriptionLines,
+    });
+
+    if (completedWorkExperience) {
+      workExperiences.push(completedWorkExperience);
     }
 
     return workExperiences;
   }
 
+  private static completeWorkExperience({
+    workExperience,
+    position,
+    descriptionLines,
+  }: {
+    workExperience: Partial<WorkExperience> | null;
+    position: Partial<Position> | null;
+    descriptionLines: string[];
+  }): WorkExperience | undefined {
+    if (!workExperience?.organization) {
+      return undefined;
+    }
+
+    const completedPosition = this.completePosition({
+      position,
+      descriptionLines,
+    });
+
+    return {
+      organization: workExperience.organization,
+      totalDuration: workExperience.totalDuration,
+      positions: completedPosition
+        ? [...(workExperience.positions ?? []), completedPosition]
+        : (workExperience.positions ?? []),
+    };
+  }
+
+  private static completePosition({
+    position,
+    descriptionLines,
+  }: {
+    position: Partial<Position> | null;
+    descriptionLines: string[];
+  }): Position | undefined {
+    if (!position?.title) {
+      return undefined;
+    }
+
+    return {
+      title: position.title,
+      duration: position.duration ?? '',
+      location: position.location
+        ? this.normalizeLocation(position.location)
+        : undefined,
+      description: descriptionLines.join(' ').trim(),
+    };
+  }
+
+  private static normalizeLocation(location: string): string {
+    return location.replace(/,\s*([A-Z])\s+([A-Z])$/, ', $1$2');
+  }
+
   private static extractCleanOrganizationName(text: string): string {
-    const knownCompanies = [
-      'Carta',
-      'Boba Joy',
-      'Zestt',
-      'Guild',
-      'Liquido',
-      'Automox',
-      'AevoTech',
-      'Inovare',
-      'CEPEL',
-      'CPTI',
-      'Arena Games',
-      'PontoTel',
-      'Partiu',
-    ];
-
-    // First, check if this is a known company and extract just that name
-    for (const company of knownCompanies) {
-      if (text.toLowerCase().includes(company.toLowerCase())) {
-        // Return just the known company name
-        return company;
-      }
-    }
-
-    // Exclude common person names that might be mistaken for companies
-    const commonPersonNames = [
-      'Daniel Braga',
-      'Arkady Zalkowitsch',
-      'Thamiris Zalkowitsch',
-    ];
-    if (
-      commonPersonNames.some(name =>
-        text.toLowerCase().includes(name.toLowerCase())
-      )
-    ) {
-      return ''; // Return empty to skip this as organization
-    }
-
-    // For other companies, try to extract clean company name patterns
-    const cleanPatterns = [
-      // Company name at the beginning of the line
-      /^([A-Z][A-Za-z\s&.,-]{1,30})(?:\s+[a-z]|\s*-|\s*\||$)/,
-      // Standalone company name
-      /^([A-Z][A-Za-z\s&.,-]{1,25})$/,
-      // Company with business suffix
-      /^([A-Z][A-Za-z\s&.,-]+(?:Inc|LLC|Ltd|Corp|Corporation|Company|Technologies|Tech|Solutions|Systems|Group|Labs|Studio))/i,
-    ];
-
-    for (const pattern of cleanPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        let companyName = match[1].trim();
-
-        // Remove common trailing words that aren't part of company name
-        companyName = companyName.replace(
-          /\s+(clarifications|for|scalable|solutions|and|or|the|of|in|at|with).*$/i,
-          ''
-        );
-
-        // Additional check: if it looks like a person name (two capitalized words), skip it
-        const wordCount = companyName.split(' ').length;
-        const isLikelyPersonName =
-          wordCount === 2 && /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(companyName);
-
-        if (isLikelyPersonName) {
-          return ''; // Skip potential person names
-        }
-
-        // Ensure reasonable length
-        if (companyName.length >= 2 && companyName.length <= 30) {
-          return companyName;
-        }
-      }
-    }
-
-    // Fallback: take first 30 characters and clean up
-    let cleanName = text.trim();
-    if (cleanName.length > 30) {
-      cleanName = cleanName.substring(0, 30).trim();
-    }
-
-    // Remove common trailing pollution
-    cleanName = cleanName.replace(
-      /\s+(clarifications|for|scalable|solutions|and|or|the|of|in|at|with).*$/i,
-      ''
-    );
-
-    return cleanName || text.trim();
+    return cleanOrganizationNameText(text) ?? '';
   }
 
   private static extractCleanDuration(text: string): string {
+    const normalizedText = text
+      .replace(/[\uE000-\uF8FF]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     // Common duration patterns to extract
     const durationPatterns = [
       // Full date ranges with years
@@ -577,14 +452,14 @@ export class ExperienceStructuralParser {
 
     // Try to extract the cleanest duration match
     for (const pattern of durationPatterns) {
-      const match = text.match(pattern);
+      const match = normalizedText.match(pattern);
       if (match) {
         return match[1].trim();
       }
     }
 
     // If no specific pattern matched, try to clean up the text by removing obvious non-duration content
-    let cleanText = text.trim();
+    let cleanText = normalizedText;
 
     // Remove bullet points and common leading text
     cleanText = cleanText.replace(/^[•\-\*]\s*/, '');
@@ -594,11 +469,11 @@ export class ExperienceStructuralParser {
     );
 
     // Extract just the date-like portions
-    const datePortions = [];
+    const datePortions: string[] = [];
     const dateRegex =
       /\b(?:[A-Z][a-z]+\s+\d{4}|\d{4}(?:\s*-\s*(?:[A-Z][a-z]+\s+\d{4}|\d{4}|Present))?|\(\d+\s+(?:years?|months?|anos?|meses?)(?:\s+\d+\s+(?:months?|meses?))?)\)/gi;
 
-    let match;
+    let match: RegExpExecArray | null;
     while ((match = dateRegex.exec(cleanText)) !== null) {
       datePortions.push(match[0]);
     }
@@ -623,6 +498,6 @@ export class ExperienceStructuralParser {
       return cleanText.substring(0, 50).trim();
     }
 
-    return text.trim();
+    return normalizedText;
   }
 }

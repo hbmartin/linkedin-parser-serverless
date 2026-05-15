@@ -55,6 +55,20 @@ export interface ParseResult {
   rawText?: string;
 }
 
+interface StructuralLine {
+  text: string;
+  y: number;
+  fontSize: number;
+}
+
+interface StructuralOverrides {
+  name?: string;
+  headline?: string;
+  location?: string;
+  linkedinUrl?: string;
+  topSkills: string[];
+}
+
 /**
  * Parses a LinkedIn PDF resume and extracts structured profile data
  * @param input - PDF binary data or extracted text string
@@ -101,6 +115,9 @@ export async function parseLinkedInPDF(
   const basicInfo = BasicInfoParser.parse(cleanedText);
   const topSkills = ListParser.parseSkills(cleanedText);
   const languages = ListParser.parseLanguages(cleanedText);
+  const structuralOverrides = structuralData
+    ? extractStructuralOverrides(structuralData.textItems)
+    : undefined;
 
   // Use structural parser for experience if available, otherwise fallback
   let experience: Experience[];
@@ -127,13 +144,30 @@ export async function parseLinkedInPDF(
 
   const education = EducationParser.parse(cleanedText);
 
+  const contact: Contact = {
+    ...basicInfo.contact,
+  };
+
+  if (structuralOverrides?.linkedinUrl) {
+    contact.linkedin_url = structuralOverrides.linkedinUrl;
+  }
+
+  if (
+    contact.phone &&
+    contact.linkedin_url?.includes(contact.phone.replace(/\D/g, ''))
+  ) {
+    delete contact.phone;
+  }
+
   // Combine into final profile
   const profile: LinkedInProfile = {
-    name: basicInfo.name,
-    headline: basicInfo.headline,
-    location: basicInfo.location,
-    contact: basicInfo.contact,
-    top_skills: topSkills,
+    name: structuralOverrides?.name ?? basicInfo.name,
+    headline: structuralOverrides?.headline ?? basicInfo.headline,
+    location: structuralOverrides?.location ?? basicInfo.location,
+    contact,
+    top_skills: structuralOverrides?.topSkills.length
+      ? structuralOverrides.topSkills
+      : topSkills,
     languages,
     summary: basicInfo.summary,
     experience,
@@ -154,6 +188,119 @@ export async function parseLinkedInPDF(
   }
 
   return result;
+}
+
+function extractStructuralOverrides(
+  textItems: TextItem[]
+): StructuralOverrides {
+  const leftLines = createColumnLines(textItems, 'left');
+  const rightLines = createColumnLines(textItems, 'right').filter(
+    line => !/^page\s+\d+\s+of\s+\d+$/i.test(line.text)
+  );
+  const experienceIndex = rightLines.findIndex(line =>
+    /^experience$/i.test(line.text)
+  );
+  const identityLines = rightLines.slice(
+    0,
+    experienceIndex === -1 ? rightLines.length : experienceIndex
+  );
+  const nameIndex = identityLines.findIndex(line => line.fontSize >= 20);
+  const name = nameIndex === -1 ? undefined : identityLines[nameIndex].text;
+  const headline = identityLines
+    .slice(nameIndex === -1 ? 0 : nameIndex + 1)
+    .find(line => !isLocationLine(line.text))?.text;
+  const location = identityLines.find(line => isLocationLine(line.text))?.text;
+
+  return {
+    name,
+    headline,
+    location,
+    linkedinUrl: extractLinkedInUrlFromLines(leftLines.map(line => line.text)),
+    topSkills: extractTopSkills(leftLines),
+  };
+}
+
+function createColumnLines(
+  textItems: TextItem[],
+  column: 'left' | 'right'
+): StructuralLine[] {
+  const columnItems = textItems.filter(item =>
+    column === 'left' ? item.x < 150 : item.x >= 150
+  );
+  const groups = StructuralParser.groupTextByProximity(columnItems, 3);
+  const lines = StructuralParser.combineGroupedText(groups);
+
+  return lines.map((text, index) => {
+    const group = groups[index];
+
+    return {
+      text,
+      y: group.reduce((sum, item) => sum + item.y, 0) / group.length,
+      fontSize:
+        group.reduce((sum, item) => sum + item.fontSize, 0) / group.length,
+    };
+  });
+}
+
+function extractTopSkills(lines: StructuralLine[]): string[] {
+  const topSkillsIndex = lines.findIndex(line =>
+    /^top skills$/i.test(line.text)
+  );
+
+  if (topSkillsIndex === -1) {
+    return [];
+  }
+
+  const followingLines = lines.slice(topSkillsIndex + 1);
+  const endIndex = followingLines.findIndex(line =>
+    isSidebarSectionHeader(line.text)
+  );
+  const skillLines =
+    endIndex === -1 ? followingLines : followingLines.slice(0, endIndex);
+
+  return skillLines
+    .map(line => line.text)
+    .filter(skill => skill.length > 1 && skill.length < 50)
+    .slice(0, 10);
+}
+
+function extractLinkedInUrlFromLines(lines: string[]): string | undefined {
+  const linkedInIndex = lines.findIndex(line =>
+    /linkedin\.com\/in\//i.test(line)
+  );
+
+  if (linkedInIndex === -1) {
+    return undefined;
+  }
+
+  const linkedInLine = lines[linkedInIndex];
+  const nextLine = lines[linkedInIndex + 1] ?? '';
+  const combinedLine =
+    linkedInLine.trim().endsWith('-') || /\(LinkedIn\)/i.test(nextLine)
+      ? `${linkedInLine}${nextLine}`
+      : linkedInLine;
+  const compactLine = combinedLine
+    .replace(/\s+/g, '')
+    .replace(/\(LinkedIn\)/i, '');
+  const match = compactLine.match(
+    /(?:www\.)?linkedin\.com\/in\/([a-zA-Z0-9-]+)/
+  );
+
+  return match ? `https://linkedin.com/in/${match[1]}` : undefined;
+}
+
+function isSidebarSectionHeader(text: string): boolean {
+  return /^(languages|certifications|summary|experience|education)$/i.test(
+    text
+  );
+}
+
+function isLocationLine(text: string): boolean {
+  return (
+    /^[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*,\s*[A-Z][A-Za-z]+(?:,\s*[A-Z][A-Za-z\s]+)?$/.test(
+      text
+    ) || /^[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*,\s*[A-Z]{2}$/.test(text)
+  );
 }
 
 // All types are already exported above

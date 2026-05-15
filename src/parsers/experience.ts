@@ -4,6 +4,12 @@ import {
   splitLines,
   normalizeWhitespace,
 } from '../utils/text-utils.js';
+import {
+  cleanOrganizationNameText,
+  isSectionHeaderText,
+  looksLikeOrganizationNameText,
+  looksLikePositionTitleText,
+} from '../utils/profile-text.js';
 
 export interface Experience {
   title: string;
@@ -26,21 +32,6 @@ export class ExperienceParser {
       .map(line => normalizeWhitespace(line))
       .filter(line => line.length > 0);
 
-    // Manual parsing approach for LinkedIn PDF structure
-    const knownCompanies = [
-      'Carta',
-      'Boba Joy',
-      'Zestt',
-      'Partiu Vantagens!',
-      'AevoTech',
-      'Inovare',
-      'CEPEL',
-      'CPTI / PUC-Rio',
-      'Arena Games',
-      'Guild',
-      'Springboard',
-    ];
-
     let currentCompany = '';
     let currentPosition: Partial<Experience> | null = null;
     let descriptionLines: string[] = [];
@@ -48,35 +39,51 @@ export class ExperienceParser {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // Stop at Education section
-      if (line.toLowerCase().includes('education')) {
+      if (isSectionHeaderText(line) && !/^experience$/i.test(line)) {
         break;
       }
 
-      // Check for known company names
-      if (
-        knownCompanies.some(company =>
-          line.toLowerCase().includes(company.toLowerCase())
-        )
-      ) {
-        // Save previous position
-        if (currentPosition && currentPosition.title) {
-          currentPosition.description = descriptionLines.join(' ').trim();
-          experiences.push(currentPosition as Experience);
+      const inlineExperience = this.parseInlineTitleAndCompany(line);
+      if (inlineExperience) {
+        const completedPosition = this.completeExperience({
+          position: currentPosition,
+          descriptionLines,
+        });
+
+        if (completedPosition) {
+          experiences.push(completedPosition);
         }
 
-        currentCompany = line;
+        currentCompany = inlineExperience.company;
+        currentPosition = inlineExperience;
+        descriptionLines = [];
+        continue;
+      }
+
+      if (this.looksLikeCompanyName(line, lines, i)) {
+        const completedPosition = this.completeExperience({
+          position: currentPosition,
+          descriptionLines,
+        });
+
+        if (completedPosition) {
+          experiences.push(completedPosition);
+        }
+
+        currentCompany = cleanOrganizationNameText(line) ?? line;
         currentPosition = null;
         descriptionLines = [];
         continue;
       }
 
-      // Check for job titles - be more specific
       if (this.isJobTitle(line) && currentCompany) {
-        // Save previous position
-        if (currentPosition && currentPosition.title) {
-          currentPosition.description = descriptionLines.join(' ').trim();
-          experiences.push(currentPosition as Experience);
+        const completedPosition = this.completeExperience({
+          position: currentPosition,
+          descriptionLines,
+        });
+
+        if (completedPosition) {
+          experiences.push(completedPosition);
         }
 
         // Create new position
@@ -104,54 +111,65 @@ export class ExperienceParser {
     }
 
     // Add final position
-    if (currentPosition && currentPosition.title) {
-      currentPosition.description = descriptionLines.join(' ').trim();
-      experiences.push(currentPosition as Experience);
+    const completedPosition = this.completeExperience({
+      position: currentPosition,
+      descriptionLines,
+    });
+
+    if (completedPosition) {
+      experiences.push(completedPosition);
     }
 
     return experiences;
   }
 
-  private static isJobTitle(line: string): boolean {
-    const titleKeywords = [
-      'Engineering Manager',
-      'Tech Lead Manager',
-      'Senior Software Engineer',
-      'Co-founder',
-      'Engineering Director',
-      'Head of Engineering',
-      'Senior Lead Software Engineer',
-      'Lead Project Engineer',
-      'Robotics Researcher',
-      'Technical Researcher',
-      'Technical Support Analyst',
-      'Software Engineer III',
-      'Senior Software Engineer I',
-    ];
-
-    // Don't include lines that start with duration patterns
-    if (/^\d+\s+(year|month)/.test(line)) {
-      return false;
+  private static completeExperience({
+    position,
+    descriptionLines,
+  }: {
+    position: Partial<Experience> | null;
+    descriptionLines: string[];
+  }): Experience | undefined {
+    if (!position?.title || !position.company) {
+      return undefined;
     }
 
-    // Check for exact title matches or titles that start the line
-    for (const title of titleKeywords) {
-      if (
-        line.toLowerCase().includes(title.toLowerCase()) &&
-        !line.includes('•') &&
-        line.length < 150
-      ) {
-        // Make sure duration info isn't mixed in the title
-        const cleanTitle = line
-          .replace(/\d+\s+(year|month)s?\s+\d+\s+(month|year)s?/gi, '')
-          .trim();
-        if (cleanTitle.length > 10) {
-          return true;
-        }
+    return {
+      title: position.title,
+      company: position.company,
+      duration: position.duration ?? '',
+      location: position.location,
+      description: descriptionLines.join(' ').trim(),
+    };
+  }
+
+  private static parseInlineTitleAndCompany(
+    line: string
+  ): Experience | undefined {
+    const inlinePatterns = [/^(.+?)\s+(?:at|@)\s+(.+)$/i];
+
+    for (const pattern of inlinePatterns) {
+      const match = line.match(pattern);
+
+      if (!match) {
+        continue;
+      }
+
+      const title = normalizeWhitespace(match[1]);
+      const company = cleanOrganizationNameText(match[2]);
+
+      if (this.isJobTitle(title) && company) {
+        return {
+          title,
+          company,
+          duration: '',
+          location: '',
+          description: '',
+        };
       }
     }
 
-    return false;
+    return undefined;
   }
 
   private static looksLikeCompanyName(
@@ -159,120 +177,32 @@ export class ExperienceParser {
     lines: string[],
     index: number
   ): boolean {
-    // Skip obvious non-companies
     if (
-      line.length < 2 ||
-      line.length > 50 ||
-      line.toLowerCase() === 'experience' ||
-      line.toLowerCase().includes('page') ||
       this.looksLikeDuration(line) ||
       this.looksLikeLocation(line) ||
-      this.looksLikeJobTitle(line) ||
-      line.includes('•') ||
-      line.includes('(') ||
-      line.includes(')') ||
-      /^[a-z]/.test(line) || // Starts with lowercase
-      /\d+\s+years?\s+\d+\s+months?/.test(line) // Duration patterns
+      this.isJobTitle(line) ||
+      isSectionHeaderText(line)
     ) {
       return false;
     }
 
-    // Look ahead to see if next few lines look like job details
-    const nextLines = lines.slice(index + 1, index + 6);
-    const hasJobDetailsAfter = nextLines.some(nextLine => {
-      const normalizedNext = nextLine.trim();
-      return (
-        this.looksLikeDuration(normalizedNext) ||
-        this.looksLikeJobTitle(normalizedNext) ||
-        /^\d+\s+years?\s+\d+\s+months?/.test(normalizedNext) ||
-        normalizedNext.includes('Manager') ||
-        normalizedNext.includes('Engineer') ||
-        normalizedNext.includes('Director')
-      );
-    });
-
-    // Known company name patterns - be more specific
-    const companyPatterns = [
-      /^(Carta|Boba Joy|Zestt|Partiu Vantagens!|AevoTech|Inovare|CEPEL|CPTI|Arena Games)$/i,
-      /^[A-Z]{2,5}$/, // Acronyms like CEPEL, CPTI
-      /^[A-Z][A-Za-z\s&]+$/, // Standard company names
-    ];
-
-    // Special handling for multi-part company names
-    if (/^CPTI\s*\/\s*PUC/.test(line)) {
-      return true;
-    }
-
-    return (
-      hasJobDetailsAfter && companyPatterns.some(pattern => pattern.test(line))
+    const nextLines = lines.slice(index + 1, index + 5);
+    const hasJobDetailsAfter = nextLines.some(
+      nextLine =>
+        this.looksLikeDuration(nextLine) ||
+        this.isJobTitle(nextLine) ||
+        /^\d+\s+(years?|months?|anos?|meses?)/i.test(nextLine)
     );
+
+    return hasJobDetailsAfter && looksLikeOrganizationNameText(line);
   }
 
-  private static parseJobTitleLine(line: string): Partial<Experience> {
-    // Try to extract title and company from various formats
-    const patterns = [
-      /^(.+?)\s+at\s+(.+)$/i,
-      /^(.+?)\s+@\s+(.+)$/i,
-      /^(.+?)\s*[·•-]\s*(.+)$/,
-      /^(.+?),\s*(.+)$/,
-    ];
-
-    for (const pattern of patterns) {
-      const match = line.match(pattern);
-      if (match) {
-        return {
-          title: match[1].trim(),
-          company: match[2].trim(),
-          location: '',
-          duration: '',
-          description: '',
-        };
-      }
-    }
-
-    // For LinkedIn PDFs, sometimes company names appear separately
-    // If it's just a job title, we'll need to find the company in context
-    return {
-      title: line,
-      company: '', // Will be filled by parsing context
-      location: '',
-      duration: '',
-      description: '',
-    };
-  }
-
-  private static looksLikeJobTitle(line: string): boolean {
-    const lowerLine = line.toLowerCase();
-
-    // Skip obvious non-job-title lines
-    if (
-      line.length < 5 ||
-      line.length > 100 ||
-      lowerLine.includes('education') ||
-      lowerLine.includes('skills') ||
-      this.looksLikeDuration(line) ||
-      this.looksLikeLocation(line) ||
-      line.includes('•') || // Bullet points are usually descriptions
-      line.includes('%') || // Percentages are usually descriptions
-      line.includes('$') || // Money amounts are usually descriptions
-      /^\d+/.test(line) || // Lines starting with numbers are usually descriptions
-      /^[a-z]/.test(line) // Lines starting with lowercase are usually descriptions
-    ) {
-      return false;
-    }
-
-    // More specific job title patterns
-    const jobTitlePatterns = [
-      // Title at/@ Company patterns
-      /^[A-Z][A-Za-z\s]+\s+(at|@)\s+[A-Z][A-Za-z\s]+$/,
-      // Standalone titles that are likely job titles
-      /^(Senior|Lead|Principal|Chief|Head of|Director of|VP of|President of)\s+/i,
-      /^(Engineering|Software|Product|Data|Marketing|Sales|Business|Technical|Project)\s+(Manager|Engineer|Analyst|Director|Lead)/i,
-      // Company names with title patterns
-      /[·•-]\s*[A-Z][A-Za-z\s]+$/,
-    ];
-
-    return jobTitlePatterns.some(pattern => pattern.test(line));
+  private static isJobTitle(line: string): boolean {
+    return (
+      looksLikePositionTitleText(line) &&
+      !this.looksLikeDuration(line) &&
+      !this.looksLikeLocation(line)
+    );
   }
 
   private static looksLikeDuration(line: string): boolean {
@@ -302,16 +232,6 @@ export class ExperienceParser {
       !this.looksLikeDuration(line) &&
       !line.includes('@') &&
       !line.includes('|')
-    );
-  }
-
-  private static isSectionHeader(line: string): boolean {
-    const lowerLine = line.toLowerCase();
-    return (
-      lowerLine.includes('education') ||
-      lowerLine.includes('skills') ||
-      lowerLine.includes('languages') ||
-      lowerLine.includes('certifications')
     );
   }
 }

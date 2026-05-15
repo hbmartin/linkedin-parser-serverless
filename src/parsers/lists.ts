@@ -4,6 +4,10 @@ import {
   splitLines,
   normalizeWhitespace,
 } from '../utils/text-utils.js';
+import {
+  looksLikeExperienceDetailText,
+  looksLikeOrganizationNameText,
+} from '../utils/profile-text.js';
 
 export interface Language {
   language: string;
@@ -19,22 +23,21 @@ export class ListParser {
     }
 
     const lines = splitLines(skillsSection);
-    return lines
-      .map(line => normalizeWhitespace(line))
-      .filter(skill => {
-        const lowerSkill = skill.toLowerCase();
-        return (
-          skill.length > 1 &&
-          skill.length < 50 &&
-          !lowerSkill.includes('languages') &&
-          !lowerSkill.includes('summary') &&
-          !lowerSkill.includes('experience') &&
-          !lowerSkill.includes('education') &&
-          !lowerSkill.includes('page ') &&
-          !lowerSkill.match(/^\d+$/)
-        );
-      })
-      .slice(0, 10);
+    const skills: string[] = [];
+
+    for (const line of lines) {
+      const skill = normalizeWhitespace(line);
+
+      if (this.isLikelySkill(skill)) {
+        skills.push(skill);
+      }
+
+      if (skills.length === 3) {
+        break;
+      }
+    }
+
+    return skills;
   }
 
   static parseLanguages(text: string): Language[] {
@@ -112,5 +115,24 @@ export class ListParser {
     }
 
     return null;
+  }
+
+  private static isLikelySkill(skill: string): boolean {
+    const lowerSkill = skill.toLowerCase();
+    const looksLikeCompanyOrInstitution =
+      /[\s,]/.test(skill) && looksLikeOrganizationNameText(skill);
+
+    return (
+      skill.length > 1 &&
+      skill.length < 50 &&
+      !looksLikeCompanyOrInstitution &&
+      !looksLikeExperienceDetailText(skill) &&
+      !lowerSkill.includes('languages') &&
+      !lowerSkill.includes('summary') &&
+      !lowerSkill.includes('experience') &&
+      !lowerSkill.includes('education') &&
+      !lowerSkill.includes('page ') &&
+      !lowerSkill.match(/^\d+$/)
+    );
   }
 }

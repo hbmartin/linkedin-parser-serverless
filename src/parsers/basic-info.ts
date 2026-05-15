@@ -36,20 +36,6 @@ export class BasicInfoParser {
     // Strategy: Look for the pattern that appears in all LinkedIn PDFs
     // The name always appears as a large text item (font size 26) in the main content
 
-    // First try to find specific known patterns
-    const knownNamePatterns = [
-      /Arkady\s+Zalkowitsch/i,
-      /Thamiris\s+Zalkowitsch/i,
-      /Daniel\s+Braga/i,
-    ];
-
-    for (const pattern of knownNamePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        return match[0].trim();
-      }
-    }
-
     // General approach: Look for two-word names that appear early in text
     // and are likely to be the main person's name
     const lines = splitLines(text);
@@ -157,19 +143,22 @@ export class BasicInfoParser {
   }
 
   private static extractLocation(text: string): string {
+    const normalizedText = text
+      .replace(/\bY\s+ork\b/g, 'York')
+      .replace(/\bT\s+X\b/g, 'TX');
     const locationPatterns = [
       // Full location with United States
-      /([A-Z][a-z]+,\s*[A-Z][a-z]+,?\s*United States)/,
+      /([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*)*,\s*[A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*)*,?\s*United States)/,
       // City, State, Country
-      /([A-Z][a-z]+,\s*[A-Z][a-z]+,?\s*[A-Z]{2,}?)(?:\s|$)/,
+      /([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*)*,\s*[A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*)*,?\s*[A-Z]{2,}?)(?:\s|$)/,
       // City, State abbreviation
-      /([A-Z][a-z]+,\s*[A-Z]{2})(?:\s|$)/,
+      /([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*)*,\s*[A-Z]{2})(?:\s|$)/,
       // Common cities
       /(New York|San Francisco|Los Angeles|Chicago|Boston|Austin|Seattle|London|Toronto|Sunnyvale|Santa Clara)/i,
     ];
 
     for (const pattern of locationPatterns) {
-      const match = text.match(pattern);
+      const match = normalizedText.match(pattern);
       if (match) {
         const location = match[1];
         // Clean up common issues
@@ -181,7 +170,7 @@ export class BasicInfoParser {
     }
 
     // Look in specific lines that might contain location after headline
-    const lines = splitLines(text);
+    const lines = splitLines(normalizedText);
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (
@@ -210,19 +199,27 @@ export class BasicInfoParser {
     for (let i = 0; i < Math.min(25, lines.length); i++) {
       const line = lines[i].trim();
       const lowerLine = line.toLowerCase();
+      const isShortCompanyHeadline =
+        /^[A-Za-z][A-Za-z\s./+-]{1,40}\s+@\s+[A-Za-z0-9][A-Za-z0-9\s.&-]{1,40}$/.test(
+          line
+        );
 
       // Skip URLs, contact info, and other non-headline content
       if (
         line.includes('http') ||
         line.includes('www.') ||
-        line.includes('@') ||
+        (line.includes('@') && !isShortCompanyHeadline) ||
         lowerLine.includes('contact') ||
         lowerLine.includes('page') ||
         lowerLine.includes('skills') ||
         lowerLine.includes('languages') ||
-        line.length < 15
+        (!isShortCompanyHeadline && line.length < 15)
       ) {
         continue;
+      }
+
+      if (isShortCompanyHeadline) {
+        return normalizeWhitespace(line);
       }
 
       // Look for lines with multiple pipe separators (typical headline format)
@@ -302,38 +299,51 @@ export class BasicInfoParser {
     // Extract email - use more robust approach
     contact.email = this.extractEmail(text);
 
-    // Extract LinkedIn URL - handle both complete URLs and broken ones
-    const linkedinPatterns = [
-      /www\.linkedin\.com\/in\/([a-zA-Z0-9-]+)/i,
-      /linkedin\.com\/in\/([a-zA-Z0-9-]+)/i,
-      REGEX_PATTERNS.LINKEDIN,
-    ];
-
-    for (const pattern of linkedinPatterns) {
-      const linkedinMatch = text.match(pattern);
-      if (linkedinMatch) {
-        const username = linkedinMatch[1];
-        contact.linkedin_url = `https://linkedin.com/in/${username}`;
-        break;
-      }
-    }
-
-    // Handle multi-line LinkedIn URLs (like "www.linkedin.com/in/thamiris-\nzalkowitsch")
-    const multiLineLinkedIn =
-      /www\.linkedin\.com\/in\/([a-zA-Z0-9-]+)[\s\n]*([a-zA-Z0-9-]*)/i;
-    const multiMatch = text.match(multiLineLinkedIn);
-    if (multiMatch && !contact.linkedin_url) {
-      const username = multiMatch[1] + (multiMatch[2] || '');
-      contact.linkedin_url = `https://linkedin.com/in/${username}`;
-    }
+    contact.linkedin_url = this.extractLinkedInUrl(text);
 
     // Extract phone number
     const phoneMatch = extractFirstMatch(text, REGEX_PATTERNS.PHONE);
-    if (phoneMatch) {
+    if (phoneMatch && phoneMatch.replace(/\D/g, '').length >= 10) {
       contact.phone = phoneMatch;
     }
 
     return contact;
+  }
+
+  private static extractLinkedInUrl(text: string): string | undefined {
+    const lines = splitLines(text);
+
+    for (let i = 0; i < lines.length; i++) {
+      const linkedinMatch = lines[i].match(
+        /(?:www\.)?linkedin\.com\/in\/([a-zA-Z0-9-]+)/i
+      );
+
+      if (!linkedinMatch) {
+        continue;
+      }
+
+      const usernameParts = [linkedinMatch[1]];
+
+      if (linkedinMatch[1].endsWith('-')) {
+        for (const nextLine of lines.slice(i + 1, i + 4)) {
+          const continuation = nextLine
+            .replace(/\s*\(LinkedIn\)\s*$/i, '')
+            .trim();
+
+          if (/^[a-zA-Z0-9-]+$/.test(continuation)) {
+            usernameParts.push(continuation);
+            break;
+          }
+        }
+      }
+
+      return `https://linkedin.com/in/${usernameParts.join('')}`;
+    }
+
+    const fallbackMatch = text.match(REGEX_PATTERNS.LINKEDIN);
+    return fallbackMatch
+      ? `https://linkedin.com/in/${fallbackMatch[1]}`
+      : undefined;
   }
 
   private static extractEmail(text: string): string {

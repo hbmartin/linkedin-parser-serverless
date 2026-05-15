@@ -48,7 +48,7 @@ export class StructuralParser {
     const rightItems = textItems.filter(item => item.x >= 150);
 
     // Check if there's a significant gap indicating columns
-    const hasLeftColumn = leftItems.length > 20;
+    const hasLeftColumn = leftItems.length > 10;
     const hasRightColumn = rightItems.length > 20;
 
     if (hasLeftColumn && hasRightColumn) {

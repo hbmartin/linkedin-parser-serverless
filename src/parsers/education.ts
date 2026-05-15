@@ -54,9 +54,7 @@ export class EducationParser {
         // Check if the degree line also contains year info
         const yearInDegree = this.extractYearFromLine(normalizedLine);
         if (yearInDegree) {
-          currentEducation.degree = normalizedLine
-            .replace(yearInDegree, '')
-            .trim();
+          currentEducation.degree = this.removeYearFromDegree(normalizedLine);
           currentEducation.year = yearInDegree;
         } else {
           currentEducation.degree = normalizedLine;
@@ -109,7 +107,7 @@ export class EducationParser {
       line.length > 3 &&
       line.length < 80 &&
       /bachelor|master|phd|mba|engineering|science|business/.test(lower) &&
-      !this.looksLikeYear(line)
+      !/^\s*[()·-]?\s*(19|20)\d{2}/.test(line)
     );
   }
 
@@ -141,6 +139,15 @@ export class EducationParser {
     }
 
     return '';
+  }
+
+  private static removeYearFromDegree(line: string): string {
+    return normalizeWhitespace(
+      line
+        .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\)\s*$/, '')
+        .replace(/\s*[·-]?\s*(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\s*$/, '')
+        .replace(/[·()]+$/g, '')
+    );
   }
 
   private static looksLikeLocation(line: string): boolean {

@@ -60,12 +60,13 @@
 		"lint:fix": "eslint src/**/*.ts --fix",
 		"prepublishOnly": "pnpm run quality:check",
 		"publint": "pnpm exec publint --pack npm",
-		"quality:check": "pnpm run lint && pnpm run format:check && pnpm run build && pnpm run knip && pnpm run publint && pnpm run types:lint && pnpm run test:coverage",
+		"quality:check": "pnpm run lint && pnpm run format:check && pnpm run dupes && pnpm run type-coverage && pnpm run build && pnpm run knip && pnpm run publint && pnpm run types:lint && pnpm run test:coverage",
 		"size:check": "ls -lh dist/index.* | awk '{print $5, $9}'",
 		"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
 		"test:profile": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/unit/profile-fixture.test.ts",
 		"test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
 		"test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+		"type-coverage": "type-coverage --project tsconfig.json --strict --at-least 100",
 		"types:lint": "npm_config_cache=.npm-cache attw --pack ."
 	},
 	"files": [
