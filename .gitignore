@@ -50,12 +50,16 @@ jspm_packages/
 
 # Optional npm cache directory
 .npm
+.npm-cache/
 
 # Optional REPL history
 .node_repl_history
 
 # Output of 'npm pack'
 *.tgz
+
+# Generated analysis reports
+report/
 
 # Yarn Integrity file
 .yarn-integrity
@@ -67,3 +71,6 @@ jspm_packages/
 # temporary files
 *.tmp
 *.temp
+
+triage_decisions.db
+reviews_triage/

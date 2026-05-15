@@ -1,9 +1,11 @@
 import * as fs from 'fs';
-import * as path from 'path';
+import { fileURLToPath } from 'node:url';
 import { parseLinkedInPDF, type ParseResult } from '../../src/index.js';
 
 describe('Profile.pdf fixture', () => {
-  const profilePdfPath = path.join(process.cwd(), 'Profile.pdf');
+  const profilePdfPath = fileURLToPath(
+    new URL('../../Profile.pdf', import.meta.url)
+  );
   let result: ParseResult;
 
   beforeAll(async () => {
