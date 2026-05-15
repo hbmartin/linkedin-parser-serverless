@@ -6,7 +6,6 @@ export interface TextItem {
   fontFamily: string;
   width: number;
   height: number;
-  transform: number[];
 }
 
 export interface LayoutInfo {
@@ -39,7 +38,13 @@ export interface Position {
 }
 
 export interface StructuralSection {
-  type: 'organization' | 'position' | 'duration' | 'location' | 'description' | 'other';
+  type:
+    | 'organization'
+    | 'position'
+    | 'duration'
+    | 'location'
+    | 'description'
+    | 'other';
   text: string;
   fontSize: number;
   y: number;

@@ -56,6 +56,21 @@ export class BasicInfoParser {
 
     for (let i = 0; i < Math.min(20, lines.length); i++) {
       const line = lines[i].trim();
+      const lowerLine = line.toLowerCase();
+      const sectionHeaders = [
+        'contact',
+        'contact info',
+        'top skills',
+        'skills',
+        'linkedin',
+        'summary',
+        'experience',
+        'education',
+        'languages',
+        'competências',
+        'contato',
+        'principais',
+      ];
 
       // Skip obvious non-name content
       if (
@@ -66,48 +81,73 @@ export class BasicInfoParser {
         line.includes(')') ||
         line.includes('|') ||
         line.length < 5 ||
-        line.length > 50 ||
-        line.toLowerCase().includes('contact') ||
-        line.toLowerCase().includes('skills') ||
-        line.toLowerCase().includes('linkedin') ||
-        line.toLowerCase().includes('page') ||
-        line.toLowerCase().includes('summary') ||
-        line.toLowerCase().includes('experience') ||
-        line.toLowerCase().includes('strategic') ||
-        line.toLowerCase().includes('roadmap') ||
-        line.toLowerCase().includes('engineering') ||
-        line.toLowerCase().includes('project') ||
-        line.toLowerCase().includes('planning') ||
-        line.toLowerCase().includes('languages') ||
-        line.toLowerCase().includes('competências') ||
-        line.toLowerCase().includes('contato') ||
-        line.toLowerCase().includes('principais')
+        line.length > 80 ||
+        sectionHeaders.includes(lowerLine) ||
+        lowerLine.startsWith('page ') ||
+        lowerLine.includes('strategic') ||
+        lowerLine.includes('roadmap') ||
+        lowerLine.includes('engineering') ||
+        lowerLine.includes('project') ||
+        lowerLine.includes('planning')
       ) {
         continue;
       }
 
       // Look for clean two-word name pattern (First Last)
-      const nameMatch = line.match(/^([A-Z][a-z]{2,}\s+[A-Z][a-z]{2,})\s*$/);
+      const nameMatch = line.match(/^([A-Z][a-z]{1,}\s+[A-Z][a-z]{1,})\s*$/);
       if (nameMatch) {
         const potentialName = nameMatch[1];
 
         // Additional validation: exclude common false positives
-        const excludeWords = ['top skills', 'main content', 'work experience', 'contact info'];
-        if (!excludeWords.some(exclude => potentialName.toLowerCase().includes(exclude))) {
+        const excludeWords = [
+          'top skills',
+          'main content',
+          'work experience',
+          'contact info',
+        ];
+        if (
+          !excludeWords.some(exclude =>
+            potentialName.toLowerCase().includes(exclude)
+          )
+        ) {
           return potentialName;
         }
       }
 
       // Also try to match names that might have more complex patterns
-      const complexNameMatch = line.match(/^([A-Z][a-z]{2,}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*$/);
+      const complexNameMatch = line.match(
+        /^([A-Z][a-z]{1,}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*$/
+      );
       if (complexNameMatch && line.split(' ').length <= 3) {
         const potentialName = complexNameMatch[1];
 
         // Make sure it's not a skill or section header
-        if (!potentialName.toLowerCase().includes('strategic') &&
-            !potentialName.toLowerCase().includes('top') &&
-            !potentialName.toLowerCase().includes('electronic') &&
-            !potentialName.toLowerCase().includes('project')) {
+        if (
+          !potentialName.toLowerCase().includes('strategic') &&
+          !potentialName.toLowerCase().includes('top') &&
+          !potentialName.toLowerCase().includes('electronic') &&
+          !potentialName.toLowerCase().includes('project')
+        ) {
+          return potentialName;
+        }
+      }
+
+      const leadingNameMatch = line.match(
+        /^([A-Z][a-z]{1,}\s+[A-Z][a-z]{1,})\s+/
+      );
+      if (leadingNameMatch) {
+        const potentialName = leadingNameMatch[1];
+        const firstWord = potentialName.split(' ')[0].toLowerCase();
+        const nonNameStarts = [
+          'senior',
+          'lead',
+          'principal',
+          'software',
+          'technical',
+          'product',
+        ];
+
+        if (!nonNameStarts.includes(firstWord)) {
           return potentialName;
         }
       }
@@ -131,7 +171,7 @@ export class BasicInfoParser {
     for (const pattern of locationPatterns) {
       const match = text.match(pattern);
       if (match) {
-        let location = match[1];
+        const location = match[1];
         // Clean up common issues
         if (location.includes('United States')) {
           return location;
@@ -144,12 +184,16 @@ export class BasicInfoParser {
     const lines = splitLines(text);
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (line.includes(',') &&
-          (line.toLowerCase().includes('california') ||
-           line.toLowerCase().includes('united states') ||
-           line.includes('CA'))) {
+      if (
+        line.includes(',') &&
+        (line.toLowerCase().includes('california') ||
+          line.toLowerCase().includes('united states') ||
+          line.includes('CA'))
+      ) {
         // Check if this line looks like a location
-        const locationMatch = line.match(/([A-Z][a-z]+.*(?:California|United States|CA))/);
+        const locationMatch = line.match(
+          /([A-Z][a-z]+.*(?:California|United States|CA))/
+        );
         if (locationMatch) {
           return locationMatch[1].trim();
         }
@@ -184,7 +228,8 @@ export class BasicInfoParser {
       // Look for lines with multiple pipe separators (typical headline format)
       if (line.includes('|')) {
         const parts = line.split('|');
-        if (parts.length >= 3) { // At least 3 parts suggest a detailed headline
+        if (parts.length >= 3) {
+          // At least 3 parts suggest a detailed headline
           return normalizeWhitespace(line);
         }
       }
@@ -203,7 +248,8 @@ export class BasicInfoParser {
     }
 
     // Fallback: Look for specific headline pattern from first PDF
-    const specificPattern = /Engineering\s+Manager\s+@\s+[A-Za-z]+\s*\|\s*[^|\n]*(?:\n[^|\n]*)?/i;
+    const specificPattern =
+      /Engineering\s+Manager\s+@\s+[A-Za-z]+\s*\|\s*[^|\n]*(?:\n[^|\n]*)?/i;
     const specificMatch = text.match(specificPattern);
     if (specificMatch) {
       return normalizeWhitespace(specificMatch[0].trim());
@@ -260,7 +306,7 @@ export class BasicInfoParser {
     const linkedinPatterns = [
       /www\.linkedin\.com\/in\/([a-zA-Z0-9-]+)/i,
       /linkedin\.com\/in\/([a-zA-Z0-9-]+)/i,
-      REGEX_PATTERNS.LINKEDIN
+      REGEX_PATTERNS.LINKEDIN,
     ];
 
     for (const pattern of linkedinPatterns) {
@@ -273,7 +319,8 @@ export class BasicInfoParser {
     }
 
     // Handle multi-line LinkedIn URLs (like "www.linkedin.com/in/thamiris-\nzalkowitsch")
-    const multiLineLinkedIn = /www\.linkedin\.com\/in\/([a-zA-Z0-9-]+)[\s\n]*([a-zA-Z0-9-]*)/i;
+    const multiLineLinkedIn =
+      /www\.linkedin\.com\/in\/([a-zA-Z0-9-]+)[\s\n]*([a-zA-Z0-9-]*)/i;
     const multiMatch = text.match(multiLineLinkedIn);
     if (multiMatch && !contact.linkedin_url) {
       const username = multiMatch[1] + (multiMatch[2] || '');
@@ -292,9 +339,17 @@ export class BasicInfoParser {
   private static extractEmail(text: string): string {
     // Common email domains to validate against
     const validDomains = [
-      'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',
-      'email.com', 'mail.com', 'aol.com', 'icloud.com',
-      'protonmail.com', 'zoho.com', 'yandex.com'
+      'gmail.com',
+      'yahoo.com',
+      'hotmail.com',
+      'outlook.com',
+      'email.com',
+      'mail.com',
+      'aol.com',
+      'icloud.com',
+      'protonmail.com',
+      'zoho.com',
+      'yandex.com',
     ];
 
     // Find all @ symbols and extract context
@@ -308,7 +363,10 @@ export class BasicInfoParser {
     for (const atIndex of atIndices) {
       // Extract context around @ symbol
       const before = text.substring(Math.max(0, atIndex - 50), atIndex);
-      const after = text.substring(atIndex + 1, Math.min(text.length, atIndex + 50));
+      const after = text.substring(
+        atIndex + 1,
+        Math.min(text.length, atIndex + 50)
+      );
 
       // Get username part (before @)
       const usernameMatch = before.match(/([A-Za-z0-9._%+-]+)$/);
@@ -320,14 +378,17 @@ export class BasicInfoParser {
 
       // Clean username by removing common prefixes
       const cleanedUsername = username
-        .replace(/^Contact/i, '')  // Remove "Contact"
-        .replace(/^Email/i, '')    // Remove "Email"
-        .replace(/^Mail/i, '')     // Remove "Mail"
-        .replace(/^Send/i, '')     // Remove "Send"
+        .replace(/^Contact/i, '') // Remove "Contact"
+        .replace(/^Email/i, '') // Remove "Email"
+        .replace(/^Mail/i, '') // Remove "Mail"
+        .replace(/^Send/i, '') // Remove "Send"
         .trim();
 
       // Use cleaned username if it's still valid
-      if (cleanedUsername.length > 0 && /^[A-Za-z0-9._%+-]+$/.test(cleanedUsername)) {
+      if (
+        cleanedUsername.length > 0 &&
+        /^[A-Za-z0-9._%+-]+$/.test(cleanedUsername)
+      ) {
         username = cleanedUsername;
       }
 
@@ -343,7 +404,11 @@ export class BasicInfoParser {
       if (domainMatch) {
         const domain = domainMatch[1];
         // Check if it's a reasonable domain (not too long, doesn't contain obvious non-domain text)
-        if (domain.length < 30 && !domain.includes('linkedin') && !domain.includes('www')) {
+        if (
+          domain.length < 30 &&
+          !domain.includes('linkedin') &&
+          !domain.includes('www')
+        ) {
           return `${username}@${domain}`;
         }
       }

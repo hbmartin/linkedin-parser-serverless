@@ -17,7 +17,7 @@
 > ℹ️ **Note:** This is a newly published package. Download statistics may take 24-48 hours to populate. Some badges show "package not found or too new" until npm statistics are updated.
 
 <p>
-  <img src="https://img.shields.io/badge/tests-51_passing-success?style=flat-square" alt="tests" />
+  <img src="https://img.shields.io/badge/tests-54_passing-success?style=flat-square" alt="tests" />
   <img src="https://img.shields.io/github/commit-activity/m/zalkowitsch/linkedin-parser?style=flat-square&color=yellow" alt="activity" />
   <img src="https://img.shields.io/github/last-commit/zalkowitsch/linkedin-parser?style=flat-square&color=lightgrey" alt="last commit" />
 </p>
@@ -37,7 +37,7 @@
   </tr>
   <tr>
     <td align="center">📦</td>
-    <td><strong>Lightweight</strong><br/>Only 1 dependency (<code>pdf-parse</code>)</td>
+    <td><strong>Serverless Friendly</strong><br/>Uses <code>unpdf</code> for PDF text extraction across JavaScript runtimes</td>
   </tr>
   <tr>
     <td align="center">🔧</td>
@@ -112,7 +112,7 @@ linkedin-pdf-parser resume.pdf | jq '.profile.experience[].company'
 
 **📖 See [CLI_USAGE.md](CLI_USAGE.md) for complete CLI documentation**
 
-**Note:** Starting from v1.0.2, `pdf-parse` is a peer dependency to minimize bundle size.
+**Note:** PDF extraction is powered by `unpdf`, which includes a serverless PDF.js build.
 
 ## 🚀 Quick Start
 
@@ -120,7 +120,7 @@ linkedin-pdf-parser resume.pdf | jq '.profile.experience[].company'
 import { parseLinkedInPDF } from '@zalko/linkedin-parser';
 import fs from 'fs';
 
-// Parse from PDF Buffer
+// Parse from PDF binary data
 const pdfBuffer = fs.readFileSync('resume.pdf');
 const result = await parseLinkedInPDF(pdfBuffer);
 
@@ -135,9 +135,10 @@ console.log(result.profile.experience);    // [{ title: "...", company: "..." }]
 
 ```typescript
 import { parseLinkedInPDF } from '@zalko/linkedin-parser';
+import fs from 'fs';
 
-const pdfBuffer = fs.readFileSync('linkedin-resume.pdf');
-const { profile } = await parseLinkedInPDF(pdfBuffer);
+const pdfData = fs.readFileSync('linkedin-resume.pdf');
+const { profile } = await parseLinkedInPDF(pdfData);
 
 // Access parsed data
 console.log(`Name: ${profile.name}`);
@@ -150,11 +151,18 @@ console.log(`Experience: ${profile.experience.length} positions`);
 
 ```typescript
 // Include raw extracted text in result
-const result = await parseLinkedInPDF(pdfBuffer, {
+const result = await parseLinkedInPDF(pdfData, {
   includeRawText: true
 });
 
 console.log(`Raw text: ${result.rawText?.substring(0, 100)}...`);
+```
+
+### Serverless Binary Input
+
+```typescript
+const arrayBuffer = await request.arrayBuffer();
+const result = await parseLinkedInPDF(arrayBuffer);
 ```
 
 ### Parse Text Directly
@@ -169,7 +177,7 @@ const result = await parseLinkedInPDF(extractedText);
 
 ```typescript
 try {
-  const result = await parseLinkedInPDF(pdfBuffer);
+  const result = await parseLinkedInPDF(pdfData);
   console.log(result.profile);
 } catch (error) {
   if (error.message === 'PDF appears to be empty or unreadable') {
@@ -190,7 +198,7 @@ Parses a LinkedIn PDF resume and extracts structured profile data.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `input` | `Buffer \| string` | PDF Buffer or extracted text string |
+| `input` | `ArrayBuffer \| Uint8Array \| string` | PDF binary data or extracted text string |
 | `options?` | `ParseOptions` | Optional parsing configuration |
 
 #### Returns
@@ -200,7 +208,7 @@ Parses a LinkedIn PDF resume and extracts structured profile data.
 #### Example
 
 ```typescript
-const result = await parseLinkedInPDF(pdfBuffer, { includeRawText: true });
+const result = await parseLinkedInPDF(pdfData, { includeRawText: true });
 ```
 
 ## 🏗️ TypeScript Interfaces

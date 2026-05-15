@@ -54,7 +54,9 @@ export class EducationParser {
         // Check if the degree line also contains year info
         const yearInDegree = this.extractYearFromLine(normalizedLine);
         if (yearInDegree) {
-          currentEducation.degree = normalizedLine.replace(yearInDegree, '').trim();
+          currentEducation.degree = normalizedLine
+            .replace(yearInDegree, '')
+            .trim();
           currentEducation.year = yearInDegree;
         } else {
           currentEducation.degree = normalizedLine;
@@ -124,11 +126,11 @@ export class EducationParser {
   private static extractYearFromLine(line: string): string {
     // Extract year patterns from lines that might contain both degree and year info
     const yearPatterns = [
-      /\(\d{4}\s*-\s*\d{4}\)/,  // (2017 - 2018)
+      /\(\d{4}\s*-\s*\d{4}\)/, // (2017 - 2018)
       /·\s*\(\d{4}\s*-\s*\d{4}\)/, // · (2002 - 2005)
       /\b\d{4}\s*-\s*\d{4}\b/, // 2017 - 2018
-      /\(\d{4}\)/,             // (2016)
-      /\b\d{4}\b/,             // 2016
+      /\(\d{4}\)/, // (2016)
+      /\b\d{4}\b/, // 2016
     ];
 
     for (const pattern of yearPatterns) {

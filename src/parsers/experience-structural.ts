@@ -1,14 +1,23 @@
-import { TextItem, WorkExperience, Position, StructuralSection } from '../types/structural.js';
+import {
+  TextItem,
+  WorkExperience,
+  Position,
+  StructuralSection,
+} from '../types/structural.js';
 import { StructuralParser } from './structural-parser.js';
 
 export class ExperienceStructuralParser {
-  static parseExperience(textItems: TextItem[], experienceStartY?: number, experienceEndY?: number): WorkExperience[] {
+  static parseExperience(
+    textItems: TextItem[],
+    experienceStartY?: number,
+    experienceEndY?: number
+  ): WorkExperience[] {
     // Filter items within experience section and focus on main content area (right column)
     let relevantItems = textItems.filter(item => item.x >= 150); // Right column only
 
     if (experienceStartY !== undefined && experienceEndY !== undefined) {
-      relevantItems = relevantItems.filter(item =>
-        item.y <= experienceStartY && item.y >= experienceEndY
+      relevantItems = relevantItems.filter(
+        item => item.y <= experienceStartY && item.y >= experienceEndY
       );
     }
 
@@ -25,7 +34,10 @@ export class ExperienceStructuralParser {
     return workExperiences;
   }
 
-  private static classifyLines(lines: string[], groups: TextItem[][]): StructuralSection[] {
+  private static classifyLines(
+    lines: string[],
+    groups: TextItem[][]
+  ): StructuralSection[] {
     const sections: StructuralSection[] = [];
 
     for (let i = 0; i < lines.length; i++) {
@@ -35,7 +47,8 @@ export class ExperienceStructuralParser {
       if (!line.trim() || line.length < 2) continue;
 
       // Calculate average font size for the line
-      const avgFontSize = group.reduce((sum, item) => sum + item.fontSize, 0) / group.length;
+      const avgFontSize =
+        group.reduce((sum, item) => sum + item.fontSize, 0) / group.length;
       const avgY = group.reduce((sum, item) => sum + item.y, 0) / group.length;
 
       const section: StructuralSection = {
@@ -48,7 +61,11 @@ export class ExperienceStructuralParser {
 
       // Classify based on content and structure
       section.type = this.classifyLineType(line, avgFontSize, i, lines);
-      section.confidence = this.calculateConfidence(line, section.type, avgFontSize);
+      section.confidence = this.calculateConfidence(
+        line,
+        section.type,
+        avgFontSize
+      );
 
       sections.push(section);
     }
@@ -108,27 +125,56 @@ export class ExperienceStructuralParser {
 
     // Look ahead for duration or position indicators
     const nextFewLines = allLines.slice(index + 1, index + 4);
-    const hasJobDetailsAfter = nextFewLines.some(nextLine =>
-      this.looksLikeDuration(nextLine) ||
-      this.looksLikePosition(nextLine) ||
-      /^\d+\s+(years?|months?|anos?|meses?)/.test(nextLine)
+    const hasJobDetailsAfter = nextFewLines.some(
+      nextLine =>
+        this.looksLikeDuration(nextLine) ||
+        this.looksLikePosition(nextLine) ||
+        /^\d+\s+(years?|months?|anos?|meses?)/.test(nextLine)
     );
 
     // Skip common section headers that aren't companies
     const nonCompanyHeaders = [
-      'contact', 'top skills', 'strategic roadmaps', 'electronic engineering',
-      'project planning', 'languages', 'summary', 'education', 'experience',
-      'experiência', 'formação', 'idiomas', 'competências', 'habilidades'
+      'contact',
+      'top skills',
+      'strategic roadmaps',
+      'electronic engineering',
+      'project planning',
+      'languages',
+      'summary',
+      'education',
+      'experience',
+      'experiência',
+      'formação',
+      'idiomas',
+      'competências',
+      'habilidades',
     ];
 
-    if (nonCompanyHeaders.some(header =>
-      line.toLowerCase().includes(header) || line.toLowerCase() === header
-    )) {
+    if (
+      nonCompanyHeaders.some(
+        header =>
+          line.toLowerCase().includes(header) || line.toLowerCase() === header
+      )
+    ) {
       return false;
     }
 
     // Known companies or pattern matching
-    const knownCompanies = ['Carta', 'Boba Joy', 'Zestt', 'Guild', 'Liquido', 'Automox', 'AevoTech', 'Inovare', 'CEPEL', 'CPTI', 'Arena Games', 'PontoTel', 'Partiu'];
+    const knownCompanies = [
+      'Carta',
+      'Boba Joy',
+      'Zestt',
+      'Guild',
+      'Liquido',
+      'Automox',
+      'AevoTech',
+      'Inovare',
+      'CEPEL',
+      'CPTI',
+      'Arena Games',
+      'PontoTel',
+      'Partiu',
+    ];
     const foundKnownCompany = knownCompanies.find(company =>
       line.toLowerCase().includes(company.toLowerCase())
     );
@@ -142,8 +188,10 @@ export class ExperienceStructuralParser {
       // Line should either be exactly the company name, or start/end with it and be short
       const isCleanCompanyName =
         cleanLine === companyName ||
-        (cleanLine.startsWith(companyName) && line.length < companyName.length + 20) ||
-        (cleanLine.endsWith(companyName) && line.length < companyName.length + 20) ||
+        (cleanLine.startsWith(companyName) &&
+          line.length < companyName.length + 20) ||
+        (cleanLine.endsWith(companyName) &&
+          line.length < companyName.length + 20) ||
         (line.length < 30 && cleanLine.includes(companyName));
 
       return isCleanCompanyName && hasJobDetailsAfter;
@@ -151,9 +199,9 @@ export class ExperienceStructuralParser {
 
     // Better company patterns - focus on actual business names
     const companyPatterns = [
-      /^[A-Z][A-Za-z\s&.,-]{2,25}$/,  // Standard company names (shorter, cleaner)
-      /^[A-Z]{2,6}$/,                 // Acronyms (2-6 letters)
-      /^[A-Z][A-Za-z]+\s+(Inc|LLC|Ltd|Corp|Corporation|Company|Technologies|Tech|Solutions|Systems|Group|Labs|Studio)$/i,  // Business with suffixes
+      /^[A-Z][A-Za-z\s&.,-]{2,25}$/, // Standard company names (shorter, cleaner)
+      /^[A-Z]{2,6}$/, // Acronyms (2-6 letters)
+      /^[A-Z][A-Za-z]+\s+(Inc|LLC|Ltd|Corp|Corporation|Company|Technologies|Tech|Solutions|Systems|Group|Labs|Studio)$/i, // Business with suffixes
     ];
 
     const matchesPattern = companyPatterns.some(pattern => pattern.test(line));
@@ -167,14 +215,46 @@ export class ExperienceStructuralParser {
   private static looksLikePosition(line: string): boolean {
     const positionKeywords = [
       // English titles
-      'manager', 'engineer', 'director', 'lead', 'senior', 'principal', 'chief', 'head of',
-      'co-founder', 'founder', 'president', 'vice president', 'vp', 'analyst', 'specialist',
-      'developer', 'architect', 'consultant', 'coordinator', 'supervisor', 'specialist',
+      'manager',
+      'engineer',
+      'director',
+      'lead',
+      'senior',
+      'principal',
+      'chief',
+      'head of',
+      'co-founder',
+      'founder',
+      'president',
+      'vice president',
+      'vp',
+      'analyst',
+      'specialist',
+      'developer',
+      'architect',
+      'consultant',
+      'coordinator',
+      'supervisor',
+      'specialist',
       // Portuguese titles
-      'gerente', 'diretor', 'coordenador', 'analista', 'especialista', 'consultor',
-      'desenvolvedor', 'engenheiro', 'arquiteto', 'supervisor', 'assessor', 'gestor',
+      'gerente',
+      'diretor',
+      'coordenador',
+      'analista',
+      'especialista',
+      'consultor',
+      'desenvolvedor',
+      'engenheiro',
+      'arquiteto',
+      'supervisor',
+      'assessor',
+      'gestor',
       // Additional position indicators
-      'product manager', 'software engineer', 'tech lead', 'technical lead', 'scrum master',
+      'product manager',
+      'software engineer',
+      'tech lead',
+      'technical lead',
+      'scrum master',
     ];
 
     const lowerLine = line.toLowerCase();
@@ -188,8 +268,8 @@ export class ExperienceStructuralParser {
 
     // Exclude lines that are clearly descriptions (too long, have sentence structure)
     const isDescription =
-      line.length > 80 ||  // Too long for a job title
-      line.toLowerCase().startsWith('i ') ||  // Starts with "I" (personal statement)
+      line.length > 80 || // Too long for a job title
+      line.toLowerCase().startsWith('i ') || // Starts with "I" (personal statement)
       line.toLowerCase().includes('i lead') ||
       line.toLowerCase().includes('i manage') ||
       line.toLowerCase().includes('i work') ||
@@ -198,21 +278,28 @@ export class ExperienceStructuralParser {
       line.toLowerCase().includes('working as') ||
       line.toLowerCase().includes('joined the') ||
       line.toLowerCase().includes('my role') ||
-      line.includes('•') ||  // Contains bullet points
-      line.includes('...') ||  // Continuation
-      line.split(' ').length > 15;  // Too many words for a title
+      line.includes('•') || // Contains bullet points
+      line.includes('...') || // Continuation
+      line.split(' ').length > 15; // Too many words for a title
 
     // Must be a reasonable job title format
     const hasValidTitleFormat =
-      line.length > 5 &&  // Not too short
+      line.length > 5 && // Not too short
       line.length < 80 && // Not too long
-      !line.includes('(') && !line.includes(')') &&  // No parentheses
-      !line.includes('•') &&  // No bullets
-      !line.includes('http') &&  // No URLs
-      !line.includes('@') &&  // No email symbols
-      line.split(' ').length <= 12;  // Reasonable word count
+      !line.includes('(') &&
+      !line.includes(')') && // No parentheses
+      !line.includes('•') && // No bullets
+      !line.includes('http') && // No URLs
+      !line.includes('@') && // No email symbols
+      line.split(' ').length <= 12; // Reasonable word count
 
-    return hasPositionKeyword && !isDuration && !isLocation && !isDescription && hasValidTitleFormat;
+    return (
+      hasPositionKeyword &&
+      !isDuration &&
+      !isLocation &&
+      !isDescription &&
+      hasValidTitleFormat
+    );
   }
 
   private static looksLikeDuration(line: string): boolean {
@@ -236,18 +323,24 @@ export class ExperienceStructuralParser {
   private static looksLikeLocation(line: string): boolean {
     // Common location patterns
     const locationPatterns = [
-      /^[A-Z][a-z]+,\s*[A-Z]{2}$/,  // City, ST
-      /^[A-Z][a-z]+,\s*[A-Z][a-z]+$/,  // City, State
-      /^[A-Z][a-z]+,\s*[A-Z][a-z]+,\s*[A-Z][a-z]+/,  // City, State, Country
+      /^[A-Z][a-z]+,\s*[A-Z]{2}$/, // City, ST
+      /^[A-Z][a-z]+,\s*[A-Z][a-z]+$/, // City, State
+      /^[A-Z][a-z]+,\s*[A-Z][a-z]+,\s*[A-Z][a-z]+/, // City, State, Country
       /(California|New York|Texas|Florida|United States|Brasil|Brazil|Rio de Janeiro|São Paulo)/i,
     ];
 
-    return line.length < 80 &&
-           locationPatterns.some(pattern => pattern.test(line)) &&
-           !this.looksLikeDuration(line);
+    return (
+      line.length < 80 &&
+      locationPatterns.some(pattern => pattern.test(line)) &&
+      !this.looksLikeDuration(line)
+    );
   }
 
-  private static calculateConfidence(line: string, type: StructuralSection['type'], fontSize: number): number {
+  private static calculateConfidence(
+    line: string,
+    type: StructuralSection['type'],
+    fontSize: number
+  ): number {
     let confidence = 0.5; // Base confidence
 
     switch (type) {
@@ -256,7 +349,11 @@ export class ExperienceStructuralParser {
         if (line.length < 30) confidence += 0.2;
         break;
       case 'position':
-        if (line.toLowerCase().includes('manager') || line.toLowerCase().includes('engineer')) confidence += 0.3;
+        if (
+          line.toLowerCase().includes('manager') ||
+          line.toLowerCase().includes('engineer')
+        )
+          confidence += 0.3;
         break;
       case 'duration':
         if (/\d{4}/.test(line)) confidence += 0.3;
@@ -269,7 +366,9 @@ export class ExperienceStructuralParser {
     return Math.min(confidence, 1.0);
   }
 
-  private static buildWorkExperiences(sections: StructuralSection[]): WorkExperience[] {
+  private static buildWorkExperiences(
+    sections: StructuralSection[]
+  ): WorkExperience[] {
     const workExperiences: WorkExperience[] = [];
     let currentWorkExperience: Partial<WorkExperience> | null = null;
     let currentPosition: Partial<Position> | null = null;
@@ -282,7 +381,8 @@ export class ExperienceStructuralParser {
           if (currentWorkExperience && currentWorkExperience.organization) {
             if (currentPosition && currentPosition.title) {
               currentPosition.description = descriptionLines.join(' ').trim();
-              currentWorkExperience.positions = currentWorkExperience.positions || [];
+              currentWorkExperience.positions =
+                currentWorkExperience.positions || [];
               currentWorkExperience.positions.push(currentPosition as Position);
             }
             workExperiences.push(currentWorkExperience as WorkExperience);
@@ -290,7 +390,8 @@ export class ExperienceStructuralParser {
 
           // Start new work experience with clean organization name
           const cleanOrgName = this.extractCleanOrganizationName(section.text);
-          if (cleanOrgName) { // Only create if we have a valid organization name
+          if (cleanOrgName) {
+            // Only create if we have a valid organization name
             currentWorkExperience = {
               organization: cleanOrgName,
               positions: [],
@@ -307,9 +408,14 @@ export class ExperienceStructuralParser {
 
         case 'position':
           // Save previous position
-          if (currentPosition && currentPosition.title && currentWorkExperience) {
+          if (
+            currentPosition &&
+            currentPosition.title &&
+            currentWorkExperience
+          ) {
             currentPosition.description = descriptionLines.join(' ').trim();
-            currentWorkExperience.positions = currentWorkExperience.positions || [];
+            currentWorkExperience.positions =
+              currentWorkExperience.positions || [];
             currentWorkExperience.positions.push(currentPosition as Position);
           }
 
@@ -325,7 +431,10 @@ export class ExperienceStructuralParser {
           const cleanDuration = this.extractCleanDuration(section.text);
           if (currentPosition) {
             currentPosition.duration = cleanDuration;
-          } else if (currentWorkExperience && !currentWorkExperience.totalDuration) {
+          } else if (
+            currentWorkExperience &&
+            !currentWorkExperience.totalDuration
+          ) {
             currentWorkExperience.totalDuration = cleanDuration;
           }
           break;
@@ -356,7 +465,21 @@ export class ExperienceStructuralParser {
   }
 
   private static extractCleanOrganizationName(text: string): string {
-    const knownCompanies = ['Carta', 'Boba Joy', 'Zestt', 'Guild', 'Liquido', 'Automox', 'AevoTech', 'Inovare', 'CEPEL', 'CPTI', 'Arena Games', 'PontoTel', 'Partiu'];
+    const knownCompanies = [
+      'Carta',
+      'Boba Joy',
+      'Zestt',
+      'Guild',
+      'Liquido',
+      'Automox',
+      'AevoTech',
+      'Inovare',
+      'CEPEL',
+      'CPTI',
+      'Arena Games',
+      'PontoTel',
+      'Partiu',
+    ];
 
     // First, check if this is a known company and extract just that name
     for (const company of knownCompanies) {
@@ -367,8 +490,16 @@ export class ExperienceStructuralParser {
     }
 
     // Exclude common person names that might be mistaken for companies
-    const commonPersonNames = ['Daniel Braga', 'Arkady Zalkowitsch', 'Thamiris Zalkowitsch'];
-    if (commonPersonNames.some(name => text.toLowerCase().includes(name.toLowerCase()))) {
+    const commonPersonNames = [
+      'Daniel Braga',
+      'Arkady Zalkowitsch',
+      'Thamiris Zalkowitsch',
+    ];
+    if (
+      commonPersonNames.some(name =>
+        text.toLowerCase().includes(name.toLowerCase())
+      )
+    ) {
       return ''; // Return empty to skip this as organization
     }
 
@@ -388,11 +519,15 @@ export class ExperienceStructuralParser {
         let companyName = match[1].trim();
 
         // Remove common trailing words that aren't part of company name
-        companyName = companyName.replace(/\s+(clarifications|for|scalable|solutions|and|or|the|of|in|at|with).*$/i, '');
+        companyName = companyName.replace(
+          /\s+(clarifications|for|scalable|solutions|and|or|the|of|in|at|with).*$/i,
+          ''
+        );
 
         // Additional check: if it looks like a person name (two capitalized words), skip it
         const wordCount = companyName.split(' ').length;
-        const isLikelyPersonName = wordCount === 2 && /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(companyName);
+        const isLikelyPersonName =
+          wordCount === 2 && /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(companyName);
 
         if (isLikelyPersonName) {
           return ''; // Skip potential person names
@@ -412,7 +547,10 @@ export class ExperienceStructuralParser {
     }
 
     // Remove common trailing pollution
-    cleanName = cleanName.replace(/\s+(clarifications|for|scalable|solutions|and|or|the|of|in|at|with).*$/i, '');
+    cleanName = cleanName.replace(
+      /\s+(clarifications|for|scalable|solutions|and|or|the|of|in|at|with).*$/i,
+      ''
+    );
 
     return cleanName || text.trim();
   }
@@ -450,11 +588,15 @@ export class ExperienceStructuralParser {
 
     // Remove bullet points and common leading text
     cleanText = cleanText.replace(/^[•\-\*]\s*/, '');
-    cleanText = cleanText.replace(/^(Provided|Led|Managed|Built|Developed|Implemented|Created|Designed|Worked|Coordinated|Contributed)\s+.*?(?=\b[A-Z][a-z]+\s+\d{4}|\d{4})/i, '');
+    cleanText = cleanText.replace(
+      /^(Provided|Led|Managed|Built|Developed|Implemented|Created|Designed|Worked|Coordinated|Contributed)\s+.*?(?=\b[A-Z][a-z]+\s+\d{4}|\d{4})/i,
+      ''
+    );
 
     // Extract just the date-like portions
     const datePortions = [];
-    const dateRegex = /\b(?:[A-Z][a-z]+\s+\d{4}|\d{4}(?:\s*-\s*(?:[A-Z][a-z]+\s+\d{4}|\d{4}|Present))?|\(\d+\s+(?:years?|months?|anos?|meses?)(?:\s+\d+\s+(?:months?|meses?))?)\)/gi;
+    const dateRegex =
+      /\b(?:[A-Z][a-z]+\s+\d{4}|\d{4}(?:\s*-\s*(?:[A-Z][a-z]+\s+\d{4}|\d{4}|Present))?|\(\d+\s+(?:years?|months?|anos?|meses?)(?:\s+\d+\s+(?:months?|meses?))?)\)/gi;
 
     let match;
     while ((match = dateRegex.exec(cleanText)) !== null) {
@@ -467,7 +609,12 @@ export class ExperienceStructuralParser {
     }
 
     // Fallback: if text is reasonably short and might be a duration, return it
-    if (cleanText.length < 50 && (cleanText.includes('-') || cleanText.match(/\d{4}/) || cleanText.includes('Present'))) {
+    if (
+      cleanText.length < 50 &&
+      (cleanText.includes('-') ||
+        cleanText.match(/\d{4}/) ||
+        cleanText.includes('Present'))
+    ) {
       return cleanText;
     }
 

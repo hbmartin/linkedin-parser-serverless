@@ -3,7 +3,7 @@ import { REGEX_PATTERNS } from './regex-patterns.js';
 export function cleanPDFText(text: string): string {
   return text
     .replace(REGEX_PATTERNS.PAGE_NUMBERS, '')
-    .replace(REGEX_PATTERNS.MULTIPLE_SPACES, ' ')
+    .replace(/[^\S\r\n]{2,}/g, ' ')
     .replace(REGEX_PATTERNS.BULLET_POINTS, '')
     .trim();
 }

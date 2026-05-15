@@ -14,7 +14,7 @@ describe('LinkedIn PDF Parser Library', () => {
   });
 
   describe('Basic Parsing', () => {
-    test('should parse PDF buffer successfully', async () => {
+    test('should parse Node Buffer successfully', async () => {
       const result = await parseLinkedInPDF(pdfBuffer);
 
       expect(result.profile).toBeDefined();
@@ -22,6 +22,42 @@ describe('LinkedIn PDF Parser Library', () => {
       expect(result.profile.contact).toBeDefined();
       expect(result.profile.contact.email).toBeTruthy();
       expect(result.profile.contact.email).toContain('@');
+    });
+
+    test('should parse Uint8Array successfully', async () => {
+      const result = await parseLinkedInPDF(new Uint8Array(pdfBuffer));
+
+      expect(result.profile).toBeDefined();
+      expect(result.profile.name).toBeTruthy();
+      expect(result.profile.contact.email).toContain('@');
+    });
+
+    test('should parse ArrayBuffer successfully', async () => {
+      const arrayBuffer = pdfBuffer.buffer.slice(
+        pdfBuffer.byteOffset,
+        pdfBuffer.byteOffset + pdfBuffer.byteLength
+      ) as ArrayBuffer;
+      const result = await parseLinkedInPDF(arrayBuffer);
+
+      expect(result.profile).toBeDefined();
+      expect(result.profile.name).toBeTruthy();
+      expect(result.profile.contact.email).toContain('@');
+    });
+
+    test('should parse extracted text directly', async () => {
+      const result = await parseLinkedInPDF(`
+        Text Input User
+        text.input@example.com
+        Software Engineer
+
+        Experience
+        Developer at TextCo
+        2021-2024
+      `);
+
+      expect(result.profile).toBeDefined();
+      expect(result.profile.name).toBeTruthy();
+      expect(result.profile.contact.email).toBe('text.input@example.com');
     });
 
     test('should parse PDF with options', async () => {

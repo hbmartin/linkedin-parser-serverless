@@ -4,7 +4,8 @@ export const REGEX_PATTERNS = {
   PHONE: /(\+\d{1,3}\s?)?(\(?\d{2,3}\)?[\s-]?)?\d{4,5}[\s-]?\d{4}/,
   PAGE_NUMBERS: /Page \d+ of \d+/gi,
   TOP_SKILLS: /Top Skills\s+([\s\S]+?)(?:Languages)/i,
-  LANGUAGES: /Languages\s+([\s\S]+?)(?:Summary|Experience|Education|$)/i,
+  LANGUAGES:
+    /(?:^|\n)[^\S\r\n]*Languages[^\S\r\n]*\n([\s\S]*?)(?=\n[^\S\r\n]*(?:Summary|Experience|Education)\b|$)/i,
   SUMMARY: /Summary\s+([\s\S]+?)(?:Experience|Education|$)/i,
   EXPERIENCE: /Experience\s+([\s\S]+?)(?:Education|$)/i,
   EDUCATION: /Education\s+([\s\S]+?)(?:$)/i,
