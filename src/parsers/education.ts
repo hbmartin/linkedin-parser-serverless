@@ -4,6 +4,11 @@ import {
   splitLines,
   normalizeWhitespace,
 } from '../utils/text-utils.js';
+import type { StructuralLine } from '../utils/structural-lines.js';
+import {
+  isEducationSectionHeaderText,
+  isSectionHeaderText,
+} from '../utils/profile-text.js';
 
 export interface Education {
   degree: string;
@@ -87,6 +92,73 @@ export class EducationParser {
     return educations;
   }
 
+  static parseStructural(lines: StructuralLine[]): Education[] {
+    const educationLines = this.extractStructuralEducationLines(lines);
+
+    if (educationLines.length === 0) {
+      return [];
+    }
+
+    const institutionFontSize = Math.max(
+      ...educationLines.map(line => line.fontSize)
+    );
+    const institutionThreshold = institutionFontSize - 0.5;
+    const educations: Education[] = [];
+    let currentEducation: Partial<Education> | null = null;
+
+    for (const line of educationLines) {
+      const normalizedLine = normalizeWhitespace(line.text);
+
+      if (
+        !normalizedLine ||
+        normalizedLine.length < 2 ||
+        /^page\s+\d+\s+of\s+\d+$/i.test(normalizedLine)
+      ) {
+        continue;
+      }
+
+      const isInstitutionLine =
+        line.fontSize >= institutionThreshold &&
+        !this.looksLikeDegree(normalizedLine) &&
+        !this.looksLikeYear(normalizedLine);
+
+      if (isInstitutionLine) {
+        if (currentEducation?.institution) {
+          educations.push(this.fillDefaults(currentEducation));
+        }
+
+        currentEducation = {
+          degree: '',
+          institution: normalizedLine,
+          location: '',
+          year: '',
+        };
+        continue;
+      }
+
+      if (!currentEducation) {
+        currentEducation = {
+          degree: '',
+          institution: normalizedLine,
+          location: '',
+          year: '',
+        };
+        continue;
+      }
+
+      this.addStructuralEducationDetail({
+        education: currentEducation,
+        line: normalizedLine,
+      });
+    }
+
+    if (currentEducation?.institution) {
+      educations.push(this.fillDefaults(currentEducation));
+    }
+
+    return educations;
+  }
+
   private static looksLikeInstitution(line: string): boolean {
     const lower = line.toLowerCase();
 
@@ -94,7 +166,7 @@ export class EducationParser {
       line.length > 5 &&
       line.length < 100 &&
       (/university|college|school|institute/.test(lower) ||
-        /^[A-Z][a-z]+(?:\s+[A-Z][a-z]*)*$/.test(line)) &&
+        /^[\p{Lu}][\p{L}\p{M}]+(?:\s+[\p{Lu}][\p{L}\p{M}]*)*$/u.test(line)) &&
       !this.looksLikeDegree(line) &&
       !this.looksLikeYear(line)
     );
@@ -106,7 +178,9 @@ export class EducationParser {
     return (
       line.length > 3 &&
       line.length < 80 &&
-      /bachelor|master|phd|mba|engineering|science|business/.test(lower) &&
+      /bachelor|master|phd|mba|engineering|science|business|bacharelado|bacharel|licenciatura|mestrado|mestre|doutorado|doutor|p[oó]s[-\s]?gradua[cç][aã]o|tecn[oó]logo|tecnologia/.test(
+        lower
+      ) &&
       !/^\s*[()·-]?\s*(19|20)\d{2}/.test(line)
     );
   }
@@ -169,5 +243,70 @@ export class EducationParser {
       year: education.year || '',
       location: education.location || '',
     };
+  }
+
+  private static extractStructuralEducationLines(
+    lines: StructuralLine[]
+  ): StructuralLine[] {
+    const mainLines = lines.filter(
+      line => line.column === 'right' || line.column === 'single'
+    );
+    const educationStartIndex = mainLines.findIndex(line =>
+      isEducationSectionHeaderText(line.text)
+    );
+
+    if (educationStartIndex === -1) {
+      return [];
+    }
+
+    const followingLines = mainLines.slice(educationStartIndex + 1);
+    const nextSectionIndex = followingLines.findIndex(line =>
+      isSectionHeaderText(line.text)
+    );
+
+    return nextSectionIndex === -1
+      ? followingLines
+      : followingLines.slice(0, nextSectionIndex);
+  }
+
+  private static addStructuralEducationDetail({
+    education,
+    line,
+  }: {
+    education: Partial<Education>;
+    line: string;
+  }): void {
+    const year = this.extractYearFromLine(line);
+    const degree = year ? this.removeYearFromDegree(line) : line;
+
+    if (year) {
+      education.year = year;
+    }
+
+    if (this.looksLikeDegree(line) && degree) {
+      education.degree = education.degree
+        ? normalizeWhitespace(`${education.degree} ${degree}`)
+        : degree;
+      return;
+    }
+
+    if (this.looksLikeYear(line)) {
+      education.year = line;
+      return;
+    }
+
+    if (this.looksLikeLocation(line)) {
+      education.location = line;
+      return;
+    }
+
+    if (!education.degree) {
+      education.degree = degree;
+      return;
+    }
+
+    if (degree) {
+      education.degree = normalizeWhitespace(`${education.degree} ${degree}`);
+    }
   }
 }

@@ -11,4 +11,39 @@ describe('BasicInfoParser', () => {
 
     expect(profile.headline).toBe('Senior Engineer @ ExampleCo');
   });
+
+  test('extracts generic names without exclusion words or ASCII-only assumptions', () => {
+    const strategicProfile = BasicInfoParser.parse(`
+      Strategic Planning
+      strategic.planning@custom.dev
+      Principal Advisor
+      München, Bayern, Deutschland
+    `);
+    const portugueseProfile = BasicInfoParser.parse(`
+      MARIA DE SOUZA
+      maria.souza@empresa.com.br
+      São Paulo, São Paulo, Brasil
+    `);
+    const apostropheProfile = BasicInfoParser.parse(`
+      Sean O'Neil
+      sean.oneil@example.consulting
+      Dublin, Leinster, Ireland
+    `);
+
+    expect(strategicProfile.name).toBe('Strategic Planning');
+    expect(strategicProfile.location).toBe('München, Bayern, Deutschland');
+    expect(portugueseProfile.name).toBe('MARIA DE SOUZA');
+    expect(portugueseProfile.location).toBe('São Paulo, São Paulo, Brasil');
+    expect(apostropheProfile.name).toBe("Sean O'Neil");
+  });
+
+  test('omits email instead of returning an empty string', () => {
+    const profile = BasicInfoParser.parse(`
+      Missing Email User
+      Product Advisor
+      Toronto, Ontario, Canada
+    `);
+
+    expect(profile.contact.email).toBeUndefined();
+  });
 });

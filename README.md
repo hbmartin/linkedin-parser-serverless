@@ -132,7 +132,7 @@ const pdfBuffer = fs.readFileSync('resume.pdf');
 const { profile } = await parseLinkedInPDF(pdfBuffer);
 
 console.log(`Name: ${profile.name}`);
-console.log(`Email: ${profile.contact.email}`);
+console.log(`Email: ${profile.contact.email ?? 'not found'}`);
 console.log(`Skills: ${profile.top_skills.join(', ')}`);
 console.log(`Experience: ${profile.experience.length} positions`);
 ```
@@ -150,6 +150,9 @@ console.log(`Experience: ${profile.experience.length} positions`);
       "linkedin_url": "https://www.linkedin.com/in/john-silva"
     },
     "top_skills": ["TypeScript", "Node.js", "AWS"],
+    "certifications": ["AWS Certified Solutions Architect"],
+    "volunteer_work": [],
+    "projects": ["Search platform migration"],
     "languages": [
       {
         "language": "English",
@@ -177,7 +180,8 @@ console.log(`Experience: ${profile.experience.length} positions`);
         "year": "2014 - 2018"
       }
     ]
-  }
+  },
+  "warnings": []
 }
 ```
 
@@ -242,20 +246,22 @@ const extractedText = "John Silva\nSoftware Engineer...";
 const result = await parseLinkedInPDF(extractedText);
 ```
 
-### Error Handling
+### Partial Results and Warnings
 
 ```typescript
-try {
-  const result = await parseLinkedInPDF(pdfData);
-  console.log(result.profile);
-} catch (error) {
-  if (error.message === 'PDF appears to be empty or unreadable') {
-    console.error('Invalid PDF file');
-  } else {
-    console.error('Parsing failed:', error.message);
-  }
+const result = await parseLinkedInPDF(pdfData);
+
+for (const warning of result.warnings) {
+  console.warn(`${warning.field}: ${warning.message}`);
+}
+
+if (result.profile.contact.email) {
+  console.log(result.profile.contact.email);
 }
 ```
+
+The parser throws only for fatal input failures such as empty or unreadable PDFs.
+Missing profile fields are returned as partial results with structured warnings.
 
 ## 📖 API Reference
 
@@ -287,12 +293,15 @@ const result = await parseLinkedInPDF(pdfData, { includeRawText: true });
 
 ```typescript
 interface LinkedInProfile {
-  name: string;
-  headline: string;
-  location: string;
+  name?: string;
+  headline?: string;
+  location?: string;
   contact: Contact;
   top_skills: string[];
   languages: Language[];
+  certifications: string[];
+  volunteer_work: string[];
+  projects: string[];
   summary?: string;
   experience: Experience[];
   education: Education[];
@@ -305,7 +314,7 @@ interface LinkedInProfile {
 
 ```typescript
 interface Contact {
-  email: string;
+  email?: string;
   phone?: string;
   linkedin_url?: string;
   location?: string;
@@ -366,11 +375,26 @@ interface ParseOptions {
 </details>
 
 <details>
+<summary><strong>ParseWarning</strong></summary>
+
+```typescript
+interface MissingProfileFieldWarning {
+  code: 'missing_profile_field';
+  field: 'profile.name' | 'profile.contact.email';
+  message: string;
+}
+
+type ParseWarning = MissingProfileFieldWarning;
+```
+</details>
+
+<details>
 <summary><strong>ParseResult</strong></summary>
 
 ```typescript
 interface ParseResult {
   profile: LinkedInProfile;
+  warnings: ParseWarning[];
   rawText?: string;
 }
 ```
