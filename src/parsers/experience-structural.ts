@@ -233,7 +233,7 @@ export class ExperienceStructuralParser {
   private static normalizeLocationText(text: string): string {
     return text
       .replace(/\bY\s+ork\b/g, 'York')
-      .replace(/\bT\s+X\b/g, 'TX')
+      .replace(/,\s*([A-Z])\s+([A-Z])$/g, ', $1$2')
       .replace(/\s+,/g, ',')
       .replace(/,\s*/g, ', ')
       .trim();
@@ -281,6 +281,18 @@ export class ExperienceStructuralParser {
       switch (section.type) {
         case 'organization':
           {
+            const cleanOrgName = this.extractCleanOrganizationName(
+              section.text
+            );
+
+            if (!cleanOrgName) {
+              if (currentWorkExperience || currentPosition) {
+                descriptionLines.push(section.text);
+              }
+
+              break;
+            }
+
             const completedWorkExperience = this.completeWorkExperience({
               workExperience: currentWorkExperience,
               position: currentPosition,
@@ -291,19 +303,12 @@ export class ExperienceStructuralParser {
               workExperiences.push(completedWorkExperience);
             }
 
-            currentWorkExperience = null;
-            currentPosition = null;
-            descriptionLines = [];
-          }
-
-          // Start new work experience with clean organization name
-          const cleanOrgName = this.extractCleanOrganizationName(section.text);
-          if (cleanOrgName) {
-            // Only create if we have a valid organization name
             currentWorkExperience = {
               organization: cleanOrgName,
               positions: [],
             };
+            currentPosition = null;
+            descriptionLines = [];
           }
           break;
 
@@ -416,8 +421,10 @@ export class ExperienceStructuralParser {
     };
   }
 
-  private static extractCleanOrganizationName(text: string): string {
-    return cleanOrganizationNameText(text) ?? '';
+  private static extractCleanOrganizationName(
+    text: string
+  ): string | undefined {
+    return cleanOrganizationNameText(text);
   }
 
   private static extractCleanDuration(text: string): string {

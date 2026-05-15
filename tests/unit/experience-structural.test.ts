@@ -1,5 +1,8 @@
 import { ExperienceStructuralParser } from '../../src/parsers/experience-structural.js';
-import type { TextItem } from '../../src/types/structural.js';
+import type {
+  StructuralSection,
+  TextItem,
+} from '../../src/types/structural.js';
 
 function textItem({
   text,
@@ -149,4 +152,78 @@ describe('ExperienceStructuralParser', () => {
       })
     );
   });
+
+  test('preserves current experience when an organization section cannot be cleaned', () => {
+    const sections: StructuralSection[] = [
+      structuralSection({
+        text: 'Research Systems Group',
+        type: 'organization',
+      }),
+      structuralSection({
+        text: 'Principal Engineer',
+        type: 'position',
+      }),
+      structuralSection({
+        text: '2020 - 2024',
+        type: 'duration',
+      }),
+      structuralSection({
+        text: 'Austin, TX',
+        type: 'organization',
+      }),
+      structuralSection({
+        text: 'Kept platform work moving.',
+        type: 'description',
+      }),
+    ];
+
+    const [experience] =
+      ExperienceStructuralParser['buildWorkExperiences'](sections);
+
+    expect(experience).toEqual({
+      organization: 'Research Systems Group',
+      positions: [
+        {
+          description: 'Austin, TX Kept platform work moving.',
+          duration: '2020 - 2024',
+          title: 'Principal Engineer',
+        },
+      ],
+      totalDuration: undefined,
+    });
+  });
+
+  test('compacts spaced state abbreviations in locations', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Research Systems Group', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2024', y: 630 }),
+      textItem({ text: 'New Y ork, N Y', y: 610 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        location: 'New York, NY',
+      })
+    );
+  });
 });
+
+function structuralSection({
+  text,
+  type,
+}: {
+  text: string;
+  type: StructuralSection['type'];
+}): StructuralSection {
+  return {
+    confidence: 1,
+    fontSize: 12,
+    text,
+    type,
+    y: 0,
+  };
+}

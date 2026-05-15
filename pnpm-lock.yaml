@@ -16,7 +16,7 @@ importers:
         specifier: ^0.18.2
         version: 0.18.2
       '@jest/globals':
-        specifier: 30.4.1
+        specifier: ^30.4.1
         version: 30.4.1
       '@rollup/plugin-node-resolve':
         specifier: ^16.0.3

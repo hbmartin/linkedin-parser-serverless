@@ -1,0 +1,46 @@
+name: Bundlephobia
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: bundlephobia-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  bundlephobia:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        run: pnpm run build
+
+      - name: Report compressed size
+        uses: preactjs/compressed-size-action@v2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          install-script: "pnpm install --frozen-lockfile"
+          build-script: "build"
+          pattern: "dist/**/*.{js,mjs,cjs}"
