@@ -7,29 +7,11 @@
 [![Context7](https://img.shields.io/badge/[]-Context7-059669)](https://context7.com/hbmartin/linkedin-parser-serverless)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hbmartin/linkedin-parser-serverless)
 
-<p>
-  <img src="https://img.shields.io/npm/v/@zalko/linkedin-parser?style=flat-square&color=blue" alt="npm version" />
-  <img src="https://img.shields.io/npm/dt/@zalko/linkedin-parser?style=flat-square&color=green" alt="downloads" />
-  <img src="https://img.shields.io/badge/coverage-95.6%25-brightgreen?style=flat-square" alt="coverage" />
-  <img src="https://img.shields.io/badge/bundle_size-3.0kB_gzipped-orange?style=flat-square" alt="bundle size" />
-  <img src="https://img.shields.io/badge/node-18+-darkgreen?style=flat-square&logo=node.js" alt="node version" />
-  <img src="https://img.shields.io/npm/types/@zalko/linkedin-parser?style=flat-square&color=blue" alt="typescript" />
-  <img src="https://img.shields.io/npm/l/@zalko/linkedin-parser?style=flat-square&color=red" alt="license" />
-</p>
-
-**A clean, lightweight TypeScript library for parsing LinkedIn PDF resumes and extracting structured profile data.**
+**A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsing LinkedIn PDF resumes and extracting structured profile data.**
 
 > ℹ️ **Note:** This is a newly published package. Download statistics may take 24-48 hours to populate. Some badges show "package not found or too new" until npm statistics are updated.
 
-<p>
-  <img src="https://img.shields.io/badge/tests-54_passing-success?style=flat-square" alt="tests" />
-  <img src="https://img.shields.io/github/commit-activity/m/zalkowitsch/linkedin-parser?style=flat-square&color=yellow" alt="activity" />
-  <img src="https://img.shields.io/github/last-commit/zalkowitsch/linkedin-parser?style=flat-square&color=lightgrey" alt="last commit" />
-</p>
-
 [Installation](#installation) • [CLI Usage](#cli-usage) • [Quick Start](#quick-start) • [API Reference](#api-reference) • [Examples](#examples)
-
-</div>
 
 ---
 
@@ -134,6 +116,50 @@ console.log(result.profile.contact.email); // "john.silva@email.com"
 console.log(result.profile.experience);    // [{ title: "...", company: "..." }]
 ```
 
+### Sample Output
+
+```json
+{
+  "profile": {
+    "name": "John Silva",
+    "headline": "Senior Backend Engineer at DataFlow Inc",
+    "location": "Austin, Texas, United States",
+    "contact": {
+      "email": "john.silva@email.com",
+      "linkedin_url": "https://www.linkedin.com/in/john-silva"
+    },
+    "top_skills": ["TypeScript", "Node.js", "AWS"],
+    "languages": [
+      {
+        "language": "English",
+        "proficiency": "Native or Bilingual"
+      }
+    ],
+    "summary": "Backend engineer focused on high-volume data platforms and serverless APIs.",
+    "experience": [
+      {
+        "title": "Senior Backend Engineer",
+        "company": "DataFlow Inc",
+        "duration": "January 2021 - Present",
+        "location": "Austin, Texas, United States"
+      },
+      {
+        "title": "Software Engineer",
+        "company": "TechFlow Systems",
+        "duration": "June 2018 - December 2020"
+      }
+    ],
+    "education": [
+      {
+        "degree": "BS, Computer Science",
+        "institution": "University of Texas at Austin",
+        "year": "2014 - 2018"
+      }
+    ]
+  }
+}
+```
+
 ## 📚 Examples
 
 ### Basic Usage
@@ -168,6 +194,39 @@ console.log(`Raw text: ${result.rawText?.substring(0, 100)}...`);
 ```typescript
 const arrayBuffer = await request.arrayBuffer();
 const result = await parseLinkedInPDF(arrayBuffer);
+```
+
+### Vercel Edge Route
+
+Create a Next.js App Router endpoint at `app/api/parse-linkedin/route.ts`:
+
+```typescript
+import { parseLinkedInPDF } from '@zalko/linkedin-parser';
+
+export const runtime = 'edge';
+
+export async function POST(request: Request): Promise<Response> {
+  const formData = await request.formData();
+  const resume = formData.get('resume');
+
+  if (!(resume instanceof File)) {
+    return Response.json(
+      { error: 'Upload a PDF file in the "resume" form field.' },
+      { status: 400 }
+    );
+  }
+
+  const parsed = await parseLinkedInPDF(await resume.arrayBuffer());
+
+  return Response.json(parsed);
+}
+```
+
+Deploy it with Vercel and post a LinkedIn PDF to the Edge Function:
+
+```bash
+vercel deploy
+curl -F "resume=@linkedin-resume.pdf" https://your-app.vercel.app/api/parse-linkedin
 ```
 
 ### Parse Text Directly
@@ -262,32 +321,9 @@ interface Experience {
 }
 ```
 
-**Work Experience Structure:**
-- **Work Experience**: A continuous period of employment at an organization, even if the person returns to the same company later after working elsewhere
-- **Organization/Company**: The employer entity (e.g., "TechCorp", "DataSystems Inc")
-- **Position/Role**: The job title/role within that work experience period (e.g., "Engineering Manager", "Senior Developer")
-
-**Examples:**
-
-*Single organization, multiple positions:*
-```
-TechCorp (1 work experience, 3 positions):
-- Engineering Manager
-- Senior Developer
-- Software Developer
-```
-
-*Same organization, separate work experiences:*
-```
-DataSystems Inc (2 separate work experiences, 2 positions):
-1st work experience: Lead Engineer (2018-2020)
-2nd work experience: Technical Architect (2023-Present)
-// Note: Person worked elsewhere between 2020-2023
-```
-
-**Key principle:** If someone returns to the same company after working elsewhere, it counts as a separate work experience. This reflects career progression and different employment periods.
-
 </details>
+
+See [Work Experience Semantics](docs/work-experience-semantics.md) for how repeated companies and multiple positions are interpreted.
 
 <details>
 <summary><strong>Education</strong></summary>
@@ -364,56 +400,6 @@ npm run clean
 - **Memory usage**: Minimal memory footprint (~8MB)
 - **Bundle size**: Ultra-lightweight at 3.0kB gzipped
 
-## 🛡️ Quality & Trust
-
-<table>
-  <tr>
-    <td align="center">🧪</td>
-    <td><strong>Test Coverage</strong><br/>95.6% code coverage with comprehensive test suite</td>
-  </tr>
-  <tr>
-    <td align="center">🔒</td>
-    <td><strong>Security</strong><br/>Zero known vulnerabilities, regularly audited</td>
-  </tr>
-  <tr>
-    <td align="center">📈</td>
-    <td><strong>CI/CD</strong><br/>Automated testing and deployment pipeline</td>
-  </tr>
-  <tr>
-    <td align="center">🏷️</td>
-    <td><strong>Semantic Versioning</strong><br/>Follows semver for predictable releases</td>
-  </tr>
-  <tr>
-    <td align="center">📝</td>
-    <td><strong>Documentation</strong><br/>Comprehensive docs with TypeScript support</td>
-  </tr>
-  <tr>
-    <td align="center">🚀</td>
-    <td><strong>Production Ready</strong><br/>Battle-tested in production environments</td>
-  </tr>
-</table>
-
-## 🌍 Compatibility
-
-<div align="center">
-
-![Node.js](https://img.shields.io/badge/Node.js-18%2B-brightgreen?style=flat-square&logo=node.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue?style=flat-square&logo=typescript)
-![ES2022](https://img.shields.io/badge/ES2022-Compatible-orange?style=flat-square&logo=javascript)
-
-</div>
-
-**Supported Environments:**
-- ✅ Node.js 18+ (ES2022 support)
-- ✅ TypeScript 5.0+
-- ✅ ESM (ES Modules)
-- ✅ CommonJS (via build)
-- ✅ Browsers (via bundlers)
-
-**Package Managers:**
-- ✅ npm 8+
-- ✅ yarn 1.22+
-- ✅ pnpm 7+
 
 ## 🤝 Contributing
 
@@ -425,10 +411,4 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ---
 
-<div align="center">
-
-**[⭐ Star this project](https://github.com/zalkowitsch/linkedin-parser)** if you find it helpful!
-
-Made with ❤️ by [Arkady Zalkowitsch](https://github.com/zalkowitsch)
-
-</div>
+Made with ❤️ by [Arkady Zalkowitsch](https://github.com/zalkowitsch) and Harold Martin

@@ -5,6 +5,7 @@
 	"main": "dist/index.cjs",
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"sideEffects": false,
 	"exports": {
 		".": {
 			"import": {
@@ -16,6 +17,9 @@
 				"default": "./dist/index.cjs"
 			}
 		}
+	},
+	"bin": {
+		"linkedin-pdf-parser": "./bin/cli.js"
 	},
 	"author": {
 		"name": "Harold Martin",
@@ -43,27 +47,29 @@
 		"build:types:cjs": "cp dist/index.d.ts dist/index.d.cts",
 		"build:minify": "node esbuild.config.js",
 		"build:dev": "tsc",
+		"clean": "rm -rf dist coverage",
+		"demo:profile": "node demo-profile.js",
+		"demo:profile:strict": "node demo-profile.js --strict",
 		"dupes": "jscpd",
 		"format": "prettier --write \"src/**/*.{ts,tsx}\"",
 		"format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
 		"fta": "fta src",
+		"generate:pdf": "pnpm dlx tsx utils/generate-pdf.ts",
+		"knip": "knip",
 		"lint": "eslint src/**/*.ts",
 		"lint:fix": "eslint src/**/*.ts --fix",
-		"publint": "npx publint --pack npm",
+		"prepublishOnly": "pnpm run quality:check",
+		"publint": "pnpm exec publint --pack npm",
+		"quality:check": "pnpm run lint && pnpm run format:check && pnpm run build && pnpm run knip && pnpm run publint && pnpm run types:lint && pnpm run test:coverage",
+		"size:check": "ls -lh dist/index.* | awk '{print $5, $9}'",
 		"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
 		"test:profile": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/unit/profile-fixture.test.ts",
 		"test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
 		"test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
-		"types:lint": "npm_config_cache=.npm-cache attw --pack .",
-		"demo:profile": "node demo-profile.js",
-		"demo:profile:strict": "node demo-profile.js --strict",
-		"clean": "rm -rf dist coverage",
-		"size:check": "ls -lh dist/index.* | awk '{print $5, $9}'",
-		"generate:pdf": "pnpm dlx tsx utils/generate-pdf.ts",
-		"quality:check": "pnpm run lint && pnpm run format:check && pnpm run test:coverage",
-		"prepublishOnly": "pnpm run quality:check && pnpm run build"
+		"types:lint": "npm_config_cache=.npm-cache attw --pack ."
 	},
 	"files": [
+		"bin",
 		"dist"
 	],
 	"devDependencies": {
@@ -82,12 +88,13 @@
 		"jest": "^30.2.0",
 		"jscpd": "^4.2.0",
 		"knip": "^6.13.1",
+		"pdf-parse": "^2.4.5",
 		"prettier": "^3.7.1",
 		"publint": "^0.3.20",
 		"rollup": "^4.53.3",
-		"terser": "^5.44.1",
 		"ts-jest": "^29.4.5",
 		"tslib": "^2.8.1",
+		"type-coverage": "^2.29.7",
 		"typescript": "^6.0.3"
 	},
 	"type": "module",
@@ -106,6 +113,7 @@
 		],
 		"ignore": [
 			"**/node_modules/**",
+			"**/.npm-cache/**",
 			"**/dist/**",
 			"**/coverage/**",
 			"**/test/**",
