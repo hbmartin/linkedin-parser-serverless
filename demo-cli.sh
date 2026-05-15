@@ -1,34 +1,52 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROFILE_PDF="$SCRIPT_DIR/Profile.pdf"
+
 echo "🚀 LinkedIn PDF Parser CLI Demo"
 echo "==============================="
 echo
 
+if [ ! -f "$PROFILE_PDF" ]; then
+  echo "Profile fixture not found: $PROFILE_PDF"
+  exit 1
+fi
+
 # Test CLI help
 echo "📋 1. Showing help:"
-node bin/cli.js --help
+node "$SCRIPT_DIR/bin/cli.js" --help
 echo
 
 # Test with Profile.pdf in compact mode
 echo "📄 2. Parsing Profile.pdf (compact mode):"
-echo "node bin/cli.js \"/Users/arkady/Downloads/Profile.pdf\" --compact"
+echo "node bin/cli.js \"$PROFILE_PDF\" --compact"
 echo
 echo "Output (first 300 characters):"
-node bin/cli.js "/Users/arkady/Downloads/Profile.pdf" --compact | head -c 300
+node "$SCRIPT_DIR/bin/cli.js" "$PROFILE_PDF" --compact | head -c 300
 echo "..."
 echo
 
-# Test with Profile (1).pdf showing just structure
-echo "📄 3. Parsing Profile (1).pdf (structured output):"
-echo "node bin/cli.js \"/Users/arkady/Downloads/Profile (1).pdf\""
+# Test with Profile.pdf showing just structure
+echo "📄 3. Parsing Profile.pdf (structured output):"
+echo "node bin/cli.js \"$PROFILE_PDF\""
 echo
 echo "Key fields extracted:"
-RESULT=$(node bin/cli.js "/Users/arkady/Downloads/Profile (1).pdf" --compact)
-echo "Name: $(echo $RESULT | grep -o '"name":"[^"]*"' | cut -d'"' -f4)"
-echo "Email: $(echo $RESULT | grep -o '"email":"[^"]*"' | cut -d'"' -f4)"
-echo "Location: $(echo $RESULT | grep -o '"location":"[^"]*"' | cut -d'"' -f4)"
-echo "Skills count: $(echo $RESULT | grep -o '"top_skills":\[[^\]]*\]' | grep -o ',' | wc -l | xargs expr 1 +)"
-echo "Experience count: $(echo $RESULT | grep -o '"experience":\[[^\]]*\]' | grep -o '"title":' | wc -l)"
+RESULT_FILE=$(mktemp)
+node "$SCRIPT_DIR/bin/cli.js" "$PROFILE_PDF" --compact > "$RESULT_FILE"
+node --input-type=module - "$RESULT_FILE" <<'NODE'
+import fs from 'fs';
+
+const resultPath = process.argv[2];
+const result = JSON.parse(fs.readFileSync(resultPath, 'utf8'));
+const { profile } = result;
+
+console.log(`Name: ${profile.name}`);
+console.log(`Email: ${profile.contact.email}`);
+console.log(`Location: ${profile.location}`);
+console.log(`Skills count: ${profile.top_skills.length}`);
+console.log(`Experience count: ${profile.experience.length}`);
+NODE
+rm "$RESULT_FILE"
 echo
 
 # Test error handling
@@ -37,12 +55,12 @@ echo
 
 echo "   a) Non-existent file:"
 echo "   node bin/cli.js non-existent.pdf"
-node bin/cli.js non-existent.pdf 2>&1 || true
+node "$SCRIPT_DIR/bin/cli.js" non-existent.pdf 2>&1 || true
 echo
 
 echo "   b) Non-PDF file:"
 echo "   node bin/cli.js package.json"
-node bin/cli.js package.json 2>&1 || true
+node "$SCRIPT_DIR/bin/cli.js" "$SCRIPT_DIR/package.json" 2>&1 || true
 echo
 
 # Usage examples
@@ -62,4 +80,4 @@ echo "   done"
 echo
 
 echo "✅ CLI Demo completed successfully!"
-echo "📖 See CLI_USAGE.md for complete documentation"
+echo "📖 See README.md for complete documentation"

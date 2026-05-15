@@ -1,86 +1,120 @@
 {
-  "name": "@zalko/linkedin-parser",
-  "version": "1.0.2",
-  "description": "LinkedIn resume PDF parser with comprehensive Jest testing and test data generation",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
-    }
-  },
-  "author": {
-    "name": "Arkady Zalkowitsch",
-    "email": "arkady@zalko.com"
-  },
-  "license": "MIT",
-  "keywords": [
-    "pdf",
-    "parser",
-    "resume",
-    "linkedin",
-    "jest",
-    "testing"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/zalkowitsch/linkedin-parser.git"
-  },
-  "homepage": "https://github.com/zalkowitsch/linkedin-parser#readme",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "scripts": {
-    "build": "npm run clean && tsc && npm run build:bundle && npm run build:types:cjs && npm run build:minify",
-    "build:bundle": "rollup -c",
-    "build:types:cjs": "cp dist/index.d.ts dist/index.d.cts",
-    "build:minify": "node esbuild.config.js",
-    "build:dev": "tsc",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
-    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
-    "clean": "rm -rf dist coverage",
-    "size:check": "ls -lh dist/index.* | awk '{print $5, $9}'",
-    "generate:pdf": "npx tsx utils/generate-pdf.ts",
-    "quality:check": "npm run lint && npm run format:check && npm run test:coverage",
-    "prepublishOnly": "npm run quality:check && npm run build"
-  },
-  "files": [
-    "dist"
-  ],
-  "devDependencies": {
-    "@rollup/plugin-node-resolve": "^16.0.3",
-    "@rollup/plugin-typescript": "^12.3.0",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^20.10.5",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
-    "@typescript-eslint/parser": "^8.48.0",
-    "esbuild": "^0.27.0",
-    "eslint": "^9.39.1",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.4",
-    "jest": "^30.2.0",
-    "prettier": "^3.7.1",
-    "rollup": "^4.53.3",
-    "terser": "^5.44.1",
-    "ts-jest": "^29.4.5",
-    "tslib": "^2.8.1",
-    "typescript": "^5.3.3"
-  },
-  "type": "module",
-  "dependencies": {
-    "unpdf": "^1.6.2"
-  }
+	"name": "linkedin-parser-serverless",
+	"version": "1.0.3",
+	"description": "LinkedIn resume PDF parser with comprehensive Jest testing and test data generation",
+	"main": "dist/index.cjs",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"require": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
+		}
+	},
+	"author": {
+		"name": "Harold Martin",
+		"email": "harold.martin@gmail.com",
+		"url": "https://www.linkedin.com/in/harold-martin-98526971/"
+	},
+	"license": "MIT",
+	"keywords": [
+		"pdf",
+		"parser",
+		"resume",
+		"linkedin"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/hbmartin/linkedin-parser-serverless.git"
+	},
+	"homepage": "https://github.com/hbmartin/linkedin-parser-serverless#readme",
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"scripts": {
+		"build": "pnpm run clean && tsc && pnpm run build:bundle && pnpm run build:types:cjs && pnpm run build:minify",
+		"build:bundle": "rollup -c",
+		"build:types:cjs": "cp dist/index.d.ts dist/index.d.cts",
+		"build:minify": "node esbuild.config.js",
+		"build:dev": "tsc",
+		"dupes": "jscpd",
+		"format": "prettier --write \"src/**/*.{ts,tsx}\"",
+		"format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
+		"fta": "fta src",
+		"lint": "eslint src/**/*.ts",
+		"lint:fix": "eslint src/**/*.ts --fix",
+		"publint": "npx publint --pack npm",
+		"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+		"test:profile": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/unit/profile-fixture.test.ts",
+		"test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+		"test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+		"types:lint": "npm_config_cache=.npm-cache attw --pack .",
+		"demo:profile": "node demo-profile.js",
+		"demo:profile:strict": "node demo-profile.js --strict",
+		"clean": "rm -rf dist coverage",
+		"size:check": "ls -lh dist/index.* | awk '{print $5, $9}'",
+		"generate:pdf": "pnpm dlx tsx utils/generate-pdf.ts",
+		"quality:check": "pnpm run lint && pnpm run format:check && pnpm run test:coverage",
+		"prepublishOnly": "pnpm run quality:check && pnpm run build"
+	},
+	"files": [
+		"dist"
+	],
+	"devDependencies": {
+		"@arethetypeswrong/cli": "^0.18.2",
+		"@rollup/plugin-node-resolve": "^16.0.3",
+		"@rollup/plugin-typescript": "^12.3.0",
+		"@types/jest": "^30.0.0",
+		"@types/node": "^22",
+		"@typescript-eslint/eslint-plugin": "^8.48.0",
+		"@typescript-eslint/parser": "^8.48.0",
+		"esbuild": "^0.28.0",
+		"eslint": "^9.39.1",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-prettier": "^5.5.4",
+		"fta-cli": "^3.0.0",
+		"jest": "^30.2.0",
+		"jscpd": "^4.2.0",
+		"knip": "^6.13.1",
+		"prettier": "^3.7.1",
+		"publint": "^0.3.20",
+		"rollup": "^4.53.3",
+		"terser": "^5.44.1",
+		"ts-jest": "^29.4.5",
+		"tslib": "^2.8.1",
+		"typescript": "^6.0.3"
+	},
+	"type": "module",
+	"dependencies": {
+		"unpdf": "^1.6.2"
+	},
+	"resolutions": {
+		"@types/node": "^22"
+	},
+	"packageManager": "pnpm@11.1.2",
+	"jscpd": {
+		"threshold": 0,
+		"reporters": [
+			"json",
+			"console"
+		],
+		"ignore": [
+			"**/node_modules/**",
+			"**/dist/**",
+			"**/coverage/**",
+			"**/test/**",
+			"**/src/generated/**",
+			"**/*.json",
+			"**/*.test.ts",
+			"**/*.md",
+			"**/*.yml"
+		],
+		"absolute": false
+	}
 }
