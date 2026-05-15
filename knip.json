@@ -1,7 +1,6 @@
 {
 	"$schema": "https://unpkg.com/knip@6/schema.json",
 	"entry": [
-		"utils/generate-pdf.ts",
 		"tests/unit/**/*.test.ts",
 		"tests/e2e/**/*.js"
 	],
@@ -10,7 +9,6 @@
 		"tests/**/*.ts",
 		"tests/**/*.js",
 		"bin/**/*.js",
-		"utils/**/*.ts",
 		"*.js",
 		"*.cjs"
 	],

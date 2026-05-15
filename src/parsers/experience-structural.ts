@@ -6,6 +6,8 @@ import {
 } from '../types/structural.js';
 import {
   cleanOrganizationNameText,
+  isEducationSectionHeaderText,
+  isExperienceSectionHeaderText,
   isSectionHeaderText,
   looksLikeOrganizationNameText,
   looksLikePersonNameText,
@@ -47,7 +49,7 @@ export class ExperienceStructuralParser {
     groups: TextItem[][]
   ): { lines: string[]; groups: TextItem[][] } {
     const experienceStartIndex = lines.findIndex(line =>
-      /^experience$/i.test(line.trim())
+      isExperienceSectionHeaderText(line)
     );
 
     if (experienceStartIndex === -1) {
@@ -56,7 +58,7 @@ export class ExperienceStructuralParser {
 
     const educationStartOffset = lines
       .slice(experienceStartIndex + 1)
-      .findIndex(line => /^education$/i.test(line.trim()));
+      .findIndex(line => isEducationSectionHeaderText(line));
     const experienceEndIndex =
       educationStartOffset === -1
         ? lines.length
@@ -288,6 +290,10 @@ export class ExperienceStructuralParser {
             if (completedWorkExperience) {
               workExperiences.push(completedWorkExperience);
             }
+
+            currentWorkExperience = null;
+            currentPosition = null;
+            descriptionLines = [];
           }
 
           // Start new work experience with clean organization name
@@ -298,13 +304,6 @@ export class ExperienceStructuralParser {
               organization: cleanOrgName,
               positions: [],
             };
-            currentPosition = null;
-            descriptionLines = [];
-          } else {
-            // If no valid organization name, treat this as description for previous experience
-            if (section.text.trim()) {
-              descriptionLines.push(section.text);
-            }
           }
           break;
 
@@ -411,14 +410,10 @@ export class ExperienceStructuralParser {
       title: position.title,
       duration: position.duration ?? '',
       location: position.location
-        ? this.normalizeLocation(position.location)
+        ? this.normalizeLocationText(position.location)
         : undefined,
       description: descriptionLines.join(' ').trim(),
     };
-  }
-
-  private static normalizeLocation(location: string): string {
-    return location.replace(/,\s*([A-Z])\s+([A-Z])$/, ', $1$2');
   }
 
   private static extractCleanOrganizationName(text: string): string {
@@ -438,6 +433,7 @@ export class ExperienceStructuralParser {
       /\b([A-Z][a-z]+\s+\d{4}\s*-\s*Present)\b/i,
       /\b(\d{4}\s*-\s*\d{4})\b/,
       /\b(\d{4}\s*-\s*Present)\b/i,
+      /\b((?:janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+\d{4}\s*[-–]\s*(?:(?:janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+\d{4}|presente|atual|present))\b/i,
 
       // Month/year formats
       /\b([A-Z][a-z]+\s+\d{4})\b/i,

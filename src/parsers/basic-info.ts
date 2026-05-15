@@ -199,7 +199,10 @@ export class BasicInfoParser {
     for (let i = 0; i < Math.min(25, lines.length); i++) {
       const line = lines[i].trim();
       const lowerLine = line.toLowerCase();
+      const isLikelyEmail =
+        /^[A-Za-z0-9._%+-]+\s*@\s*[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/i.test(line);
       const isShortCompanyHeadline =
+        !isLikelyEmail &&
         /^[A-Za-z][A-Za-z\s./+-]{1,40}\s+@\s+[A-Za-z0-9][A-Za-z0-9\s.&-]{1,40}$/.test(
           line
         );

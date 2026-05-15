@@ -1,3 +1,15 @@
+const EXPERIENCE_SECTION_HEADER_TEXT = new Set([
+  'experience',
+  'experiencia',
+  'experiência',
+]);
+
+const EDUCATION_SECTION_HEADER_TEXT = new Set([
+  'education',
+  'formacao',
+  'formação',
+]);
+
 const SECTION_HEADER_TEXT = new Set([
   'contact',
   'contact info',
@@ -5,12 +17,8 @@ const SECTION_HEADER_TEXT = new Set([
   'skills',
   'languages',
   'summary',
-  'experience',
-  'experiencia',
-  'experiência',
-  'education',
-  'formacao',
-  'formação',
+  ...EXPERIENCE_SECTION_HEADER_TEXT,
+  ...EDUCATION_SECTION_HEADER_TEXT,
   'idiomas',
   'competencias',
   'competências',
@@ -104,15 +112,45 @@ const LOWERCASE_CONNECTOR_WORDS = new Set([
   'the',
 ]);
 
+const SINGLE_WORD_LOCATION_TEXT = new Set([
+  'remote',
+  'hybrid',
+  'onsite',
+  'on-site',
+  'california',
+  'texas',
+  'florida',
+  'illinois',
+  'pennsylvania',
+  'ohio',
+  'georgia',
+  'michigan',
+  'brasil',
+  'brazil',
+  'portugal',
+]);
+
 export function isSectionHeaderText(text: string): boolean {
   return SECTION_HEADER_TEXT.has(normalizeProfileText(text).toLowerCase());
+}
+
+export function isExperienceSectionHeaderText(text: string): boolean {
+  return EXPERIENCE_SECTION_HEADER_TEXT.has(
+    normalizeProfileText(text).toLowerCase()
+  );
+}
+
+export function isEducationSectionHeaderText(text: string): boolean {
+  return EDUCATION_SECTION_HEADER_TEXT.has(
+    normalizeProfileText(text).toLowerCase()
+  );
 }
 
 export function looksLikePositionTitleText(text: string): boolean {
   const normalizedText = normalizeProfileText(text);
   const lowerText = normalizedText.toLowerCase();
   const hasPositionKeyword = POSITION_KEYWORDS.some(keyword =>
-    lowerText.includes(keyword)
+    includesWholeKeyword(lowerText, keyword)
   );
 
   const looksLikeDescription =
@@ -166,6 +204,7 @@ export function looksLikeOrganizationNameText(text: string): boolean {
     /https?:\/\//i.test(normalizedText) ||
     /\blinkedin\.com\b/i.test(normalizedText) ||
     normalizedText.includes('•') ||
+    /^page\s+\d+\s+of\s+\d+$/i.test(normalizedText) ||
     looksLikeDateOrDurationText(normalizedText) ||
     looksLikePositionTitleText(normalizedText) ||
     isSectionHeaderText(normalizedText)
@@ -180,13 +219,14 @@ export function looksLikeOrganizationNameText(text: string): boolean {
   const hasConnector = /[,/&]/.test(normalizedText);
   const isAcronym = /^[A-Z][A-Z0-9&.+/-]{1,15}$/.test(normalizedText);
   const isSingleBrandWord =
-    /^[A-Z][A-Za-z0-9&.+-]{1,35}$/.test(normalizedText) &&
-    !/^[A-Z][a-z]{1,2}$/.test(normalizedText);
+    isSingleBrandWordShape(normalizedText) &&
+    !isLikelyLocationText(normalizedText);
   const isProperOrganizationPhrase =
     words.length >= 2 &&
     words.length <= 8 &&
     words.every(word => isOrganizationWordShape(word)) &&
-    (hasOrganizationWord || hasConnector);
+    !isLikelyLocationText(normalizedText) &&
+    (hasOrganizationWord || hasConnector || hasDistinctiveBrandWord(words));
 
   return (
     isAcronym ||
@@ -273,6 +313,54 @@ function organizationWords(text: string): string[] {
 function isOrganizationWordShape(word: string): boolean {
   return (
     LOWERCASE_CONNECTOR_WORDS.has(word.toLowerCase()) ||
-    /^[A-Z0-9][A-Za-z0-9&.'+-]*$/.test(word)
+    /^[\p{Lu}0-9][\p{L}0-9&.'+-]*$/u.test(word)
   );
+}
+
+function isSingleBrandWordShape(word: string): boolean {
+  return (
+    /^[\p{Lu}0-9][\p{L}0-9&.+-]{1,35}$/u.test(word) &&
+    !/^[\p{Lu}][\p{Ll}]{1,2}$/u.test(word)
+  );
+}
+
+function hasDistinctiveBrandWord(words: string[]): boolean {
+  return words.some(word => {
+    if (LOWERCASE_CONNECTOR_WORDS.has(word.toLowerCase())) {
+      return false;
+    }
+
+    return isSingleBrandWordShape(word);
+  });
+}
+
+function isLikelyLocationText(text: string): boolean {
+  const normalizedText = normalizeProfileText(text);
+  const lowerText = normalizedText.toLowerCase();
+
+  return (
+    SINGLE_WORD_LOCATION_TEXT.has(lowerText) ||
+    /^greater\s+[\p{Lu}][\p{L}\s]+(?:area)?$/iu.test(normalizedText) ||
+    /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}]{2}$/u.test(normalizedText) ||
+    /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}][\p{L}\s]+(?:,\s*[\p{Lu}][\p{L}\s]+)?$/u.test(
+      normalizedText
+    )
+  );
+}
+
+function includesWholeKeyword(text: string, keyword: string): boolean {
+  const keywordPattern = keyword
+    .split(/\s+/)
+    .map(part => escapeRegExp(part))
+    .join('\\s+');
+  const pattern = new RegExp(
+    `(^|[^\\p{L}\\p{N}])${keywordPattern}($|[^\\p{L}\\p{N}])`,
+    'iu'
+  );
+
+  return pattern.test(text);
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

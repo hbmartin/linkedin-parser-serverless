@@ -7,7 +7,9 @@ console.log('🚀 Running E2E Test with unpdf\n');
 async function runE2ETest() {
   try {
     console.log('📂 Loading test PDF...');
-    const pdfBuffer = fs.readFileSync('test_resume.pdf');
+    const pdfBuffer = fs.readFileSync(
+      new URL('../fixtures/test_resume.pdf', import.meta.url)
+    );
     console.log(`✅ PDF loaded: ${pdfBuffer.length} bytes`);
 
     console.log('\n🔍 Parsing PDF with library...');

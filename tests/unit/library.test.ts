@@ -51,7 +51,12 @@ const expectedTestResumeProfile = {
 };
 
 describe('LinkedIn PDF Parser Library', () => {
-  const testPdfPath = path.join(process.cwd(), 'test_resume.pdf');
+  const testPdfPath = path.join(
+    process.cwd(),
+    'tests',
+    'fixtures',
+    'test_resume.pdf'
+  );
   let pdfBuffer: Buffer;
 
   beforeAll(() => {

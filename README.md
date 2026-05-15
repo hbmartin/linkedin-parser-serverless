@@ -391,11 +391,11 @@ pnpm install
 pnpm run build
 
 # Run the local CLI directly against the included fixture
-node bin/cli.js Profile.pdf
+node bin/cli.js tests/fixtures/Profile.pdf
 
 # Check compact output and raw text output
-node bin/cli.js Profile.pdf --compact
-node bin/cli.js Profile.pdf --raw-text
+node bin/cli.js tests/fixtures/Profile.pdf --compact
+node bin/cli.js tests/fixtures/Profile.pdf --raw-text
 
 # Check usage output
 node bin/cli.js --help
@@ -404,9 +404,9 @@ node bin/cli.js --help
 For a quick smoke test, assert a few expected fields with `jq`:
 
 ```bash
-node bin/cli.js Profile.pdf | jq '.profile.name'
-node bin/cli.js Profile.pdf | jq '.profile.contact.email'
-node bin/cli.js Profile.pdf | jq '.profile.experience[0]'
+node bin/cli.js tests/fixtures/Profile.pdf | jq '.profile.name'
+node bin/cli.js tests/fixtures/Profile.pdf | jq '.profile.contact.email'
+node bin/cli.js tests/fixtures/Profile.pdf | jq '.profile.experience[0]'
 ```
 
 ## 📊 Performance

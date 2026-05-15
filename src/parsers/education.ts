@@ -144,8 +144,10 @@ export class EducationParser {
   private static removeYearFromDegree(line: string): string {
     return normalizeWhitespace(
       line
-        .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\)\s*$/, '')
-        .replace(/\s*[·-]?\s*(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\s*$/, '')
+        .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\)\s*/g, ' ')
+        .replace(/\s*[·-]?\s*(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\s*/g, ' ')
+        .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\)\s*/g, ' ')
+        .replace(/\s*[·-]?\s*\b(?:19|20)\d{2}\b\s*/g, ' ')
         .replace(/[·()]+$/g, '')
     );
   }
