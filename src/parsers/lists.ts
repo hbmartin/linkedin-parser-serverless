@@ -1,14 +1,20 @@
 import { REGEX_PATTERNS } from '../utils/regex-patterns.js';
-import {
-  extractSection,
-  splitLines,
-  normalizeWhitespace,
-} from '../utils/text-utils.js';
+import { normalizeWhitespace } from '../utils/text-utils.js';
+import type {
+  Language,
+  ParsedSectionResult,
+  SectionParseWarning,
+} from '../types/profile.js';
 import {
   isSectionHeaderText,
   looksLikeExperienceDetailText,
   looksLikeOrganizationNameText,
 } from '../utils/profile-text.js';
+import {
+  createTextParserLines,
+  getParserLineSectionHeader,
+  type ParserLineSection,
+} from '../utils/parser-lines.js';
 import { TOP_SKILLS_LIMIT } from '../utils/parser-limits.js';
 
 interface SkillCandidateContext {
@@ -16,30 +22,49 @@ interface SkillCandidateContext {
   followingLines: string[];
 }
 
-export interface Language {
-  language: string;
-  proficiency: string;
-}
+type ListState = 'seeking_section' | 'collecting';
 
 export class ListParser {
   static parseSkills(text: string): string[] {
-    const skillsSection = extractSection(text, REGEX_PATTERNS.TOP_SKILLS);
+    return this.parseSkillsWithWarnings(text).value;
+  }
 
-    if (!skillsSection) {
-      return [];
+  static parseSkillsWithWarnings(text: string): ParsedSectionResult<string[]> {
+    const parserLines = createTextParserLines(text);
+    const hasSkillsSection = parserLines.some(line =>
+      isHeaderForSection(line.text, 'top_skills')
+    );
+
+    if (!hasSkillsSection) {
+      return {
+        value: [],
+        warnings: [],
+      };
     }
 
-    const lines = splitLines(skillsSection).map(line =>
-      normalizeWhitespace(line)
-    );
+    let state: ListState = 'seeking_section';
     const skills: string[] = [];
+    const warnings: SectionParseWarning[] = [];
+    const lines = parserLines.filter(line => line.section === 'top_skills');
 
     for (let index = 0; index < lines.length; index++) {
-      const skill = lines[index];
-      const followingLines = lines.slice(index + 1, index + 4);
+      const skill = normalizeWhitespace(lines[index].text);
+      const followingLines = lines
+        .slice(index + 1, index + 4)
+        .map(line => line.text);
+
+      state = 'collecting';
 
       if (this.isLikelySkill({ skill, followingLines })) {
         skills.push(skill);
+      } else if (skill) {
+        warnings.push({
+          code: 'section_parse_warning',
+          field: 'item',
+          message: 'Discarded top skills line that did not look like a skill',
+          rawText: skill,
+          section: 'top_skills',
+        });
       }
 
       if (skills.length === TOP_SKILLS_LIMIT) {
@@ -47,21 +72,47 @@ export class ListParser {
       }
     }
 
-    return skills;
+    if (state === 'collecting' && skills.length === 0) {
+      warnings.push({
+        code: 'section_parse_warning',
+        field: 'section',
+        message: 'Detected a top skills section but could not extract skills',
+        section: 'top_skills',
+      });
+    }
+
+    return {
+      value: skills,
+      warnings,
+    };
   }
 
   static parseLanguages(text: string): Language[] {
-    const languagesSection = extractSection(text, REGEX_PATTERNS.LANGUAGES);
+    return this.parseLanguagesWithWarnings(text).value;
+  }
 
-    if (!languagesSection) {
-      return [];
+  static parseLanguagesWithWarnings(
+    text: string
+  ): ParsedSectionResult<Language[]> {
+    const parserLines = createTextParserLines(text);
+    const hasLanguagesSection = parserLines.some(line =>
+      isHeaderForSection(line.text, 'languages')
+    );
+
+    if (!hasLanguagesSection) {
+      return {
+        value: [],
+        warnings: [],
+      };
     }
 
-    const lines = splitLines(languagesSection);
+    let state: ListState = 'seeking_section';
+    const lines = parserLines.filter(line => line.section === 'languages');
     const languages: Language[] = [];
+    const warnings: SectionParseWarning[] = [];
 
     for (const line of lines) {
-      const normalizedLine = normalizeWhitespace(line);
+      const normalizedLine = normalizeWhitespace(line.text);
 
       if (
         !normalizedLine ||
@@ -73,13 +124,35 @@ export class ListParser {
         continue;
       }
 
+      state = 'collecting';
       const language = this.extractLanguageInfo(normalizedLine);
       if (language) {
         languages.push(language);
+      } else {
+        warnings.push({
+          code: 'section_parse_warning',
+          field: 'item',
+          message:
+            'Discarded language line that did not match a language shape',
+          rawText: normalizedLine,
+          section: 'languages',
+        });
       }
     }
 
-    return languages;
+    if (state === 'collecting' && languages.length === 0) {
+      warnings.push({
+        code: 'section_parse_warning',
+        field: 'section',
+        message: 'Detected a languages section but could not extract languages',
+        section: 'languages',
+      });
+    }
+
+    return {
+      value: languages,
+      warnings,
+    };
   }
 
   private static extractLanguageInfo(line: string): Language | null {
@@ -150,4 +223,10 @@ export class ListParser {
       !/^\d+$/.test(skill)
     );
   }
+}
+
+function isHeaderForSection(text: string, section: ParserLineSection): boolean {
+  const header = getParserLineSectionHeader(text);
+
+  return header?.kind === 'target' && header.section === section;
 }

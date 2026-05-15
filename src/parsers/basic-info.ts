@@ -12,6 +12,14 @@ import {
   looksLikePersonNameText,
   looksLikePositionTitleText,
 } from '../utils/profile-text.js';
+import type {
+  ParsedSectionResult,
+  SectionParseWarning,
+} from '../types/profile.js';
+import {
+  createTextParserLines,
+  getParserLineSectionHeader,
+} from '../utils/parser-lines.js';
 
 export interface Contact {
   email?: string;
@@ -27,6 +35,12 @@ export interface BasicInfo {
   summary?: string;
   contact: Contact;
 }
+
+type BasicInfoState =
+  | 'seeking_name'
+  | 'seeking_headline'
+  | 'seeking_location'
+  | 'in_summary';
 
 const LOWERCASE_NAME_CONNECTORS = new Set([
   'al',
@@ -54,12 +68,21 @@ const LOWERCASE_NAME_CONNECTORS = new Set([
 
 export class BasicInfoParser {
   static parse(text: string): BasicInfo {
-    return {
+    return this.parseWithWarnings(text).value;
+  }
+
+  static parseWithWarnings(text: string): ParsedSectionResult<BasicInfo> {
+    const value: BasicInfo = {
       name: this.extractName(text),
       headline: this.extractHeadline(text),
       location: this.extractLocation(text),
       summary: this.extractSummary(text),
       contact: this.extractContact(text),
+    };
+
+    return {
+      value,
+      warnings: this.createBasicInfoWarnings(text, value),
     };
   }
 
@@ -321,4 +344,80 @@ export class BasicInfoParser {
       isLikelyLocationText(line)
     );
   }
+
+  private static createBasicInfoWarnings(
+    text: string,
+    basicInfo: BasicInfo
+  ): SectionParseWarning[] {
+    const parserLines = createTextParserLines(text);
+    const warnings: SectionParseWarning[] = [];
+    let state: BasicInfoState = 'seeking_name';
+
+    for (const line of parserLines) {
+      if (!line.text) {
+        continue;
+      }
+
+      if (line.section === 'identity') {
+        state = nextBasicInfoState(state, line.text);
+      }
+    }
+
+    const hasContactSection = parserLines.some(line => {
+      const header = getParserLineSectionHeader(line.text);
+
+      return header?.kind === 'target' && header.section === 'contact';
+    });
+    const hasSummarySection = parserLines.some(line => {
+      const header = getParserLineSectionHeader(line.text);
+
+      return header?.kind === 'target' && header.section === 'summary';
+    });
+
+    if (
+      hasContactSection &&
+      !basicInfo.contact.email &&
+      !basicInfo.contact.phone &&
+      !basicInfo.contact.linkedin_url
+    ) {
+      warnings.push({
+        code: 'section_parse_warning',
+        field: 'contact',
+        message:
+          'Detected a contact section but could not extract contact fields',
+        section: 'contact',
+      });
+    }
+
+    if (hasSummarySection && !basicInfo.summary) {
+      warnings.push({
+        code: 'section_parse_warning',
+        field: 'summary',
+        message:
+          'Detected a summary section but could not extract summary text',
+        section: 'summary',
+      });
+    }
+
+    return warnings;
+  }
+}
+
+function nextBasicInfoState(
+  state: BasicInfoState,
+  line: string
+): BasicInfoState {
+  if (state === 'seeking_name' && line.length >= 2) {
+    return 'seeking_headline';
+  }
+
+  if (state === 'seeking_headline' && line.length >= 15) {
+    return 'seeking_location';
+  }
+
+  if (state === 'seeking_location' && isLikelyLocationText(line)) {
+    return 'in_summary';
+  }
+
+  return state;
 }

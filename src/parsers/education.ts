@@ -1,35 +1,65 @@
-import { REGEX_PATTERNS } from '../utils/regex-patterns.js';
-import {
-  extractSection,
-  splitLines,
-  normalizeWhitespace,
-} from '../utils/text-utils.js';
+import { normalizeWhitespace } from '../utils/text-utils.js';
 import type { StructuralLine } from '../utils/structural-lines.js';
+import type {
+  Education,
+  ParsedSectionResult,
+  SectionParseWarning,
+} from '../types/profile.js';
+import {
+  looksLikeDateRangeText,
+  parseProfileDateRange,
+} from '../utils/date-parser.js';
+import { createTextParserLines } from '../utils/parser-lines.js';
 import {
   isEducationSectionHeaderText,
   isSectionHeaderText,
 } from '../utils/profile-text.js';
 
-export interface Education {
-  degree: string;
-  institution: string;
-  year?: string;
-  location?: string;
-  description?: string;
-}
+type EducationLineState =
+  | 'seeking_institution'
+  | 'seeking_degree'
+  | 'in_details';
 
 export class EducationParser {
   static parse(text: string): Education[] {
-    const educationSection = extractSection(text, REGEX_PATTERNS.EDUCATION);
+    return this.parseWithWarnings(text).value;
+  }
 
-    if (!educationSection) {
-      return [];
-    }
+  static parseWithWarnings(text: string): ParsedSectionResult<Education[]> {
+    const lines = createTextParserLines(text)
+      .filter(line => line.section === 'education')
+      .map(line => line.text);
+    const value = this.parseEducationLines(lines);
 
+    return {
+      value,
+      warnings: this.createEducationWarnings(value, lines),
+    };
+  }
+
+  static parseStructural(lines: StructuralLine[]): Education[] {
+    return this.parseStructuralWithWarnings(lines).value;
+  }
+
+  static parseStructuralWithWarnings(
+    lines: StructuralLine[]
+  ): ParsedSectionResult<Education[]> {
+    const educationLines = this.extractStructuralEducationLines(lines);
+    const value = this.parseStructuralEducationLines(educationLines);
+
+    return {
+      value,
+      warnings: this.createEducationWarnings(
+        value,
+        educationLines.map(line => line.text)
+      ),
+    };
+  }
+
+  private static parseEducationLines(lines: string[]): Education[] {
     const educations: Education[] = [];
-    const lines = splitLines(educationSection);
-
     let currentEducation: Partial<Education> | null = null;
+    let state: EducationLineState = 'seeking_institution';
 
     for (const line of lines) {
       const normalizedLine = normalizeWhitespace(line);
@@ -53,6 +83,7 @@ export class EducationParser {
           year: '',
           location: '',
         };
+        state = 'seeking_degree';
       }
       // Check if this looks like a degree (could contain year info)
       else if (currentEducation && this.looksLikeDegree(normalizedLine)) {
@@ -64,23 +95,27 @@ export class EducationParser {
         } else {
           currentEducation.degree = normalizedLine;
         }
+        state = 'in_details';
       }
       // Check if this looks like a year
       else if (currentEducation && this.looksLikeYear(normalizedLine)) {
         currentEducation.year = normalizedLine;
+        state = 'in_details';
       }
       // Check if this looks like a location
       else if (currentEducation && this.looksLikeLocation(normalizedLine)) {
         currentEducation.location = normalizedLine;
+        state = 'in_details';
       }
       // If we don't have an institution yet, maybe this line is it
-      else if (!currentEducation) {
+      else if (!currentEducation || state === 'seeking_institution') {
         currentEducation = {
           institution: normalizedLine,
           degree: '',
           year: '',
           location: '',
         };
+        state = 'seeking_degree';
       }
     }
 
@@ -92,9 +127,9 @@ export class EducationParser {
     return educations;
   }
 
-  static parseStructural(lines: StructuralLine[]): Education[] {
-    const educationLines = this.extractStructuralEducationLines(lines);
-
+  private static parseStructuralEducationLines(
+    educationLines: StructuralLine[]
+  ): Education[] {
     if (educationLines.length === 0) {
       return [];
     }
@@ -191,7 +226,8 @@ export class EducationParser {
       /\b(19|20)\d{2}\b/.test(line) ||
       /\d{4}\s*-\s*\d{4}/.test(line) ||
       /\d{4}\s*-\s*present/i.test(line) ||
-      /\(\d{4}\s*-\s*\d{4}\)/.test(line)
+      /\(\d{4}\s*-\s*\d{4}\)/.test(line) ||
+      looksLikeDateRangeText(line)
     );
   }
 
@@ -237,7 +273,11 @@ export class EducationParser {
   }
 
   private static fillDefaults(education: Partial<Education>): Education {
+    const dateText = education.year || undefined;
+    const dates = dateText ? parseProfileDateRange(dateText) : undefined;
+
     return {
+      ...(dates ? { dates } : {}),
       institution: education.institution || '',
       degree: education.degree || '',
       year: education.year || '',
@@ -308,5 +348,51 @@ export class EducationParser {
     if (degree) {
       education.degree = normalizeWhitespace(`${education.degree} ${degree}`);
     }
+  }
+
+  private static createEducationWarnings(
+    educations: Education[],
+    lines: string[]
+  ): SectionParseWarning[] {
+    const warnings: SectionParseWarning[] = [];
+    const meaningfulLines = lines
+      .map(line => normalizeWhitespace(line))
+      .filter(line => line.length > 0 && !/^page\s+\d+/i.test(line));
+
+    if (meaningfulLines.length > 0 && educations.length === 0) {
+      warnings.push({
+        code: 'section_parse_warning',
+        field: 'entry',
+        message: 'Detected an education section but could not extract entries',
+        rawText: meaningfulLines.join(' '),
+        section: 'education',
+      });
+    }
+
+    educations.forEach((education, entry) => {
+      if (!education.institution) {
+        warnings.push({
+          code: 'section_parse_warning',
+          entry,
+          field: 'institution',
+          message: 'Could not extract institution for education entry',
+          rawText: education.degree,
+          section: 'education',
+        });
+      }
+
+      if (education.year && !education.dates) {
+        warnings.push({
+          code: 'section_parse_warning',
+          entry,
+          field: 'dates',
+          message: 'Could not parse education date range',
+          rawText: education.year,
+          section: 'education',
+        });
+      }
+    });
+
+    return warnings;
   }
 }

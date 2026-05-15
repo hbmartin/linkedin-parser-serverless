@@ -1,0 +1,70 @@
+import {
+  ExperienceSchema,
+  LinkedInProfileSchema,
+  ParseResultSchema,
+  ParseWarningSchema,
+} from '../../src/index.js';
+
+describe('exported Zod schemas', () => {
+  test('validates profile and result shapes', () => {
+    const profile = LinkedInProfileSchema.parse({
+      contact: {
+        email: 'person@example.com',
+      },
+      top_skills: ['TypeScript'],
+      languages: [],
+      certifications: [],
+      volunteer_work: [],
+      projects: [],
+      experience: [
+        {
+          title: 'Engineer',
+          company: 'Northstar AI',
+          duration: '2020 - 2022',
+          dates: {
+            originalText: '2020 - 2022',
+            start: { iso: '2020', precision: 'year', text: '2020' },
+            end: { iso: '2022', precision: 'year', text: '2022' },
+            isCurrent: false,
+          },
+        },
+      ],
+      education: [],
+    });
+
+    expect(profile.experience[0].dates?.start?.iso).toBe('2020');
+    expect(
+      ParseResultSchema.safeParse({
+        profile,
+        warnings: [],
+      }).success
+    ).toBe(true);
+  });
+
+  test('safeParse rejects invalid schema inputs', () => {
+    expect(ExperienceSchema.safeParse({ title: 'Engineer' }).success).toBe(
+      false
+    );
+    expect(ParseWarningSchema.safeParse({ code: 'unknown' }).success).toBe(
+      false
+    );
+  });
+
+  test('validates section warning shapes', () => {
+    expect(
+      ParseWarningSchema.parse({
+        code: 'section_parse_warning',
+        section: 'experience',
+        entry: 1,
+        field: 'dates',
+        message: 'Could not parse date range',
+        rawText: 'whenever',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        code: 'section_parse_warning',
+        section: 'experience',
+      })
+    );
+  });
+});

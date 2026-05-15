@@ -1,0 +1,97 @@
+import { z } from 'zod';
+
+export const ContactSchema = z.object({
+  email: z.string().optional(),
+  linkedin_url: z.string().optional(),
+  location: z.string().optional(),
+  phone: z.string().optional(),
+});
+
+export const LanguageSchema = z.object({
+  language: z.string(),
+  proficiency: z.string(),
+});
+
+export const ParsedProfileDateSchema = z.object({
+  iso: z.string(),
+  precision: z.enum(['year', 'month', 'day']),
+  text: z.string(),
+});
+
+export const ParsedDateRangeSchema = z.object({
+  durationText: z.string().optional(),
+  end: ParsedProfileDateSchema.optional(),
+  isCurrent: z.boolean(),
+  originalText: z.string(),
+  start: ParsedProfileDateSchema.optional(),
+});
+
+export const ExperienceSchema = z.object({
+  company: z.string(),
+  dates: ParsedDateRangeSchema.optional(),
+  description: z.string().optional(),
+  duration: z.string(),
+  location: z.string().optional(),
+  title: z.string(),
+});
+
+export const EducationSchema = z.object({
+  dates: ParsedDateRangeSchema.optional(),
+  degree: z.string(),
+  description: z.string().optional(),
+  institution: z.string(),
+  location: z.string().optional(),
+  year: z.string().optional(),
+});
+
+export const LinkedInProfileSchema = z.object({
+  certifications: z.array(z.string()),
+  contact: ContactSchema,
+  education: z.array(EducationSchema),
+  experience: z.array(ExperienceSchema),
+  headline: z.string().optional(),
+  languages: z.array(LanguageSchema),
+  location: z.string().optional(),
+  name: z.string().optional(),
+  projects: z.array(z.string()),
+  summary: z.string().optional(),
+  top_skills: z.array(z.string()),
+  volunteer_work: z.array(z.string()),
+});
+
+export const MissingProfileFieldWarningSchema = z.object({
+  code: z.literal('missing_profile_field'),
+  field: z.enum(['profile.name', 'profile.contact.email']),
+  message: z.string(),
+});
+
+export const SectionParseWarningSchema = z.object({
+  code: z.literal('section_parse_warning'),
+  entry: z.number().int().nonnegative().optional(),
+  field: z.string(),
+  message: z.string(),
+  rawText: z.string().optional(),
+  section: z.enum([
+    'profile',
+    'contact',
+    'summary',
+    'top_skills',
+    'languages',
+    'certifications',
+    'volunteer_work',
+    'projects',
+    'experience',
+    'education',
+  ]),
+});
+
+export const ParseWarningSchema = z.union([
+  MissingProfileFieldWarningSchema,
+  SectionParseWarningSchema,
+]);
+
+export const ParseResultSchema = z.object({
+  profile: LinkedInProfileSchema,
+  rawText: z.string().optional(),
+  warnings: z.array(ParseWarningSchema),
+});

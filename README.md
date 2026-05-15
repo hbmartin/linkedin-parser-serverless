@@ -330,6 +330,7 @@ interface Experience {
   title: string;
   company: string;
   duration: string;
+  dates?: ParsedDateRange;
   location?: string;
   description?: string;
 }
@@ -347,8 +348,29 @@ interface Education {
   degree: string;
   institution: string;
   year?: string;
+  dates?: ParsedDateRange;
   location?: string;
   description?: string;
+}
+```
+</details>
+
+<details>
+<summary><strong>ParsedDateRange</strong></summary>
+
+```typescript
+interface ParsedProfileDate {
+  iso: string;
+  precision: "year" | "month" | "day";
+  text: string;
+}
+
+interface ParsedDateRange {
+  originalText: string;
+  start?: ParsedProfileDate;
+  end?: ParsedProfileDate;
+  isCurrent: boolean;
+  durationText?: string;
 }
 ```
 </details>
@@ -384,9 +406,39 @@ interface MissingProfileFieldWarning {
   message: string;
 }
 
-type ParseWarning = MissingProfileFieldWarning;
+interface SectionParseWarning {
+  code: 'section_parse_warning';
+  section:
+    | 'profile'
+    | 'contact'
+    | 'summary'
+    | 'top_skills'
+    | 'languages'
+    | 'certifications'
+    | 'volunteer_work'
+    | 'projects'
+    | 'experience'
+    | 'education';
+  entry?: number;
+  field: string;
+  message: string;
+  rawText?: string;
+}
+
+type ParseWarning = MissingProfileFieldWarning | SectionParseWarning;
 ```
 </details>
+
+### Zod Schemas
+
+The main entrypoint also exports named Zod schemas for runtime validation:
+
+```typescript
+import { LinkedInProfileSchema, ParseResultSchema } from "linkedin-parser-serverless";
+
+const result = ParseResultSchema.parse(await parseLinkedInPDF(pdfData));
+const profile = LinkedInProfileSchema.parse(result.profile);
+```
 
 <details>
 <summary><strong>ParseResult</strong></summary>

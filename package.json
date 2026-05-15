@@ -98,7 +98,9 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"unpdf": "^1.6.2"
+		"chrono-node": "^2.9.1",
+		"unpdf": "^1.6.2",
+		"zod": "^4.4.3"
 	},
 	"resolutions": {
 		"@types/node": "^22"

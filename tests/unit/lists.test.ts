@@ -60,4 +60,26 @@ describe('ListParser', () => {
     expect(skills).toHaveLength(10);
     expect(skills.at(-1)).toBe('Skill 10');
   });
+
+  test('returns warnings for malformed language rows', () => {
+    const result = ListParser.parseLanguagesWithWarnings(`
+      Languages
+      12345
+      English (Native or Bilingual)
+    `);
+
+    expect(result.value).toEqual([
+      {
+        language: 'English',
+        proficiency: 'Native or Bilingual',
+      },
+    ]);
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'item',
+        rawText: '12345',
+        section: 'languages',
+      }),
+    ]);
+  });
 });

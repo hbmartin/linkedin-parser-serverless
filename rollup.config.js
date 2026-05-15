@@ -23,7 +23,7 @@ export default {
       inlineDynamicImports: true,
     },
   ],
-  external: ['unpdf'],
+  external: ['chrono-node', 'unpdf', 'zod'],
   plugins: [
     resolve({
       preferBuiltins: true,

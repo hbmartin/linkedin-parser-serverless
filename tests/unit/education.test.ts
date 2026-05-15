@@ -85,6 +85,30 @@ describe('EducationParser', () => {
       }),
     ]);
   });
+
+  test('adds structured dates for education ranges', () => {
+    const [education] = EducationParser.parse(`
+      Education
+      Example University
+      Bachelor of Science
+      2020 - 2024
+    `);
+
+    expect(education.dates).toEqual({
+      originalText: '2020 - 2024',
+      start: {
+        iso: '2020',
+        precision: 'year',
+        text: '2020',
+      },
+      end: {
+        iso: '2024',
+        precision: 'year',
+        text: '2024',
+      },
+      isCurrent: false,
+    });
+  });
 });
 
 function structuralLine({
