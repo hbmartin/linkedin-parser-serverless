@@ -82,4 +82,19 @@ describe('ListParser', () => {
       }),
     ]);
   });
+
+  test('does not turn repeated language headers into language entries', () => {
+    const result = ListParser.parseLanguagesWithWarnings(`
+      Languages
+      Language
+    `);
+
+    expect(result.value).toEqual([]);
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'section',
+        section: 'languages',
+      }),
+    ]);
+  });
 });

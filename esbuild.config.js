@@ -1,7 +1,8 @@
 import esbuild from 'esbuild';
+import { fileURLToPath } from 'node:url';
 
 // Build ultra-minified version
-esbuild.build({
+const esbuildConfig = {
   entryPoints: ['src/index.ts'],
   bundle: true,
   outfile: 'dist/index.min.js',
@@ -17,4 +18,10 @@ esbuild.build({
   tsconfig: 'tsconfig.json',
   treeShaking: true,
   drop: ['console', 'debugger'],
-}).catch(() => process.exit(1));
+};
+
+export default esbuildConfig;
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  esbuild.build(esbuildConfig).catch(() => process.exit(1));
+}

@@ -58,7 +58,7 @@ describe('ExperienceStructuralParser', () => {
             precision: 'month',
             text: 'march 2024',
           },
-          isCurrent: false,
+          kind: 'completed',
         },
         location: 'Austin, TX',
         description: 'Built data products for enterprise teams.',
@@ -212,7 +212,7 @@ describe('ExperienceStructuralParser', () => {
               precision: 'year',
               text: '2024',
             },
-            isCurrent: false,
+            kind: 'completed',
           },
           title: 'Principal Engineer',
         },
@@ -256,6 +256,56 @@ describe('ExperienceStructuralParser', () => {
         field: 'dates',
         section: 'experience',
       }),
+    ]);
+  });
+
+  test('starts a new organization while seeking missing dates', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'Blue Oak Labs', y: 620 }),
+      textItem({ text: 'Staff Engineer', y: 600, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2024', y: 580 }),
+    ];
+
+    const experiences = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Northstar Solutions',
+        positions: [
+          expect.objectContaining({
+            title: 'Principal Engineer',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Blue Oak Labs',
+        positions: [
+          expect.objectContaining({
+            duration: '2021 - 2024',
+            title: 'Staff Engineer',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('uses unique warning entries for nested positions', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'Staff Engineer', y: 620, fontSize: 11.5 }),
+      textItem({ text: 'Blue Oak Labs', y: 590 }),
+      textItem({ text: 'Advisor', y: 570, fontSize: 11.5 }),
+    ]);
+
+    expect(result.warnings).toEqual([
+      expect.objectContaining({ entry: 0, rawText: 'Principal Engineer' }),
+      expect.objectContaining({ entry: 1, rawText: 'Staff Engineer' }),
+      expect.objectContaining({ entry: 2, rawText: 'Advisor' }),
     ]);
   });
 });

@@ -106,7 +106,7 @@ describe('EducationParser', () => {
         precision: 'year',
         text: '2024',
       },
-      isCurrent: false,
+      kind: 'completed',
     });
   });
 });

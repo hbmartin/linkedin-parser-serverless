@@ -25,7 +25,7 @@ describe('exported Zod schemas', () => {
             originalText: '2020 - 2022',
             start: { iso: '2020', precision: 'year', text: '2020' },
             end: { iso: '2022', precision: 'year', text: '2022' },
-            isCurrent: false,
+            kind: 'completed',
           },
         },
       ],
@@ -48,6 +48,19 @@ describe('exported Zod schemas', () => {
     expect(ParseWarningSchema.safeParse({ code: 'unknown' }).success).toBe(
       false
     );
+    expect(
+      ExperienceSchema.safeParse({
+        title: 'Engineer',
+        company: 'Northstar AI',
+        duration: '2020 - Present',
+        dates: {
+          kind: 'current',
+          originalText: '2020 - Present',
+          start: { iso: '2020', precision: 'year', text: '2020' },
+          end: { iso: '2022', precision: 'year', text: '2022' },
+        },
+      }).success
+    ).toBe(false);
   });
 
   test('validates section warning shapes', () => {

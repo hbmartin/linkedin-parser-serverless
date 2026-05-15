@@ -129,6 +129,22 @@ const MONTH_REPLACEMENTS: ReadonlyArray<readonly [string, string]> = [
   ['december', 'December'],
 ];
 
+const CURRENT_TEXT_PATTERN = createWordListPattern(CURRENT_WORDS);
+const DURATION_TEXT_PATTERN = createWordListPattern(DURATION_WORDS);
+const MONTH_REPLACEMENT_PATTERNS = MONTH_REPLACEMENTS.map(
+  ([localizedMonth, englishMonth]) => ({
+    englishMonth,
+    pattern: new RegExp(
+      `(^|[^\\p{L}])${escapeRegExp(localizedMonth)}(?=[^\\p{L}]|$)`,
+      'giu'
+    ),
+  })
+);
+const COMPACT_YEAR_RANGE_PATTERN = new RegExp(
+  `^((?:19|20)\\d{2})-((?:19|20)\\d{2}|${CURRENT_WORDS.map(escapeRegExp).join('|')})$`,
+  'iu'
+);
+
 export function parseProfileDateRange(
   text: string
 ): ParsedDateRange | undefined {
@@ -153,7 +169,7 @@ export function parseProfileDateRange(
       ? undefined
       : parseProfileDate(rangeParts[1]);
 
-    if (!start && !end && !isCurrent) {
+    if (!start || (!end && !isCurrent)) {
       return undefined;
     }
 
@@ -220,14 +236,32 @@ function createDateRange({
   end?: ParsedProfileDate;
   isCurrent: boolean;
   originalText: string;
-  start?: ParsedProfileDate;
+  start: ParsedProfileDate;
 }): ParsedDateRange {
-  return {
+  const base = {
     ...(durationText ? { durationText } : {}),
-    ...(end ? { end } : {}),
-    isCurrent,
     originalText,
-    ...(start ? { start } : {}),
+    start,
+  };
+
+  if (isCurrent) {
+    return {
+      ...base,
+      kind: 'current',
+    };
+  }
+
+  if (end) {
+    return {
+      ...base,
+      end,
+      kind: 'completed',
+    };
+  }
+
+  return {
+    ...base,
+    kind: 'single',
   };
 }
 
@@ -272,6 +306,32 @@ function parseProfileDate(text: string): ParsedProfileDate | undefined {
     };
   }
 
+  const isoMonthOrDayMatch = normalizedText.match(
+    /^((?:19|20)\d{2})-(0[1-9]|1[0-2])(?:-([0-2]\d|3[01]))?$/
+  );
+
+  if (isoMonthOrDayMatch) {
+    const year = Number(isoMonthOrDayMatch[1]);
+    const month = Number(isoMonthOrDayMatch[2]);
+    const dayText = isoMonthOrDayMatch[3];
+
+    if (dayText) {
+      const day = Number(dayText);
+
+      return {
+        iso: formatIsoDate({ day, month, precision: 'day', year }),
+        precision: 'day',
+        text: normalizedText,
+      };
+    }
+
+    return {
+      iso: formatIsoDate({ month, precision: 'month', year }),
+      precision: 'month',
+      text: normalizedText,
+    };
+  }
+
   const chronoRange = parseWithChrono(normalizedText);
 
   return chronoRange?.start;
@@ -295,35 +355,68 @@ function createParsedProfileDate(
       ? 'month'
       : 'year';
 
+  if (precision === 'day') {
+    if (!month || !day) {
+      return undefined;
+    }
+
+    return {
+      iso: formatIsoDate({ day, month, precision, year }),
+      precision,
+      text: cleanDateText(text),
+    };
+  }
+
+  if (precision === 'month') {
+    if (!month) {
+      return undefined;
+    }
+
+    return {
+      iso: formatIsoDate({ month, precision, year }),
+      precision,
+      text: cleanDateText(text),
+    };
+  }
+
   return {
-    iso: formatIsoDate({ day, month, precision, year }),
+    iso: formatIsoDate({ precision, year }),
     precision,
     text: cleanDateText(text),
   };
 }
 
-function formatIsoDate({
-  day,
-  month,
-  precision,
-  year,
-}: {
-  day: number | null;
-  month: number | null;
-  precision: ParsedProfileDate['precision'];
-  year: number;
-}): string {
+type FormatIsoDateParams =
+  | {
+      precision: 'year';
+      year: number;
+    }
+  | {
+      month: number;
+      precision: 'month';
+      year: number;
+    }
+  | {
+      day: number;
+      month: number;
+      precision: 'day';
+      year: number;
+    };
+
+function formatIsoDate(params: FormatIsoDateParams): string {
+  const { precision, year } = params;
+
   if (precision === 'year') {
     return `${year}`;
   }
 
-  const paddedMonth = String(month ?? 1).padStart(2, '0');
+  const paddedMonth = String(params.month).padStart(2, '0');
 
   if (precision === 'month') {
     return `${year}-${paddedMonth}`;
   }
 
-  return `${year}-${paddedMonth}-${String(day ?? 1).padStart(2, '0')}`;
+  return `${year}-${paddedMonth}-${String(params.day).padStart(2, '0')}`;
 }
 
 function endTextFromChronoResult(result: ParsedResult): string {
@@ -339,11 +432,14 @@ function endTextFromChronoResult(result: ParsedResult): string {
 }
 
 function extractDatePortion(text: string): DatePortion {
+  // LinkedIn often appends durations after a middle dot or pipe; keep the left
+  // side as the date range while preserving duration text for the parsed result.
   const dotParts = text.split(/\s*[·|]\s*/);
   const durationText = dotParts
     .slice(1)
     .map(part => cleanDateText(part.replace(/[()]/g, '')))
     .find(part => containsDurationWord(part));
+  // Parenthetical durations belong in durationText, not in the chrono input.
   const dateText = trimLeadingNonDateText(
     dotParts[0].replace(
       /\(([^)]*(?:yr|year|mo|month|ano|mes|mês)[^)]*)\)/iu,
@@ -366,7 +462,11 @@ function extractDatePortion(text: string): DatePortion {
 
 function trimLeadingNonDateText(text: string): string {
   const normalizedText = cleanDateText(text);
+  // Search the localized-normalized version so month names such as "janeiro"
+  // are found using the same English month vocabulary chrono understands.
   const normalizedEnglishText = normalizeLocalizedDateText(normalizedText);
+  // Find the first credible date token and discard leading prose like
+  // "Provided support from" before handing the date portion to parsers.
   const dateStartIndex = normalizedEnglishText.search(
     /\b(?:(?:19|20)\d{2}|January|February|March|April|May|June|July|August|September|October|November|December)\b/iu
   );
@@ -377,34 +477,46 @@ function trimLeadingNonDateText(text: string): string {
 }
 
 function splitDateRange(text: string): string[] {
+  // Require spaces around range separators so ISO dates and "Jan-2020" remain
+  // single dates; compact year ranges are handled explicitly below.
   const rangeParts = text
-    .split(/\s*-\s*/u)
+    .split(/\s+-\s+/u)
     .map(part => cleanDateText(part))
     .filter(Boolean);
 
-  return rangeParts.length > 1 ? rangeParts : [cleanDateText(text)];
+  if (rangeParts.length > 1) {
+    return rangeParts;
+  }
+
+  const compactYearRange = cleanDateText(text).match(
+    COMPACT_YEAR_RANGE_PATTERN
+  );
+  if (compactYearRange) {
+    return [compactYearRange[1], compactYearRange[2]];
+  }
+
+  return [cleanDateText(text)];
 }
 
 function normalizeLocalizedDateText(text: string): string {
   let normalizedText = cleanDateText(text).toLowerCase();
 
-  for (const [localizedMonth, englishMonth] of MONTH_REPLACEMENTS) {
-    normalizedText = normalizedText.replace(
-      new RegExp(
-        `(^|[^\\p{L}])${escapeRegExp(localizedMonth)}([^\\p{L}]|$)`,
-        'giu'
-      ),
-      `$1${englishMonth}$2`
-    );
+  // Replace localized month names with English equivalents before chrono runs.
+  for (const { englishMonth, pattern } of MONTH_REPLACEMENT_PATTERNS) {
+    normalizedText = normalizedText.replace(pattern, `$1${englishMonth}`);
   }
 
-  return normalizedText
-    .replace(
-      /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:de|of|del|du)\s+((?:19|20)\d{2})\b/giu,
-      '$1 $2'
-    )
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    normalizedText
+      // Collapse forms such as "março de 2024" or "March of 2024".
+      .replace(
+        /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:de|of|del|du)\s+((?:19|20)\d{2})\b/giu,
+        '$1 $2'
+      )
+      // Normalize whitespace introduced by replacements and PDF extraction.
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 function cleanDateText(text: string): string {
@@ -419,21 +531,13 @@ function cleanDateText(text: string): string {
 function isCurrentText(text: string): boolean {
   const normalizedText = cleanDateText(text).toLowerCase();
 
-  return CURRENT_WORDS.some(word =>
-    new RegExp(`(^|[^\\p{L}])${escapeRegExp(word)}([^\\p{L}]|$)`, 'iu').test(
-      normalizedText
-    )
-  );
+  return CURRENT_TEXT_PATTERN.test(normalizedText);
 }
 
 function containsDurationWord(text: string): boolean {
   const lowerText = text.toLowerCase();
 
-  return DURATION_WORDS.some(word =>
-    new RegExp(`(^|[^\\p{L}])${escapeRegExp(word)}([^\\p{L}]|$)`, 'iu').test(
-      lowerText
-    )
-  );
+  return DURATION_TEXT_PATTERN.test(lowerText);
 }
 
 function hasProfileDateSignal(text: string): boolean {
@@ -442,4 +546,11 @@ function hasProfileDateSignal(text: string): boolean {
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function createWordListPattern(words: readonly string[]): RegExp {
+  return new RegExp(
+    `(^|[^\\p{L}])(?:${words.map(escapeRegExp).join('|')})(?=[^\\p{L}]|$)`,
+    'iu'
+  );
 }

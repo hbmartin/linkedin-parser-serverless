@@ -366,10 +366,10 @@ interface ParsedProfileDate {
 }
 
 interface ParsedDateRange {
+  kind: 'current' | 'completed' | 'single';
   originalText: string;
-  start?: ParsedProfileDate;
+  start: ParsedProfileDate;
   end?: ParsedProfileDate;
-  isCurrent: boolean;
   durationText?: string;
 }
 ```
@@ -434,7 +434,7 @@ type ParseWarning = MissingProfileFieldWarning | SectionParseWarning;
 The main entrypoint also exports named Zod schemas for runtime validation:
 
 ```typescript
-import { LinkedInProfileSchema, ParseResultSchema } from "linkedin-parser-serverless";
+import { LinkedInProfileSchema, ParseResultSchema, parseLinkedInPDF } from "linkedin-parser-serverless";
 
 const result = ParseResultSchema.parse(await parseLinkedInPDF(pdfData));
 const profile = LinkedInProfileSchema.parse(result.profile);

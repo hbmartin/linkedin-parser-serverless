@@ -18,13 +18,26 @@ export const ParsedProfileDateSchema = z.object({
   text: z.string(),
 });
 
-export const ParsedDateRangeSchema = z.object({
+const ParsedDateRangeBaseSchema = z.object({
   durationText: z.string().optional(),
-  end: ParsedProfileDateSchema.optional(),
-  isCurrent: z.boolean(),
   originalText: z.string(),
-  start: ParsedProfileDateSchema.optional(),
+  start: ParsedProfileDateSchema,
 });
+
+export const ParsedDateRangeSchema = z.discriminatedUnion('kind', [
+  ParsedDateRangeBaseSchema.extend({
+    end: z.undefined().optional(),
+    kind: z.literal('current'),
+  }),
+  ParsedDateRangeBaseSchema.extend({
+    end: ParsedProfileDateSchema,
+    kind: z.literal('completed'),
+  }),
+  ParsedDateRangeBaseSchema.extend({
+    end: z.undefined().optional(),
+    kind: z.literal('single'),
+  }),
+]);
 
 export const ExperienceSchema = z.object({
   company: z.string(),

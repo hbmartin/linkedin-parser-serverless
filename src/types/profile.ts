@@ -18,13 +18,25 @@ export interface ParsedProfileDate {
   text: string;
 }
 
-export interface ParsedDateRange {
+interface ParsedDateRangeBase {
   originalText: string;
-  start?: ParsedProfileDate;
-  end?: ParsedProfileDate;
-  isCurrent: boolean;
+  start: ParsedProfileDate;
   durationText?: string;
 }
+
+export type ParsedDateRange =
+  | (ParsedDateRangeBase & {
+      kind: 'current';
+      end?: undefined;
+    })
+  | (ParsedDateRangeBase & {
+      kind: 'completed';
+      end: ParsedProfileDate;
+    })
+  | (ParsedDateRangeBase & {
+      kind: 'single';
+      end?: undefined;
+    });
 
 export interface Experience {
   title: string;

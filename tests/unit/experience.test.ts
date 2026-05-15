@@ -30,7 +30,7 @@ describe('ExperienceParser', () => {
           precision: 'year',
           text: '2024',
         },
-        isCurrent: false,
+        kind: 'completed',
       },
       location: 'Austin, TX',
       description: 'Built platform services for customer-facing products.',
@@ -82,7 +82,7 @@ describe('ExperienceParser', () => {
           precision: 'year',
           text: '2022',
         },
-        isCurrent: false,
+        kind: 'completed',
       },
       location: '',
       description: 'Led delivery for customer-facing products.',
@@ -104,5 +104,20 @@ describe('ExperienceParser', () => {
         section: 'experience',
       }),
     ]);
+  });
+
+  test('does not treat prose lines with years as durations', () => {
+    const [experience] = ExperienceParser.parse(`
+      Experience
+      Northstar AI
+      Principal Software Engineer
+      2021 - 2024
+      Built customer-facing systems in 2020 before leading platform work.
+    `);
+
+    expect(experience.duration).toBe('2021 - 2024');
+    expect(experience.description).toBe(
+      'Built customer-facing systems in 2020 before leading platform work.'
+    );
   });
 });
