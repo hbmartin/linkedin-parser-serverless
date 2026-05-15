@@ -236,9 +236,22 @@ export class ExperienceParser {
   }
 
   private static looksLikeDuration(line: string): boolean {
+    const normalizedLine = normalizeWhitespace(line);
     REGEX_PATTERNS.DATE_RANGE.lastIndex = 0;
 
-    return REGEX_PATTERNS.DATE_RANGE.test(line) || looksLikeDateRangeText(line);
+    if (REGEX_PATTERNS.DATE_RANGE.test(normalizedLine)) {
+      return true;
+    }
+
+    if (normalizedLine.length > 40) {
+      return false;
+    }
+
+    return (
+      /[-–—]|\bto\b|\bpresent\b|\bcurrent\b|\batual\b|\bpresente\b/i.test(
+        normalizedLine
+      ) && looksLikeDateRangeText(normalizedLine)
+    );
   }
 
   private static looksLikeLocation(line: string): boolean {

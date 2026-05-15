@@ -129,7 +129,7 @@ describe('Profile.pdf fixture', () => {
             precision: 'year',
             text: '2012',
           },
-          isCurrent: false,
+          kind: 'completed',
         },
         location: '',
       },

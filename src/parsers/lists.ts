@@ -106,7 +106,6 @@ export class ListParser {
       };
     }
 
-    let state: ListState = 'seeking_section';
     const lines = parserLines.filter(line => line.section === 'languages');
     const languages: Language[] = [];
     const warnings: SectionParseWarning[] = [];
@@ -116,6 +115,7 @@ export class ListParser {
 
       if (
         !normalizedLine ||
+        isLanguageSectionHeaderText(normalizedLine) ||
         normalizedLine.toLowerCase().includes('summary') ||
         normalizedLine.toLowerCase().includes('experience') ||
         normalizedLine.toLowerCase().includes('education') ||
@@ -124,7 +124,6 @@ export class ListParser {
         continue;
       }
 
-      state = 'collecting';
       const language = this.extractLanguageInfo(normalizedLine);
       if (language) {
         languages.push(language);
@@ -140,7 +139,7 @@ export class ListParser {
       }
     }
 
-    if (state === 'collecting' && languages.length === 0) {
+    if (hasLanguagesSection && languages.length === 0) {
       warnings.push({
         code: 'section_parse_warning',
         field: 'section',
@@ -229,4 +228,8 @@ function isHeaderForSection(text: string, section: ParserLineSection): boolean {
   const header = getParserLineSectionHeader(text);
 
   return header?.kind === 'target' && header.section === section;
+}
+
+function isLanguageSectionHeaderText(text: string): boolean {
+  return /^languages?$/i.test(text) || isHeaderForSection(text, 'languages');
 }

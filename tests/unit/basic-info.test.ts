@@ -46,4 +46,19 @@ describe('BasicInfoParser', () => {
 
     expect(profile.contact.email).toBeUndefined();
   });
+
+  test('does not emit basic-info warnings for later empty sections', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Test User
+      Principal Advisor
+      Toronto, Ontario, Canada
+
+      Experience
+      Example Labs
+      Summary
+      Contact
+    `);
+
+    expect(result.warnings).toEqual([]);
+  });
 });

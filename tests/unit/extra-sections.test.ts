@@ -80,4 +80,18 @@ describe('ExtraSectionParser', () => {
       }),
     ]);
   });
+
+  test('suppresses structural empty-column warnings after merged entries exist', () => {
+    const result = ExtraSectionParser.parseStructuralWithWarnings([
+      line({ column: 'left', text: 'Certifications', y: 760 }),
+      line({ column: 'left', text: 'Cloud Architect Professional', y: 740 }),
+      line({ column: 'right', text: 'Certifications', y: 760 }),
+      line({ column: 'right', text: 'Experience', y: 740 }),
+    ]);
+
+    expect(result.value.certifications).toEqual([
+      'Cloud Architect Professional',
+    ]);
+    expect(result.warnings).toEqual([]);
+  });
 });

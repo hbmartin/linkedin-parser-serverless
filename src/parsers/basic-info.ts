@@ -19,6 +19,7 @@ import type {
 import {
   createTextParserLines,
   getParserLineSectionHeader,
+  type NormalizedParserLine,
 } from '../utils/parser-lines.js';
 
 export interface Contact {
@@ -351,24 +352,17 @@ export class BasicInfoParser {
   ): SectionParseWarning[] {
     const parserLines = createTextParserLines(text);
     const warnings: SectionParseWarning[] = [];
-    let state: BasicInfoState = 'seeking_name';
+    const headerLines = parserLines.slice(
+      0,
+      findBasicInfoHeaderEndIndex(parserLines)
+    );
 
-    for (const line of parserLines) {
-      if (!line.text) {
-        continue;
-      }
-
-      if (line.section === 'identity') {
-        state = nextBasicInfoState(state, line.text);
-      }
-    }
-
-    const hasContactSection = parserLines.some(line => {
+    const hasContactSection = headerLines.some(line => {
       const header = getParserLineSectionHeader(line.text);
 
       return header?.kind === 'target' && header.section === 'contact';
     });
-    const hasSummarySection = parserLines.some(line => {
+    const hasSummarySection = headerLines.some(line => {
       const header = getParserLineSectionHeader(line.text);
 
       return header?.kind === 'target' && header.section === 'summary';
@@ -401,6 +395,40 @@ export class BasicInfoParser {
 
     return warnings;
   }
+}
+
+function findBasicInfoHeaderEndIndex(
+  parserLines: NormalizedParserLine[]
+): number {
+  let state: BasicInfoState = 'seeking_name';
+
+  for (let index = 0; index < parserLines.length; index++) {
+    const line = parserLines[index];
+
+    if (!line.text) {
+      continue;
+    }
+
+    const header = getParserLineSectionHeader(line.text);
+
+    if (header?.kind === 'target') {
+      return header.section === 'contact' || header.section === 'summary'
+        ? index + 1
+        : index;
+    }
+
+    if (line.section !== 'identity') {
+      return index;
+    }
+
+    state = nextBasicInfoState(state, line.text);
+
+    if (state === 'in_summary') {
+      return index + 1;
+    }
+  }
+
+  return parserLines.length;
 }
 
 function nextBasicInfoState(

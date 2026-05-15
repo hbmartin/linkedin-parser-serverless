@@ -12,7 +12,7 @@ describe('profile date parser', () => {
         precision: 'month',
         text: 'march 2021',
       },
-      isCurrent: false,
+      kind: 'completed',
       originalText: 'Jan 2020 - Mar 2021 · 1 yr 3 mos',
       start: {
         iso: '2020-01',
@@ -24,7 +24,7 @@ describe('profile date parser', () => {
 
   test('parses current roles without inventing an end date', () => {
     expect(parseProfileDateRange('Jan 2020 - Present')).toEqual({
-      isCurrent: true,
+      kind: 'current',
       originalText: 'Jan 2020 - Present',
       start: {
         iso: '2020-01',
@@ -43,7 +43,7 @@ describe('profile date parser', () => {
     );
     expect(parseProfileDateRange('janvier 2020 - présent')).toEqual(
       expect.objectContaining({
-        isCurrent: true,
+        kind: 'current',
         start: expect.objectContaining({ iso: '2020-01' }),
       })
     );
@@ -55,5 +55,40 @@ describe('profile date parser', () => {
     );
     expect(parseProfileDateRange('in 3 months')).toBeUndefined();
     expect(parseProfileDateRange('sometime later')).toBeUndefined();
+  });
+
+  test('does not split ISO or compact month-year dates on internal hyphens', () => {
+    expect(parseProfileDateRange('2020-01')).toEqual({
+      kind: 'single',
+      originalText: '2020-01',
+      start: {
+        iso: '2020-01',
+        precision: 'month',
+        text: '2020-01',
+      },
+    });
+    expect(parseProfileDateRange('Jan-2020')).toEqual({
+      kind: 'single',
+      originalText: 'Jan-2020',
+      start: {
+        iso: '2020-01',
+        precision: 'month',
+        text: 'January-2020',
+      },
+    });
+    expect(parseProfileDateRange('2020-2024')).toEqual({
+      end: {
+        iso: '2024',
+        precision: 'year',
+        text: '2024',
+      },
+      kind: 'completed',
+      originalText: '2020-2024',
+      start: {
+        iso: '2020',
+        precision: 'year',
+        text: '2020',
+      },
+    });
   });
 });

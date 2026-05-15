@@ -3,6 +3,7 @@ import { normalizeWhitespace, splitLines } from '../utils/text-utils.js';
 import type {
   ParsedSectionResult,
   SectionParseWarning,
+  WarningSection,
 } from '../types/profile.js';
 
 export interface ExtraProfileSections {
@@ -95,9 +96,43 @@ export class ExtraSectionParser {
 
     return {
       value: sections,
-      warnings,
+      warnings: filterMergedSectionWarnings({ sections, warnings }),
     };
   }
+}
+
+function filterMergedSectionWarnings({
+  sections,
+  warnings,
+}: {
+  sections: ExtraProfileSections;
+  warnings: SectionParseWarning[];
+}): SectionParseWarning[] {
+  const entriesByWarningSection: Partial<Record<WarningSection, string[]>> = {
+    certifications: sections.certifications,
+    projects: sections.projects,
+    volunteer_work: sections.volunteer_work,
+  };
+  const emittedEmptySectionWarnings = new Set<WarningSection>();
+
+  return warnings.filter(warning => {
+    const entries = entriesByWarningSection[warning.section];
+
+    if (entries === undefined) {
+      return true;
+    }
+
+    if (entries.length > 0) {
+      return false;
+    }
+
+    if (emittedEmptySectionWarnings.has(warning.section)) {
+      return false;
+    }
+
+    emittedEmptySectionWarnings.add(warning.section);
+    return true;
+  });
 }
 
 function parseSectionLines(

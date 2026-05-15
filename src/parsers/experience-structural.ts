@@ -223,6 +223,12 @@ export class ExperienceStructuralParser {
           return 'location';
         }
 
+        if (
+          this.looksLikeOrganization(text, line.fontSize ?? 0, index, lineTexts)
+        ) {
+          return 'organization';
+        }
+
         if (this.looksLikePosition(text)) {
           return 'position';
         }
@@ -637,6 +643,7 @@ export class ExperienceStructuralParser {
     workExperiences: WorkExperience[]
   ): SectionParseWarning[] {
     const warnings: SectionParseWarning[] = [];
+    let positionEntry = 0;
 
     workExperiences.forEach((workExperience, workExperienceIndex) => {
       if (workExperience.positions.length === 0) {
@@ -650,13 +657,11 @@ export class ExperienceStructuralParser {
         });
       }
 
-      workExperience.positions.forEach((position, positionIndex) => {
-        const entry = workExperienceIndex + positionIndex;
-
+      workExperience.positions.forEach(position => {
         if (!position.duration) {
           warnings.push({
             code: 'section_parse_warning',
-            entry,
+            entry: positionEntry,
             field: 'dates',
             message: 'Could not extract date range for experience entry',
             rawText: position.title,
@@ -665,13 +670,14 @@ export class ExperienceStructuralParser {
         } else if (!position.dates) {
           warnings.push({
             code: 'section_parse_warning',
-            entry,
+            entry: positionEntry,
             field: 'dates',
             message: 'Could not parse date range',
             rawText: position.duration,
             section: 'experience',
           });
         }
+        positionEntry++;
       });
     });
 

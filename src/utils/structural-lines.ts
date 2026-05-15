@@ -1,7 +1,7 @@
 import type { LayoutInfo, TextItem } from '../types/structural.js';
 import { normalizeWhitespace } from './text-utils.js';
 
-export type StructuralColumn = 'left' | 'right' | 'single';
+type StructuralColumn = 'left' | 'right' | 'single';
 
 export interface StructuralLine {
   text: string;
