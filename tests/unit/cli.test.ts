@@ -1,6 +1,13 @@
 import { jest } from '@jest/globals';
 import { fileURLToPath } from 'node:url';
-import { main, runCli, type CliResult } from '../../src/cli.js';
+import {
+  main,
+  runCli,
+  type CliDependencies,
+  type CliDirectoryEntry,
+  type CliResult,
+} from '../../src/cli.js';
+import type { ParseOptions, ParseResult } from '../../src/index.js';
 
 describe('CLI runner', () => {
   const profilePdfPath = fileURLToPath(
@@ -20,7 +27,7 @@ describe('CLI runner', () => {
     expect(result).toEqual({
       exitCode: 0,
       stderr: expect.stringContaining(
-        'Usage: linkedin-pdf-parser <pdf-file-path> [options]'
+        'linkedin-pdf-parser write-json <folder>'
       ),
       stdout: '',
     });
@@ -107,7 +114,7 @@ describe('CLI runner', () => {
     expect(stdoutSpy).not.toHaveBeenCalled();
     expect(stderrSpy).toHaveBeenCalledWith(
       expect.stringContaining(
-        'Usage: linkedin-pdf-parser <pdf-file-path> [options]'
+        'linkedin-pdf-parser verify-json <folder>'
       )
     );
   });
@@ -131,14 +138,13 @@ describe('CLI runner', () => {
   test('reports parser failures', async () => {
     const result = await runCli({
       args: [profilePdfPath],
-      dependencies: {
-        fileExists: () => true,
+      dependencies: createMemoryCliDependencies({
+        binaryFiles: new Map([[profilePdfPath, new Uint8Array([1, 2, 3])]]),
         parsePdf: async () => {
           throw new Error('parse failed');
         },
-        readFile: () => new Uint8Array([1, 2, 3]),
         resolvePath: filePath => filePath,
-      },
+      }).dependencies,
     });
 
     expect(result).toEqual({
@@ -146,6 +152,238 @@ describe('CLI runner', () => {
       stderr: 'Error: parse failed\n',
       stdout: '',
     });
+  });
+
+  test('writes JSON files for top-level PDFs only', async () => {
+    const memoryCli = createMemoryCliDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'notes.txt' },
+            { kind: 'directory', name: 'Nested.pdf' },
+          ],
+        ],
+      ]),
+    });
+
+    const result = await runCli({
+      args: ['write-json', '/baselines'],
+      dependencies: memoryCli.dependencies,
+    });
+
+    expect(result).toEqual({
+      exitCode: 0,
+      stderr: '',
+      stdout: expect.stringContaining('Wrote 1 JSON file(s)'),
+    });
+    expect(memoryCli.readFilePaths).toEqual(['/baselines/Profile.pdf']);
+    expect(memoryCli.writtenTextFiles).toEqual([
+      {
+        content: `${JSON.stringify(defaultParseResult, null, 2)}\n`,
+        filePath: '/baselines/Profile.json',
+      },
+    ]);
+  });
+
+  test('refuses to replace existing JSON files without force', async () => {
+    const memoryCli = createMemoryCliDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      textFiles: new Map([['/baselines/Profile.json', '{}']]),
+    });
+
+    const result = await runCli({
+      args: ['write-json', '/baselines'],
+      dependencies: memoryCli.dependencies,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      'JSON already exists: /baselines/Profile.json'
+    );
+    expect(memoryCli.readFilePaths).toEqual([]);
+    expect(memoryCli.writtenTextFiles).toEqual([]);
+  });
+
+  test('overwrites existing JSON files with force', async () => {
+    const memoryCli = createMemoryCliDependencies({
+      binaryFiles: new Map([['/baselines/Profile.PDF', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.PDF' },
+            { kind: 'file', name: 'Profile.JSON' },
+          ],
+        ],
+      ]),
+      textFiles: new Map([['/baselines/Profile.JSON', '{}']]),
+    });
+
+    const result = await runCli({
+      args: ['write-json', '/baselines', '--force', '--compact'],
+      dependencies: memoryCli.dependencies,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(memoryCli.writtenTextFiles).toEqual([
+      {
+        content: `${JSON.stringify(defaultParseResult)}\n`,
+        filePath: '/baselines/Profile.JSON',
+      },
+    ]);
+  });
+
+  test('passes raw text options to write-json parsing', async () => {
+    const memoryCli = createMemoryCliDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        ['/baselines', [{ kind: 'file', name: 'Profile.pdf' }]],
+      ]),
+    });
+
+    const result = await runCli({
+      args: ['write-json', '/baselines', '--raw-text'],
+      dependencies: memoryCli.dependencies,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(memoryCli.parseOptions).toEqual([{ includeRawText: true }]);
+  });
+
+  test('verifies matching PDF and JSON pairs', async () => {
+    const memoryCli = createMemoryCliDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      textFiles: new Map([
+        ['/baselines/Profile.json', JSON.stringify(defaultParseResult)],
+      ]),
+    });
+
+    const result = await runCli({
+      args: ['verify-json', '/baselines'],
+      dependencies: memoryCli.dependencies,
+    });
+
+    expect(result).toEqual({
+      exitCode: 0,
+      stderr: '',
+      stdout: expect.stringContaining('Verified 1 PDF/JSON pair(s)'),
+    });
+    expect(memoryCli.readFilePaths).toEqual(['/baselines/Profile.pdf']);
+  });
+
+  test('prints a full diff when verify-json finds a mismatch', async () => {
+    const expectedResult: ParseResult = {
+      ...defaultParseResult,
+      profile: {
+        ...defaultParseResult.profile,
+        name: 'Old Name',
+      },
+    };
+    const memoryCli = createMemoryCliDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      textFiles: new Map([
+        ['/baselines/Profile.json', JSON.stringify(expectedResult)],
+      ]),
+    });
+
+    const result = await runCli({
+      args: ['verify-json', '/baselines'],
+      dependencies: memoryCli.dependencies,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('--- expected');
+    expect(result.stderr).toContain('+++ generated');
+    expect(result.stderr).toContain('-     "name": "Old Name"');
+    expect(result.stderr).toContain('+     "name": "Fixture User"');
+  });
+
+  test('reports invalid JSON, parse failures, and missing pairs', async () => {
+    const brokenPdfBytes = new Uint8Array([2]);
+    const memoryCli = createMemoryCliDependencies({
+      binaryFiles: new Map([
+        ['/baselines/Broken.pdf', brokenPdfBytes],
+        ['/baselines/Invalid.pdf', new Uint8Array([3])],
+        ['/baselines/MissingJson.pdf', new Uint8Array([4])],
+      ]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Broken.pdf' },
+            { kind: 'file', name: 'Broken.json' },
+            { kind: 'file', name: 'Invalid.pdf' },
+            { kind: 'file', name: 'Invalid.json' },
+            { kind: 'file', name: 'MissingJson.pdf' },
+            { kind: 'file', name: 'Orphan.json' },
+          ],
+        ],
+      ]),
+      parsePdf: async input => {
+        if (input === brokenPdfBytes) {
+          throw new Error('parse failed');
+        }
+
+        return defaultParseResult;
+      },
+      textFiles: new Map([
+        ['/baselines/Broken.json', JSON.stringify(defaultParseResult)],
+        ['/baselines/Invalid.json', '{'],
+        ['/baselines/Orphan.json', JSON.stringify(defaultParseResult)],
+      ]),
+    });
+
+    const result = await runCli({
+      args: ['verify-json', '/baselines'],
+      dependencies: memoryCli.dependencies,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('/baselines/Broken.pdf: parse failed');
+    expect(result.stderr).toContain(
+      '/baselines/Invalid.json: Invalid JSON baseline'
+    );
+    expect(result.stderr).toContain(
+      '/baselines/MissingJson.pdf: Missing JSON baseline'
+    );
+    expect(result.stderr).toContain('/baselines/Orphan.json: Missing PDF source');
   });
 });
 
@@ -168,4 +406,101 @@ function expectJsonProfile(
       }),
     })
   );
+}
+
+interface MemoryCliDependenciesParams {
+  binaryFiles?: Map<string, Uint8Array>;
+  directories?: Set<string>;
+  directoryEntries?: Map<string, CliDirectoryEntry[]>;
+  parsePdf?: CliDependencies['parsePdf'];
+  resolvePath?: (filePath: string) => string;
+  textFiles?: Map<string, string>;
+}
+
+interface TextFileWrite {
+  content: string;
+  filePath: string;
+}
+
+interface MemoryCliDependencies {
+  dependencies: CliDependencies;
+  parseOptions: ParseOptions[];
+  readFilePaths: string[];
+  writtenTextFiles: TextFileWrite[];
+}
+
+const defaultParseResult: ParseResult = {
+  profile: {
+    contact: {
+      email: 'fixture@example.com',
+    },
+    education: [],
+    experience: [],
+    headline: 'Fixture headline',
+    languages: [],
+    location: 'San Francisco, CA',
+    name: 'Fixture User',
+    top_skills: [],
+  },
+};
+
+function createMemoryCliDependencies(
+  params: MemoryCliDependenciesParams = {}
+): MemoryCliDependencies {
+  const binaryFiles = params.binaryFiles ?? new Map<string, Uint8Array>();
+  const directories = params.directories ?? new Set<string>();
+  const directoryEntries =
+    params.directoryEntries ?? new Map<string, CliDirectoryEntry[]>();
+  const parseOptions: ParseOptions[] = [];
+  const readFilePaths: string[] = [];
+  const textFiles = params.textFiles ?? new Map<string, string>();
+  const writtenTextFiles: TextFileWrite[] = [];
+
+  return {
+    dependencies: {
+      directoryExists: directoryPath => directories.has(directoryPath),
+      fileExists: filePath =>
+        directories.has(filePath) ||
+        binaryFiles.has(filePath) ||
+        textFiles.has(filePath),
+      listDirectory: directoryPath => directoryEntries.get(directoryPath) ?? [],
+      parsePdf: async (input, options) => {
+        parseOptions.push(options);
+
+        if (params.parsePdf) {
+          return params.parsePdf(input, options);
+        }
+
+        return defaultParseResult;
+      },
+      readFile: filePath => {
+        const file = binaryFiles.get(filePath);
+
+        readFilePaths.push(filePath);
+
+        if (!file) {
+          throw new Error(`Missing binary file: ${filePath}`);
+        }
+
+        return file;
+      },
+      readTextFile: filePath => {
+        const file = textFiles.get(filePath);
+
+        if (!file) {
+          throw new Error(`Missing text file: ${filePath}`);
+        }
+
+        return file;
+      },
+      resolvePath: params.resolvePath ?? (filePath => filePath),
+      writeTextFile: (filePath, content) => {
+        textFiles.set(filePath, content);
+        writtenTextFiles.push({ content, filePath });
+      },
+    },
+    parseOptions,
+    readFilePaths,
+    writtenTextFiles,
+  };
 }

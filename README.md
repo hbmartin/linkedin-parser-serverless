@@ -9,7 +9,12 @@
 
 A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsing LinkedIn PDF resumes and extracting structured profile data.
 
-[Installation](#installation) • [CLI Usage](#cli-usage) • [Quick Start](#quick-start) • [Examples](#examples) • [API Reference](#api-reference) • [Development](#development)
+- [📦 Installation](#-installation)
+- [🖥️ CLI Usage](#️-cli-usage)
+- [🚀 Quick Start](#-quick-start)
+- [📚 Examples](#-examples)
+- [📖 API Reference](#-api-reference)
+- [🛠️ Development](#️-development)
 
 ---
 
@@ -51,11 +56,13 @@ A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsi
 - Supported runtimes: Node.js 22+, Vercel Edge, and serverless JavaScript runtimes that provide Web-standard binary types such as `ArrayBuffer`
 
 ### Library Usage
+
 ```bash
 npm install linkedin-parser-serverless
 ```
 
 ### CLI Usage (Global)
+
 ```bash
 # Install globally for command-line usage
 npm install -g linkedin-parser-serverless
@@ -69,6 +76,7 @@ npx -p linkedin-parser-serverless linkedin-pdf-parser path/to/resume.pdf
 The package includes a command-line interface for easy PDF processing:
 
 ### Command
+
 ```bash
 # Parse a LinkedIn PDF and output JSON
 linkedin-pdf-parser ./resume.pdf
@@ -81,14 +89,22 @@ linkedin-pdf-parser ./resume.pdf --compact
 
 # Include raw extracted text
 linkedin-pdf-parser ./resume.pdf --raw-text
+
+# Create JSON baselines next to PDFs in a folder
+linkedin-pdf-parser write-json ./fixtures
+
+# Verify PDFs still generate the expected JSON baselines
+linkedin-pdf-parser verify-json ./fixtures
 ```
 
 ### Real-world Examples
+
 ```bash
-# Process multiple PDFs
-for pdf in *.pdf; do
-  linkedin-pdf-parser "$pdf" > "${pdf%.pdf}.json"
-done
+# Create or refresh regression baselines
+linkedin-pdf-parser write-json ./customer-samples --force
+
+# Check parser output after dependency or parser changes
+linkedin-pdf-parser verify-json ./customer-samples
 
 # Extract specific data with jq
 linkedin-pdf-parser resume.pdf | jq '.profile.name'
@@ -98,6 +114,7 @@ linkedin-pdf-parser resume.pdf | jq '.profile.experience[].company'
 
 ### CLI Options
 - `--compact` - Compact JSON output (no formatting)
+- `--force` - Overwrite existing JSON files in `write-json` mode
 - `--raw-text` - Include raw extracted text in output
 - `--help, -h` - Show help message
 
