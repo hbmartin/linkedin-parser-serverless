@@ -16,9 +16,7 @@ module.exports = {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1'
   },
-  transformIgnorePatterns: [
-    'node_modules/(?!(unpdf|@babel)/)'
-  ],
+  transformIgnorePatterns: ['node_modules/'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.test.ts',

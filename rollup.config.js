@@ -23,7 +23,7 @@ export default {
       inlineDynamicImports: true,
     },
   ],
-  external: ['pdf-parse'],
+  external: ['unpdf'],
   plugins: [
     resolve({
       preferBuiltins: true,

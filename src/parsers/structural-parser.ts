@@ -1,41 +1,31 @@
+import { getDocumentProxy, extractTextItems } from 'unpdf';
 import { TextItem, LayoutInfo } from '../types/structural.js';
 
 export class StructuralParser {
-  static async extractStructuredText(pdfBuffer: Buffer): Promise<{
+  static async extractStructuredText(
+    pdfInput: ArrayBuffer | Uint8Array
+  ): Promise<{
     textItems: TextItem[];
     layout: LayoutInfo;
   }> {
-    // Use legacy build for Node.js compatibility
-    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const data = new Uint8Array(pdfInput);
+    const pdf = await getDocumentProxy(data);
+    const { items } = await extractTextItems(pdf);
 
-    // Set worker source from node_modules
-    (pdfjs.GlobalWorkerOptions as any).workerSrc =
-      process.cwd() + '/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs';
-
-    const uint8Array = new Uint8Array(pdfBuffer);
-    const pdf = await pdfjs.getDocument({
-      data: uint8Array
-    }).promise;
-    const allTextItems: TextItem[] = [];
-
-    // Extract text from all pages
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-
-      const pageTextItems = textContent.items.map((item: any) => ({
-        text: item.str,
-        x: item.transform[4],
-        y: item.transform[5],
-        fontSize: item.height,
-        fontFamily: item.fontName || 'unknown',
-        width: item.width,
-        height: item.height,
-        transform: item.transform,
-      }));
-
-      allTextItems.push(...pageTextItems);
-    }
+    const allTextItems: TextItem[] = items.flatMap((pageItems, pageIndex) =>
+      pageItems
+        .map(item => ({
+          text: item.str.trim(),
+          x: item.x,
+          // PDF pages reuse the same coordinate space; offset pages before flattening.
+          y: item.y - pageIndex * 10000,
+          fontSize: item.fontSize,
+          fontFamily: item.fontFamily || 'unknown',
+          width: item.width,
+          height: item.height,
+        }))
+        .filter(item => item.text.length > 0)
+    );
 
     // Detect layout
     const layout = this.detectLayout(allTextItems);
@@ -63,7 +53,9 @@ export class StructuralParser {
 
     if (hasLeftColumn && hasRightColumn) {
       // Two-column layout detected
-      const sidebarRight = Math.max(...leftItems.map(item => item.x + (item.width || 100)));
+      const sidebarRight = Math.max(
+        ...leftItems.map(item => item.x + (item.width || 100))
+      );
       const mainLeft = Math.min(...rightItems.map(item => item.x));
 
       return {
@@ -88,7 +80,10 @@ export class StructuralParser {
     };
   }
 
-  static groupTextByProximity(textItems: TextItem[], maxYDistance = 5): TextItem[][] {
+  static groupTextByProximity(
+    textItems: TextItem[],
+    maxYDistance = 5
+  ): TextItem[][] {
     // Detect layout first to handle columns separately
     const layout = this.detectLayout(textItems);
 
@@ -115,7 +110,10 @@ export class StructuralParser {
     }
   }
 
-  private static groupItemsByY(textItems: TextItem[], maxYDistance = 5): TextItem[][] {
+  private static groupItemsByY(
+    textItems: TextItem[],
+    maxYDistance = 5
+  ): TextItem[][] {
     // Sort by Y position (top to bottom)
     const sorted = [...textItems].sort((a, b) => b.y - a.y);
     const groups: TextItem[][] = [];
@@ -150,7 +148,10 @@ export class StructuralParser {
     return groups.map(group => {
       // Sort by X position within group (left to right)
       const sortedGroup = group.sort((a, b) => a.x - b.x);
-      return sortedGroup.map(item => item.text).join(' ').trim();
+      return sortedGroup
+        .map(item => item.text)
+        .join(' ')
+        .trim();
     });
   }
 }

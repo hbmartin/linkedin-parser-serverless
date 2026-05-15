@@ -13,7 +13,7 @@ esbuild.build({
   minifyIdentifiers: true,
   minifySyntax: true,
   sourcemap: true,
-  external: ['pdf-parse'],
+  external: ['unpdf'],
   tsconfig: 'tsconfig.json',
   treeShaking: true,
   drop: ['console', 'debugger'],

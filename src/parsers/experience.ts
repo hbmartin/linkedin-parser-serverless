@@ -22,10 +22,24 @@ export class ExperienceParser {
     }
 
     const experiences: Experience[] = [];
-    const lines = splitLines(experienceSection).map(line => normalizeWhitespace(line)).filter(line => line.length > 0);
+    const lines = splitLines(experienceSection)
+      .map(line => normalizeWhitespace(line))
+      .filter(line => line.length > 0);
 
     // Manual parsing approach for LinkedIn PDF structure
-    const knownCompanies = ['Carta', 'Boba Joy', 'Zestt', 'Partiu Vantagens!', 'AevoTech', 'Inovare', 'CEPEL', 'CPTI / PUC-Rio', 'Arena Games', 'Guild', 'Springboard'];
+    const knownCompanies = [
+      'Carta',
+      'Boba Joy',
+      'Zestt',
+      'Partiu Vantagens!',
+      'AevoTech',
+      'Inovare',
+      'CEPEL',
+      'CPTI / PUC-Rio',
+      'Arena Games',
+      'Guild',
+      'Springboard',
+    ];
 
     let currentCompany = '';
     let currentPosition: Partial<Experience> | null = null;
@@ -40,7 +54,11 @@ export class ExperienceParser {
       }
 
       // Check for known company names
-      if (knownCompanies.some(company => line.toLowerCase().includes(company.toLowerCase()))) {
+      if (
+        knownCompanies.some(company =>
+          line.toLowerCase().includes(company.toLowerCase())
+        )
+      ) {
         // Save previous position
         if (currentPosition && currentPosition.title) {
           currentPosition.description = descriptionLines.join(' ').trim();
@@ -67,7 +85,7 @@ export class ExperienceParser {
           company: currentCompany,
           duration: '',
           location: '',
-          description: ''
+          description: '',
         };
         descriptionLines = [];
         continue;
@@ -96,11 +114,19 @@ export class ExperienceParser {
 
   private static isJobTitle(line: string): boolean {
     const titleKeywords = [
-      'Engineering Manager', 'Tech Lead Manager', 'Senior Software Engineer',
-      'Co-founder', 'Engineering Director', 'Head of Engineering',
-      'Senior Lead Software Engineer', 'Lead Project Engineer',
-      'Robotics Researcher', 'Technical Researcher', 'Technical Support Analyst',
-      'Software Engineer III', 'Senior Software Engineer I'
+      'Engineering Manager',
+      'Tech Lead Manager',
+      'Senior Software Engineer',
+      'Co-founder',
+      'Engineering Director',
+      'Head of Engineering',
+      'Senior Lead Software Engineer',
+      'Lead Project Engineer',
+      'Robotics Researcher',
+      'Technical Researcher',
+      'Technical Support Analyst',
+      'Software Engineer III',
+      'Senior Software Engineer I',
     ];
 
     // Don't include lines that start with duration patterns
@@ -110,11 +136,15 @@ export class ExperienceParser {
 
     // Check for exact title matches or titles that start the line
     for (const title of titleKeywords) {
-      if (line.toLowerCase().includes(title.toLowerCase()) &&
-          !line.includes('•') &&
-          line.length < 150) {
+      if (
+        line.toLowerCase().includes(title.toLowerCase()) &&
+        !line.includes('•') &&
+        line.length < 150
+      ) {
         // Make sure duration info isn't mixed in the title
-        const cleanTitle = line.replace(/\d+\s+(year|month)s?\s+\d+\s+(month|year)s?/gi, '').trim();
+        const cleanTitle = line
+          .replace(/\d+\s+(year|month)s?\s+\d+\s+(month|year)s?/gi, '')
+          .trim();
         if (cleanTitle.length > 10) {
           return true;
         }
@@ -124,7 +154,11 @@ export class ExperienceParser {
     return false;
   }
 
-  private static looksLikeCompanyName(line: string, lines: string[], index: number): boolean {
+  private static looksLikeCompanyName(
+    line: string,
+    lines: string[],
+    index: number
+  ): boolean {
     // Skip obvious non-companies
     if (
       line.length < 2 ||
@@ -169,7 +203,9 @@ export class ExperienceParser {
       return true;
     }
 
-    return hasJobDetailsAfter && companyPatterns.some(pattern => pattern.test(line));
+    return (
+      hasJobDetailsAfter && companyPatterns.some(pattern => pattern.test(line))
+    );
   }
 
   private static parseJobTitleLine(line: string): Partial<Experience> {
@@ -242,12 +278,14 @@ export class ExperienceParser {
   private static looksLikeDuration(line: string): boolean {
     return (
       REGEX_PATTERNS.DATE_RANGE.test(line) ||
-      /\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(line) ||
+      /\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(
+        line
+      ) ||
       /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(line) ||
       /\b\d{4}\s*-\s*\d{4}\b/.test(line) ||
       /\b\d{4}\s*-\s*(present|current)\b/i.test(line) ||
       /\(\d+\s+years?\s+\d+\s+months?\)/i.test(line) ||
-      /present|atual|current/i.test(line) && line.length < 50
+      (/present|atual|current/i.test(line) && line.length < 50)
     );
   }
 
@@ -255,12 +293,12 @@ export class ExperienceParser {
     return (
       line.length > 2 &&
       line.length < 50 &&
-      (
-        /^[A-Z][a-z]+,\s*[A-Z]{2}$/.test(line) || // "City, ST"
+      (/^[A-Z][a-z]+,\s*[A-Z]{2}$/.test(line) || // "City, ST"
         /^[A-Z][a-z]+,\s*[A-Z][a-z]+$/.test(line) || // "City, State"
         /^[A-Z][a-z]+,\s*[A-Z][a-z]+,\s*[A-Z][a-z]+/.test(line) || // "City, State, Country"
-        /(California|New York|Texas|Florida|Illinois|Pennsylvania|Ohio|Georgia|North Carolina|Michigan|CA|NY|TX|FL)/.test(line)
-      ) &&
+        /(California|New York|Texas|Florida|Illinois|Pennsylvania|Ohio|Georgia|North Carolina|Michigan|CA|NY|TX|FL)/.test(
+          line
+        )) &&
       !this.looksLikeDuration(line) &&
       !line.includes('@') &&
       !line.includes('|')

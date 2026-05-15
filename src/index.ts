@@ -4,6 +4,7 @@ import { BasicInfoParser } from './parsers/basic-info.js';
 import { ListParser } from './parsers/lists.js';
 import { EducationParser } from './parsers/education.js';
 import { cleanPDFText } from './utils/text-utils.js';
+import type { LayoutInfo, TextItem } from './types/structural.js';
 
 export interface Contact {
   email: string;
@@ -56,30 +57,34 @@ export interface ParseResult {
 
 /**
  * Parses a LinkedIn PDF resume and extracts structured profile data
- * @param input - PDF Buffer or extracted text string
+ * @param input - PDF binary data or extracted text string
  * @param options - Optional parsing configuration
  * @returns Promise resolving to structured LinkedIn profile data
  */
 export async function parseLinkedInPDF(
-  input: Buffer | string,
+  input: ArrayBuffer | Uint8Array | string,
   options: ParseOptions = {}
 ): Promise<ParseResult> {
   let text: string;
-  let structuralData: { textItems: any[]; layout: any } | null = null;
+  let structuralData: { textItems: TextItem[]; layout: LayoutInfo } | null =
+    null;
 
-  // Handle both Buffer and string inputs
-  if (Buffer.isBuffer(input)) {
+  // Handle both binary PDF data and extracted text inputs
+  if (typeof input !== 'string') {
     try {
-      // Use new structural parser for PDF buffers
+      // Use structural parser for PDF binary data
       structuralData = await StructuralParser.extractStructuredText(input);
 
       // Create fallback text from structural data
-      const groups = StructuralParser.groupTextByProximity(structuralData.textItems);
+      const groups = StructuralParser.groupTextByProximity(
+        structuralData.textItems
+      );
       const lines = StructuralParser.combineGroupedText(groups);
       text = lines.join('\n');
-
     } catch (error) {
-      throw new Error('PDF appears to be empty or unreadable');
+      throw new Error('PDF appears to be empty or unreadable', {
+        cause: error,
+      });
     }
   } else {
     text = input;
@@ -100,7 +105,9 @@ export async function parseLinkedInPDF(
   // Use structural parser for experience if available, otherwise fallback
   let experience: Experience[];
   if (structuralData) {
-    const workExperiences = ExperienceStructuralParser.parseExperience(structuralData.textItems);
+    const workExperiences = ExperienceStructuralParser.parseExperience(
+      structuralData.textItems
+    );
 
     // Convert WorkExperience[] to Experience[] for compatibility
     experience = workExperiences.flatMap(workExp =>
