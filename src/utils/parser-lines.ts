@@ -1,7 +1,7 @@
 import type { StructuralLine } from './structural-lines.js';
 import { normalizeWhitespace, splitLines } from './text-utils.js';
 
-export type ParserLineSource = 'text' | 'structural';
+type ParserLineSource = 'text' | 'structural';
 
 export type ParserLineSection =
   | 'identity'
@@ -37,8 +37,6 @@ interface BaseParserLine {
   x?: number;
   y?: number;
   fontSize?: number;
-  width?: number;
-  height?: number;
   column?: StructuralLine['column'];
 }
 
@@ -100,24 +98,6 @@ export function createTextParserLines(text: string): NormalizedParserLine[] {
   );
 }
 
-export function createStructuralParserLines(
-  lines: StructuralLine[]
-): NormalizedParserLine[] {
-  return enrichParserLines(
-    lines.map((line, index) => ({
-      column: line.column,
-      fontSize: line.fontSize,
-      height: line.height,
-      index,
-      source: 'structural',
-      text: normalizeWhitespace(line.text),
-      width: line.width,
-      x: line.x,
-      y: line.y,
-    }))
-  );
-}
-
 export function createGroupedTextItemParserLines(
   groups: {
     text: string;
@@ -138,7 +118,7 @@ export function createGroupedTextItemParserLines(
   );
 }
 
-export function normalizeSectionHeader(text: string): string {
+function normalizeSectionHeader(text: string): string {
   return normalizeWhitespace(text)
     .normalize('NFD')
     .replace(/\p{M}/gu, '')

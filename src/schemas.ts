@@ -72,13 +72,13 @@ export const LinkedInProfileSchema = z.object({
   volunteer_work: z.array(z.string()),
 });
 
-export const MissingProfileFieldWarningSchema = z.object({
+const MissingProfileFieldWarningSchema = z.object({
   code: z.literal('missing_profile_field'),
   field: z.enum(['profile.name', 'profile.contact.email']),
   message: z.string(),
 });
 
-export const SectionParseWarningSchema = z.object({
+const SectionParseWarningSchema = z.object({
   code: z.literal('section_parse_warning'),
   entry: z.number().int().nonnegative().optional(),
   field: z.string(),

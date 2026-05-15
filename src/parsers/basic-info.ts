@@ -412,8 +412,8 @@ function findBasicInfoHeaderEndIndex(
     const header = getParserLineSectionHeader(line.text);
 
     if (header?.kind === 'target') {
-      return header.section === 'contact' || header.section === 'summary'
-        ? index + 1
+      return isBasicInfoWarningSection(header.section)
+        ? findBasicInfoWarningHeaderEndIndex(parserLines, index)
         : index;
     }
 
@@ -429,6 +429,50 @@ function findBasicInfoHeaderEndIndex(
   }
 
   return parserLines.length;
+}
+
+function findBasicInfoWarningHeaderEndIndex(
+  parserLines: NormalizedParserLine[],
+  startIndex: number
+): number {
+  let endIndex = startIndex;
+
+  while (endIndex < parserLines.length) {
+    const line = parserLines[endIndex];
+
+    if (!line.text) {
+      endIndex++;
+      continue;
+    }
+
+    const header = getParserLineSectionHeader(line.text);
+
+    if (
+      header?.kind === 'target' &&
+      !isBasicInfoWarningSection(header.section)
+    ) {
+      return endIndex;
+    }
+
+    if (
+      header?.kind === 'boundary' ||
+      (!header &&
+        line.section !== 'identity' &&
+        !isBasicInfoWarningSection(line.section))
+    ) {
+      return endIndex;
+    }
+
+    endIndex++;
+  }
+
+  return endIndex;
+}
+
+function isBasicInfoWarningSection(
+  section: NormalizedParserLine['section'] | undefined
+): boolean {
+  return section === 'contact' || section === 'summary';
 }
 
 function nextBasicInfoState(
