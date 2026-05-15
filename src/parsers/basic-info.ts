@@ -36,20 +36,6 @@ export class BasicInfoParser {
     // Strategy: Look for the pattern that appears in all LinkedIn PDFs
     // The name always appears as a large text item (font size 26) in the main content
 
-    // First try to find specific known patterns
-    const knownNamePatterns = [
-      /Arkady\s+Zalkowitsch/i,
-      /Thamiris\s+Zalkowitsch/i,
-      /Daniel\s+Braga/i,
-    ];
-
-    for (const pattern of knownNamePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        return match[0].trim();
-      }
-    }
-
     // General approach: Look for two-word names that appear early in text
     // and are likely to be the main person's name
     const lines = splitLines(text);

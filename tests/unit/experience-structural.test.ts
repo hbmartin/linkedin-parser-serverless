@@ -49,10 +49,10 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
-  test('does not promote person-name lines to organizations', () => {
+  test('does not promote likely person-name lines to organizations', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
-      textItem({ text: 'Daniel Braga', y: 670 }),
+      textItem({ text: 'Morgan Taylor', y: 670 }),
       textItem({ text: 'Software Engineer', y: 650, fontSize: 11.5 }),
       textItem({ text: '2020 - 2022', y: 630 }),
     ];
@@ -60,6 +60,38 @@ describe('ExperienceStructuralParser', () => {
     const experiences = ExperienceStructuralParser.parseExperience(items);
 
     expect(experiences).toEqual([]);
+  });
+
+  test('detects generic organizations without a source allowlist', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Staff Platform Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2024', y: 630 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.organization).toBe('Northstar Solutions');
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        title: 'Staff Platform Engineer',
+        duration: '2021 - 2024',
+      })
+    );
+  });
+
+  test('keeps organization suffix terms when cleaning names', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Research Systems Group', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - March 2024', y: 630 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.organization).toBe('Research Systems Group');
   });
 
   test('extracts fallback duration text from noisy date lines', () => {

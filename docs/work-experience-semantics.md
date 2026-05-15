@@ -4,7 +4,7 @@ This document explains how the parser treats LinkedIn work experience entries wh
 
 ## Terms
 
-- **Work Experience**: A continuous period of employment at an organization, even if the person returns to the same company later after working elsewhere.
+- **Work Experience**: A continuous period of employment at an organization without breaks working elsewhere. If the person returns to the same company after a break or employment elsewhere, that later period is a separate work experience.
 - **Organization/Company**: The employer entity, such as "TechCorp" or "DataSystems Inc".
 - **Position/Role**: The job title within that work experience period, such as "Engineering Manager" or "Senior Developer".
 
