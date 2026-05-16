@@ -440,6 +440,7 @@ function findBasicInfoWarningHeaderEndIndex(
   while (endIndex < parserLines.length) {
     const line = parserLines[endIndex];
 
+    // Ignore spacing inside warning sections while looking for the next real boundary.
     if (!line.text) {
       endIndex++;
       continue;
@@ -447,6 +448,7 @@ function findBasicInfoWarningHeaderEndIndex(
 
     const header = getParserLineSectionHeader(line.text);
 
+    // A non-warning target header starts the next parser section.
     if (
       header?.kind === 'target' &&
       !isBasicInfoWarningSection(header.section)
@@ -454,11 +456,16 @@ function findBasicInfoWarningHeaderEndIndex(
       return endIndex;
     }
 
+    // A hard boundary header always closes the warning header block.
+    if (header?.kind === 'boundary') {
+      return endIndex;
+    }
+
+    // Non-header content in another section means the parser has advanced.
     if (
-      header?.kind === 'boundary' ||
-      (!header &&
-        line.section !== 'identity' &&
-        !isBasicInfoWarningSection(line.section))
+      !header &&
+      line.section !== 'identity' &&
+      !isBasicInfoWarningSection(line.section)
     ) {
       return endIndex;
     }

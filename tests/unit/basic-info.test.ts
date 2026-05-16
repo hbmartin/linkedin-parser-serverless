@@ -82,4 +82,41 @@ describe('BasicInfoParser', () => {
       }),
     ]);
   });
+
+  test('stops header warnings at later target sections', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Test User
+      Principal Advisor
+      Contact
+
+      Experience
+      Example Labs
+      Summary
+    `);
+
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'contact',
+        section: 'contact',
+      }),
+    ]);
+  });
+
+  test('stops header warnings at boundary sections', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Test User
+      Principal Advisor
+      Contact
+
+      Courses
+      Summary
+    `);
+
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'contact',
+        section: 'contact',
+      }),
+    ]);
+  });
 });
