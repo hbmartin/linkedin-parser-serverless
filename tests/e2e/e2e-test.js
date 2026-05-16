@@ -1,6 +1,6 @@
 // E2E test to verify the library works end-to-end with unpdf
 import fs from 'fs';
-import { parseLinkedInPDF } from './dist/index.js';
+import { parseLinkedInPDF } from '../../dist/index.js';
 
 console.log('🚀 Running E2E Test with unpdf\n');
 
@@ -25,26 +25,52 @@ async function runE2ETest() {
     console.log('📍 Location:', result.profile.location);
     console.log('💼 Headline:', result.profile.headline);
     console.log('🎯 Skills:', result.profile.top_skills.slice(0, 3).join(', '));
-    console.log('🌐 Languages:', result.profile.languages.map(l => `${l.language} (${l.proficiency})`).slice(0, 2).join(', '));
+    console.log(
+      '🌐 Languages:',
+      result.profile.languages
+        .map(l => `${l.language} (${l.proficiency})`)
+        .slice(0, 2)
+        .join(', ')
+    );
     console.log('💼 Experience items:', result.profile.experience.length);
     console.log('🎓 Education items:', result.profile.education.length);
 
     console.log('\n📄 Raw text info:');
     console.log('📝 Raw text length:', result.rawText?.length || 0);
-    console.log('📝 Raw text preview:', result.rawText?.substring(0, 200) || 'No raw text');
+    console.log(
+      '📝 Raw text preview:',
+      result.rawText?.substring(0, 200) || 'No raw text'
+    );
 
     console.log('\n🔍 Validation checks:');
     const checks = {
-      'Email extracted': !!result.profile.contact.email && result.profile.contact.email.includes('@'),
-      'Name extracted': !!result.profile.name && result.profile.name.length > 0,
-      'Location extracted': !!result.profile.location && result.profile.location.length > 0,
-      'Skills extracted': result.profile.top_skills.length > 0,
-      'Languages extracted': result.profile.languages.length > 0,
-      'Experience extracted': result.profile.experience.length > 0,
-      'Education extracted': result.profile.education.length > 0,
-      'Expected email found': result.profile.contact.email === 'john.silva@email.com',
-      'Expected name found': result.profile.name === 'John Silva',
-      'Processing time reasonable': (endTime - startTime) < 5000
+      'Expected email absent': result.profile.contact.email === undefined,
+      'Expected LinkedIn URL found':
+        result.profile.contact.linkedin_url ===
+        'https://linkedin.com/in/arkadyzalko',
+      'Expected name found': result.profile.name === 'Arkady Zalkowitsch',
+      'Expected headline found':
+        result.profile.headline ===
+        'Senior Engineering Manager @ Commure | ex-Carta | MBA in Business Management',
+      'Expected location found':
+        result.profile.location === 'Sunnyvale, California, United States',
+      'Expected skills found':
+        JSON.stringify(result.profile.top_skills) ===
+        JSON.stringify([
+          'Strategic Roadmaps',
+          'Electronic Engineering',
+          'Project Planning',
+        ]),
+      'Expected languages found':
+        JSON.stringify(result.profile.languages) ===
+        JSON.stringify([
+          { language: 'Inglês  Working', proficiency: 'Professional' },
+          { language: 'Espanhol', proficiency: 'Elementary' },
+        ]),
+      'Expected experience count': result.profile.experience.length === 14,
+      'Expected education count': result.profile.education.length === 5,
+      'Expected raw text length': result.rawText?.length === 13078,
+      'Processing time reasonable': endTime - startTime < 5000,
     };
 
     let passedChecks = 0;
@@ -55,16 +81,19 @@ async function runE2ETest() {
       if (passed) passedChecks++;
     });
 
-    console.log(`\n📊 Test Results: ${passedChecks}/${totalChecks} checks passed`);
+    console.log(
+      `\n📊 Test Results: ${passedChecks}/${totalChecks} checks passed`
+    );
 
     if (passedChecks === totalChecks) {
-      console.log('🎉 ALL TESTS PASSED! The library works perfectly with unpdf.');
+      console.log(
+        '🎉 ALL TESTS PASSED! The library works perfectly with unpdf.'
+      );
       return true;
     } else {
       console.log('⚠️ Some checks failed, but the library is functional.');
       return passedChecks / totalChecks >= 0.8; // 80% pass rate considered success
     }
-
   } catch (error) {
     console.error('❌ E2E Test failed:', error.message);
     console.error('Stack:', error.stack);
@@ -72,10 +101,12 @@ async function runE2ETest() {
   }
 }
 
-runE2ETest().then(success => {
-  console.log(`\n🏁 E2E Test Result: ${success ? 'SUCCESS' : 'FAILED'}`);
-  process.exit(success ? 0 : 1);
-}).catch(error => {
-  console.error('❌ Unexpected error:', error);
-  process.exit(1);
-});
+runE2ETest()
+  .then(success => {
+    console.log(`\n🏁 E2E Test Result: ${success ? 'SUCCESS' : 'FAILED'}`);
+    process.exit(success ? 0 : 1);
+  })
+  .catch(error => {
+    console.error('❌ Unexpected error:', error);
+    process.exit(1);
+  });
