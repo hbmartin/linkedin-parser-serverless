@@ -20,6 +20,14 @@ describe('profile text heuristics', () => {
     expect(looksLikePositionTitleText('I was responsible for hiring.')).toBe(
       false
     );
+    expect(looksLikePositionTitleText('manager.')).toBe(false);
+    expect(looksLikeOrganizationNameText('manager.')).toBe(false);
+    expect(looksLikePositionTitleText('Engineering Manager • Led')).toBe(false);
+    expect(looksLikeOrganizationNameText('Engineering Manager • Led')).toBe(
+      false
+    );
+    expect(looksLikePositionTitleText('Engineering Manager...')).toBe(false);
+    expect(looksLikeOrganizationNameText('Engineering Manager...')).toBe(false);
   });
 
   test('accepts only one allowlisted trailing title parenthetical', () => {

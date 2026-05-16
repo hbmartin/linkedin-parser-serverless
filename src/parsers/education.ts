@@ -38,6 +38,17 @@ interface StructuralDegreeContinuationParams {
 }
 
 export class EducationParser {
+  private static readonly LOCATION_PATTERN: RegExp =
+    /^[\p{Lu}][\p{L}\p{M}\s.-]+(?:,\s*[\p{Lu}][\p{L}\p{M}\s.-]*)*$/u;
+  private static readonly STRUCTURAL_DEGREE_BOUNDARY_PATTERN: RegExp =
+    /[,/&-]\s*$/u;
+  private static readonly STRUCTURAL_DEGREE_COMMA_CONNECTOR_PATTERN: RegExp =
+    /,\s*(?:and|for|in|of)\s*$/iu;
+  private static readonly STRUCTURAL_DEGREE_WORD_CONNECTOR_PATTERN: RegExp =
+    /\b(?:and|for|in|of)\s*$/iu;
+  private static readonly STRUCTURAL_ACADEMIC_FRAGMENT_PATTERN: RegExp =
+    /\b(?:administration|analytics|arts|business|communications|data|design|economics|education|engineering|finance|law|management|marketing|mathematics|policy|product|science|sciences|software|systems|technician|technology)\b/iu;
+
   static parse(text: string): Education[] {
     return this.parseWithWarnings(text).value;
   }
@@ -286,9 +297,7 @@ export class EducationParser {
     return (
       line.length > 2 &&
       line.length < 50 &&
-      /^[\p{Lu}][\p{L}\p{M}\s.-]+(?:,\s*[\p{Lu}][\p{L}\p{M}\s.-]*)*$/u.test(
-        line
-      ) &&
+      this.LOCATION_PATTERN.test(line) &&
       !this.looksLikeYear(line) &&
       !this.looksLikeDegree(line)
     );
@@ -416,16 +425,37 @@ export class EducationParser {
     degreePart,
   }: StructuralDegreeContinuationParams): boolean {
     const hasContinuationBoundary =
-      /[,/&-]\s*$/u.test(existingDegree) ||
-      /,\s*[\p{L}\p{M}\s/-]+$/u.test(existingDegree) ||
-      /\b(?:and|for|in|of)\s*$/iu.test(existingDegree);
+      this.STRUCTURAL_DEGREE_BOUNDARY_PATTERN.test(existingDegree) ||
+      this.STRUCTURAL_DEGREE_COMMA_CONNECTOR_PATTERN.test(existingDegree) ||
+      this.STRUCTURAL_DEGREE_WORD_CONNECTOR_PATTERN.test(existingDegree);
     const isShortAcademicFragment =
-      degreePart.split(/\s+/).length <= 4 &&
-      /\b(?:administration|analytics|arts|business|communications|data|design|economics|education|engineering|finance|law|management|marketing|mathematics|policy|product|science|sciences|software|systems|technician|technology)\b/iu.test(
-        degreePart
-      );
+      this.looksLikeShortAcademicFragment(degreePart);
+    const hasAcademicFragmentContinuation =
+      this.hasCommaDelimitedAcademicFragment(existingDegree) &&
+      isShortAcademicFragment;
 
-    return hasContinuationBoundary && isShortAcademicFragment;
+    return (
+      (hasContinuationBoundary || hasAcademicFragmentContinuation) &&
+      isShortAcademicFragment
+    );
+  }
+
+  private static hasCommaDelimitedAcademicFragment(degree: string): boolean {
+    const fragments = degree.split(',');
+    const finalFragment = fragments.length > 1 ? fragments.at(-1) : undefined;
+
+    return finalFragment
+      ? this.looksLikeShortAcademicFragment(finalFragment)
+      : false;
+  }
+
+  private static looksLikeShortAcademicFragment(fragment: string): boolean {
+    const normalizedFragment = fragment.trim();
+
+    return (
+      normalizedFragment.split(/\s+/).length <= 4 &&
+      this.STRUCTURAL_ACADEMIC_FRAGMENT_PATTERN.test(normalizedFragment)
+    );
   }
 
   private static appendDegreeText({

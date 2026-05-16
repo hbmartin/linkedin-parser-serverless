@@ -209,6 +209,34 @@ describe('EducationParser', () => {
     );
   });
 
+  test('does not append comma-adjacent non-academic details to degree text', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'Example University',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Certificate, Honors',
+        y: 710,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Policy',
+        y: 696,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 660 }),
+    ]);
+
+    expect(educations[0]).toEqual(
+      expect.objectContaining({
+        degree: 'Certificate, Honors',
+      })
+    );
+  });
+
   test('splits structural institution names that contain degree keywords', () => {
     const educations = EducationParser.parseStructural([
       structuralLine({ fontSize: 16, text: 'Education', y: 760 }),

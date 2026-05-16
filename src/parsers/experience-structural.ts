@@ -494,6 +494,9 @@ export class ExperienceStructuralParser {
     return (
       /^[a-z]/.test(normalizedLine) ||
       (/[.!?]$/.test(normalizedLine) &&
+        !this.looksLikeDuration(normalizedLine) &&
+        !this.looksLikeLocation(normalizedLine) &&
+        !this.looksLikePosition(normalizedLine) &&
         !looksLikeOrganizationNameText(normalizedLine) &&
         !this.looksLikeVisualOrganizationHeaderText(normalizedLine))
     );
@@ -510,6 +513,8 @@ export class ExperienceStructuralParser {
     const locationPatterns = [
       /^[A-Z][A-Za-z\s]+,\s*[A-Z\s]{2,}$/, // City, ST
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+$/, // City, State
+      /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*[\p{Lu}\s]{2,}$/u,
+      /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*(?:[\p{Lu}]\.){2,}$/u,
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+/, // City, State, Country
       /^Greater\s+[\p{Lu}][\p{L}\p{M}.'\-\s]+(?:Area|,\s*[\p{Lu}\s]{2,})?$/u,
       /^(?:Rua|R\.|Av\.?|Avenida|Alameda|Praça|Street|St\.|Avenue|Ave\.|Road|Rd\.)(?!\w)/iu,
