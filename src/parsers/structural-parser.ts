@@ -47,16 +47,20 @@ export class StructuralParser {
     const leftItems = textItems.filter(item => item.x < 150);
     const rightItems = textItems.filter(item => item.x >= 150);
 
-    // Check if there's a significant gap indicating columns
-    const hasLeftColumn = leftItems.length >= 10;
-    const hasRightColumn = rightItems.length > 20;
-
-    if (hasLeftColumn && hasRightColumn) {
-      // Two-column layout detected
+    // Check if there's a significant gap indicating columns. Some exports only
+    // have contact details and top skills in the sidebar, so item count alone is
+    // not enough to reject a two-column layout.
+    if (leftItems.length >= 7 && rightItems.length > 20) {
       const sidebarRight = Math.max(
         ...leftItems.map(item => item.x + (item.width || 100))
       );
       const mainLeft = Math.min(...rightItems.map(item => item.x));
+
+      if (mainLeft - sidebarRight < 20) {
+        return {
+          type: 'single-column',
+        };
+      }
 
       return {
         type: 'two-column',

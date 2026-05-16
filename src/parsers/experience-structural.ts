@@ -261,12 +261,29 @@ export class ExperienceStructuralParser {
           return 'organization';
         }
 
-        return this.fallbackLineType(
-          text,
-          line.fontSize ?? 0,
-          index,
-          lineTexts
-        );
+        if (this.looksLikeDuration(text)) {
+          return 'duration';
+        }
+
+        if (this.looksLikeLocation(text)) {
+          return 'location';
+        }
+
+        if (this.looksLikePosition(text)) {
+          return 'position';
+        }
+
+        if (this.isExperienceNoiseLine(text)) {
+          return 'other';
+        }
+
+        if (
+          this.looksLikeDescriptionLine(text, lineTexts[index - 1] ?? undefined)
+        ) {
+          return 'description';
+        }
+
+        return 'other';
     }
   }
 
@@ -395,6 +412,32 @@ export class ExperienceStructuralParser {
     return looksLikeDateRangeText(line);
   }
 
+  private static isExperienceNoiseLine(line: string): boolean {
+    return /^page\s+\d+\s+of\s+\d+$/i.test(line.trim());
+  }
+
+  private static looksLikeDescriptionLine(
+    line: string,
+    previousLine?: string
+  ): boolean {
+    const normalizedLine = line.trim();
+    const normalizedPreviousLine = previousLine?.trim();
+
+    if (normalizedLine.length > 30) {
+      return true;
+    }
+
+    if (!normalizedPreviousLine || normalizedPreviousLine.length < 20) {
+      return false;
+    }
+
+    return (
+      /^[a-z]/.test(normalizedLine) ||
+      /[.!?]$/.test(normalizedLine) ||
+      /\b(?:and|for|from|in|of|the|to|with)$/i.test(normalizedPreviousLine)
+    );
+  }
+
   private static looksLikeLocation(line: string): boolean {
     const normalizedLine = this.normalizeLocationText(line);
 
@@ -411,6 +454,7 @@ export class ExperienceStructuralParser {
 
     return (
       normalizedLine.length < 120 &&
+      !looksLikePositionTitleText(normalizedLine) &&
       (isLikelyLocationText(normalizedLine) ||
         locationPatterns.some(pattern => pattern.test(normalizedLine))) &&
       !this.looksLikeDuration(normalizedLine)

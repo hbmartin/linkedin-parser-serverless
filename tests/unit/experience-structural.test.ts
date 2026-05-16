@@ -414,6 +414,63 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('keeps producer roles under the current organization and preserves short description continuations', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({
+        text: 'Discovery Communications / Fischer Productions',
+        y: 670,
+      }),
+      textItem({
+        text: "Post Production Supervisor, KING'S OF CRASH",
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'November 2012 - January 2013', y: 630 }),
+      textItem({ text: 'Park City, UT', y: 610 }),
+      textItem({
+        text: 'Executive Produced by Alexander Campbell & Naomi Steinberg',
+        y: 590,
+      }),
+      textItem({
+        text: "Producer, KING'S OF CRASH",
+        y: 560,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'October 2012 - November 2012', y: 540 }),
+      textItem({ text: 'Park City, UT', y: 520 }),
+      textItem({
+        text: 'subject matter I helped actively develop story through field interviewing of',
+        y: 500,
+      }),
+      textItem({ text: 'characters.', y: 480 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'Discovery Communications / Fischer Productions',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Executive Produced by Alexander Campbell & Naomi Steinberg',
+            duration: 'November 2012 - January 2013',
+            location: 'Park City, UT',
+            title: "Post Production Supervisor, KING'S OF CRASH",
+          }),
+          expect.objectContaining({
+            description:
+              'subject matter I helped actively develop story through field interviewing of characters.',
+            duration: 'October 2012 - November 2012',
+            location: 'Park City, UT',
+            title: "Producer, KING'S OF CRASH",
+          }),
+        ],
+      })
+    );
+  });
+
   test('uses unique warning entries for nested positions', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),

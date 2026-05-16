@@ -102,6 +102,7 @@ const POSITION_KEYWORDS = [
   'officer',
   'president',
   'principal',
+  'producer',
   'researcher',
   'specialist',
   'supervisor',
@@ -195,6 +196,7 @@ export function looksLikePositionTitleText(text: string): boolean {
     lowerText.includes('joined the') ||
     lowerText.includes('my role') ||
     lowerText.includes(' to ') ||
+    normalizedText.endsWith('.') ||
     /^[a-z]/.test(normalizedText) ||
     normalizedText.includes('•') ||
     normalizedText.includes('...') ||
@@ -383,6 +385,9 @@ export function isLikelyLocationText(text: string): boolean {
   return (
     SINGLE_WORD_LOCATION_TEXT.has(lowerText) ||
     /^greater\s+[\p{Lu}][\p{L}\s]+(?:area)?$/iu.test(normalizedText) ||
+    /^[\p{Lu}][\p{L}\p{M}\s]+(?:Bay|Metropolitan)\s+Area$/u.test(
+      normalizedText
+    ) ||
     /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}]{2}$/u.test(normalizedText) ||
     looksLikeCommaSeparatedLocationText(normalizedText)
   );
