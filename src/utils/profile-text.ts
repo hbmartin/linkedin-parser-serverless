@@ -184,6 +184,8 @@ export function looksLikePositionTitleText(text: string): boolean {
   const looksLikeDescription =
     normalizedText.length > 90 ||
     lowerText.startsWith('i ') ||
+    lowerText.startsWith('as ') ||
+    lowerText.startsWith('worked as ') ||
     lowerText.includes('i lead') ||
     lowerText.includes('i manage') ||
     lowerText.includes('i work') ||
@@ -198,11 +200,15 @@ export function looksLikePositionTitleText(text: string): boolean {
     normalizedText.includes('...') ||
     normalizedText.split(/\s+/).length > 15;
 
+  const hasAllowedParenthetical =
+    !normalizedText.includes('(') ||
+    /\((?:contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\)$/iu.test(
+      normalizedText
+    );
   const hasValidTitleFormat =
     normalizedText.length > 3 &&
     normalizedText.length < 90 &&
-    !normalizedText.includes('(') &&
-    !normalizedText.includes(')') &&
+    hasAllowedParenthetical &&
     !normalizedText.includes('•') &&
     !normalizedText.includes('http') &&
     !normalizedText.includes('@') &&

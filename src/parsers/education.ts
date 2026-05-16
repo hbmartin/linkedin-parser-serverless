@@ -323,10 +323,14 @@ export class EducationParser {
       education.year = year;
     }
 
-    if (this.looksLikeDegree(line) && degree) {
+    if (degree && (this.looksLikeDegree(line) || education.degree)) {
       education.degree = education.degree
-        ? normalizeWhitespace(`${education.degree} ${degree}`)
+        ? this.appendDegreeText(education.degree, degree)
         : degree;
+      return;
+    }
+
+    if (year) {
       return;
     }
 
@@ -346,8 +350,17 @@ export class EducationParser {
     }
 
     if (degree) {
-      education.degree = normalizeWhitespace(`${education.degree} ${degree}`);
+      education.degree = this.appendDegreeText(education.degree, degree);
     }
+  }
+
+  private static appendDegreeText(
+    existingDegree: string,
+    degreePart: string
+  ): string {
+    const separator = existingDegree.trim().endsWith('/') ? '' : ' ';
+
+    return normalizeWhitespace(`${existingDegree}${separator}${degreePart}`);
   }
 
   private static createEducationWarnings(
