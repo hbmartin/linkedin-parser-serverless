@@ -116,6 +116,10 @@ function filterMergedSectionWarnings({
   const emittedEmptySectionWarnings = new Set<WarningSection>();
 
   return warnings.filter(warning => {
+    if (warning.field !== 'section') {
+      return true;
+    }
+
     const entries = entriesByWarningSection[warning.section];
 
     if (entries === undefined) {

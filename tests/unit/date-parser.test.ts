@@ -67,6 +67,16 @@ describe('profile date parser', () => {
         text: '2020-01',
       },
     });
+    expect(parseProfileDateRange('2020-01-31')).toEqual({
+      kind: 'single',
+      originalText: '2020-01-31',
+      start: {
+        iso: '2020-01-31',
+        precision: 'day',
+        text: '2020-01-31',
+      },
+    });
+    expect(parseProfileDateRange('2020-01-00')).toBeUndefined();
     expect(parseProfileDateRange('Jan-2020')).toEqual({
       kind: 'single',
       originalText: 'Jan-2020',

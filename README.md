@@ -365,13 +365,28 @@ interface ParsedProfileDate {
   text: string;
 }
 
-interface ParsedDateRange {
-  kind: 'current' | 'completed' | 'single';
-  originalText: string;
-  start: ParsedProfileDate;
-  end?: ParsedProfileDate;
-  durationText?: string;
-}
+type ParsedDateRange =
+  | {
+      kind: 'current';
+      originalText: string;
+      start: ParsedProfileDate;
+      durationText?: string;
+      end?: undefined;
+    }
+  | {
+      kind: 'completed';
+      originalText: string;
+      start: ParsedProfileDate;
+      end: ParsedProfileDate;
+      durationText?: string;
+    }
+  | {
+      kind: 'single';
+      originalText: string;
+      start: ParsedProfileDate;
+      durationText?: string;
+      end?: undefined;
+    };
 ```
 </details>
 

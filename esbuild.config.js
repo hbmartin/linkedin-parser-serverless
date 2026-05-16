@@ -23,5 +23,8 @@ const esbuildConfig = {
 export default esbuildConfig;
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  esbuild.build(esbuildConfig).catch(() => process.exit(1));
+  esbuild.build(esbuildConfig).catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
 }

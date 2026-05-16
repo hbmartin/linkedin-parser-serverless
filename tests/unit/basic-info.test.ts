@@ -61,4 +61,25 @@ describe('BasicInfoParser', () => {
 
     expect(result.warnings).toEqual([]);
   });
+
+  test('reports adjacent empty contact and summary sections in the header', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Test User
+      Principal Advisor
+      Contact
+      Available on request
+      Summary
+    `);
+
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'contact',
+        section: 'contact',
+      }),
+      expect.objectContaining({
+        field: 'summary',
+        section: 'summary',
+      }),
+    ]);
+  });
 });

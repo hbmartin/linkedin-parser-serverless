@@ -120,4 +120,19 @@ describe('ExperienceParser', () => {
       'Built customer-facing systems in 2020 before leading platform work.'
     );
   });
+
+  test('normalizes irregular spaces around duration separators', () => {
+    const [experience] = ExperienceParser.parse(`
+      Experience
+      Northstar AI
+      Principal Software Engineer
+      2021   -   2024
+      Built customer-facing systems in 2020 before leading platform work.
+    `);
+
+    expect(experience.duration).toBe('2021 - 2024');
+    expect(experience.description).toBe(
+      'Built customer-facing systems in 2020 before leading platform work.'
+    );
+  });
 });
