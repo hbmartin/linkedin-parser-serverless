@@ -1,4 +1,8 @@
-import { ExtraSectionParser } from '../../src/parsers/extra-sections.js';
+import {
+  ExtraSectionParser,
+  filterMergedSectionWarnings,
+} from '../../src/parsers/extra-sections.js';
+import type { SectionParseWarning } from '../../src/types/profile.js';
 import type { StructuralLine } from '../../src/utils/structural-lines.js';
 
 function line({
@@ -93,5 +97,68 @@ describe('ExtraSectionParser', () => {
       'Cloud Architect Professional',
     ]);
     expect(result.warnings).toEqual([]);
+  });
+
+  test('preserves non-section warnings while filtering merged section warnings', () => {
+    const nonSectionWarning: SectionParseWarning = {
+      code: 'section_parse_warning',
+      field: 'entry',
+      message: 'Discarded malformed project entry',
+      rawText: 'Project without details',
+      section: 'projects',
+    };
+    const warnings: SectionParseWarning[] = [
+      {
+        code: 'section_parse_warning',
+        field: 'section',
+        message:
+          'Detected a certifications section but could not extract entries',
+        section: 'certifications',
+      },
+      nonSectionWarning,
+    ];
+
+    const filteredWarnings = filterMergedSectionWarnings({
+      sections: {
+        certifications: ['Cloud Architect Professional'],
+        projects: [],
+        volunteer_work: [],
+      },
+      warnings,
+    });
+
+    expect(filteredWarnings).toEqual([nonSectionWarning]);
+  });
+
+  test('keeps unrelated section warnings and deduplicates merged empty warnings', () => {
+    const summaryWarning: SectionParseWarning = {
+      code: 'section_parse_warning',
+      field: 'section',
+      message: 'Detected a summary section but could not extract entries',
+      section: 'summary',
+    };
+    const firstProjectWarning: SectionParseWarning = {
+      code: 'section_parse_warning',
+      field: 'section',
+      message: 'Detected a projects section but could not extract entries',
+      section: 'projects',
+    };
+    const duplicateProjectWarning: SectionParseWarning = {
+      code: 'section_parse_warning',
+      field: 'section',
+      message: 'Detected a projects section but could not extract entries',
+      section: 'projects',
+    };
+
+    const filteredWarnings = filterMergedSectionWarnings({
+      sections: {
+        certifications: [],
+        projects: [],
+        volunteer_work: [],
+      },
+      warnings: [summaryWarning, firstProjectWarning, duplicateProjectWarning],
+    });
+
+    expect(filteredWarnings).toEqual([summaryWarning, firstProjectWarning]);
   });
 });

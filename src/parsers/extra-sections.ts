@@ -101,7 +101,7 @@ export class ExtraSectionParser {
   }
 }
 
-function filterMergedSectionWarnings({
+export function filterMergedSectionWarnings({
   sections,
   warnings,
 }: {

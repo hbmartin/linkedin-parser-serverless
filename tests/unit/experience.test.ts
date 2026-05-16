@@ -116,6 +116,20 @@ describe('ExperienceParser', () => {
     `);
 
     expect(experience.duration).toBe('2021 - 2024');
+    expect(experience.dates).toEqual({
+      originalText: '2021 - 2024',
+      start: {
+        iso: '2021',
+        precision: 'year',
+        text: '2021',
+      },
+      end: {
+        iso: '2024',
+        precision: 'year',
+        text: '2024',
+      },
+      kind: 'completed',
+    });
     expect(experience.description).toBe(
       'Built customer-facing systems in 2020 before leading platform work.'
     );
