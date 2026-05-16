@@ -30,6 +30,7 @@ const SECTION_HEADER_TEXT = new Set([
   'certificações',
   'projects',
   'projetos',
+  'publications',
   'volunteer experience',
   'volunteer work',
   'volunteering',
@@ -96,6 +97,7 @@ const POSITION_KEYWORDS = [
   'diretor',
   'engineer',
   'engenheiro',
+  'executive',
   'fellow',
   'founder',
   'gerente',
@@ -104,10 +106,13 @@ const POSITION_KEYWORDS = [
   'intern',
   'lead',
   'manager',
+  'mentor',
   'officer',
+  'partner',
   'president',
   'principal',
   'producer',
+  'programmer',
   'researcher',
   'specialist',
   'supervisor',
@@ -199,6 +204,7 @@ export function looksLikePositionTitleText(text: string): boolean {
     lowerText.includes('i manage') ||
     lowerText.includes('i work') ||
     lowerText.includes('i was') ||
+    lowerText.includes(' by ') ||
     lowerText.includes('responsible for') ||
     lowerText.includes('working as') ||
     lowerText.includes('joined the') ||

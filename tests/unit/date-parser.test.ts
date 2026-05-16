@@ -10,14 +10,14 @@ describe('profile date parser', () => {
       end: {
         iso: '2021-03',
         precision: 'month',
-        text: 'march 2021',
+        text: 'March 2021',
       },
       kind: 'completed',
       originalText: 'Jan 2020 - Mar 2021 · 1 yr 3 mos',
       start: {
         iso: '2020-01',
         precision: 'month',
-        text: 'january 2020',
+        text: 'January 2020',
       },
     });
   });
@@ -29,9 +29,18 @@ describe('profile date parser', () => {
       start: {
         iso: '2020-01',
         precision: 'month',
-        text: 'january 2020',
+        text: 'January 2020',
       },
     });
+  });
+
+  test('preserves canonical capitalization for full English month names', () => {
+    expect(parseProfileDateRange('March 2015 - January 2022')).toEqual(
+      expect.objectContaining({
+        end: expect.objectContaining({ text: 'January 2022' }),
+        start: expect.objectContaining({ text: 'March 2015' }),
+      })
+    );
   });
 
   test('parses localized month ranges', () => {

@@ -26,7 +26,7 @@ function line({
 }
 
 describe('ExtraSectionParser', () => {
-  test('extracts text fallback certifications, projects, and volunteer work', () => {
+  test('extracts text fallback certifications, projects, publications, and volunteer work', () => {
     const sections = ExtraSectionParser.parseText(`
       Test User
       test@example.com
@@ -36,6 +36,9 @@ describe('ExtraSectionParser', () => {
 
       Projects
       Internal Search Migration
+
+      Publications
+      Scaling Engineering Teams
 
       Volunteer Experience
       Community Mentor
@@ -47,6 +50,7 @@ describe('ExtraSectionParser', () => {
     expect(sections).toEqual({
       certifications: ['Cloud Architect Professional'],
       projects: ['Internal Search Migration'],
+      publications: ['Scaling Engineering Teams'],
       volunteer_work: ['Community Mentor'],
     });
   });
@@ -60,11 +64,14 @@ describe('ExtraSectionParser', () => {
       line({ text: 'Revenue Forecasting Tool', y: 740 }),
       line({ text: 'Volunteer Work', y: 700 }),
       line({ text: 'Open Source Mentor', y: 680 }),
+      line({ text: 'Publications', y: 640 }),
+      line({ text: 'Distributed Systems Notes', y: 620 }),
       line({ text: 'Education', y: 640 }),
     ]);
 
     expect(sections.certifications).toEqual(['AWS Solutions Architect']);
     expect(sections.projects).toEqual(['Revenue Forecasting Tool']);
+    expect(sections.publications).toEqual(['Distributed Systems Notes']);
     expect(sections.volunteer_work).toEqual(['Open Source Mentor']);
   });
 
@@ -150,6 +157,7 @@ describe('ExtraSectionParser', () => {
       sections: {
         certifications: ['Cloud Architect Professional'],
         projects: [],
+        publications: [],
         volunteer_work: [],
       },
       warnings,
@@ -182,6 +190,7 @@ describe('ExtraSectionParser', () => {
       sections: {
         certifications: [],
         projects: [],
+        publications: [],
         volunteer_work: [],
       },
       warnings: [summaryWarning, firstProjectWarning, duplicateProjectWarning],

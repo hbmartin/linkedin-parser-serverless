@@ -452,6 +452,10 @@ export class ExperienceStructuralParser {
       return true;
     }
 
+    if (/^[-*•]\s+\S/u.test(normalizedLine)) {
+      return true;
+    }
+
     if (!normalizedPreviousLine) {
       return false;
     }
@@ -509,6 +513,10 @@ export class ExperienceStructuralParser {
       return false;
     }
 
+    if (this.looksLikeCommaSeparatedOrganizationName(normalizedLine)) {
+      return false;
+    }
+
     // Common location patterns
     const locationPatterns = [
       /^[A-Z][A-Za-z\s]+,\s*[A-Z\s]{2,}$/, // City, ST
@@ -538,6 +546,33 @@ export class ExperienceStructuralParser {
       .replace(/\s+,/g, ',')
       .replace(/,\s*/g, ', ')
       .trim();
+  }
+
+  private static looksLikeCommaSeparatedOrganizationName(
+    line: string
+  ): boolean {
+    const suffixes = new Set([
+      'co',
+      'company',
+      'corp',
+      'corporation',
+      'inc',
+      'labs',
+      'llc',
+      'ltd',
+      'partners',
+      'solutions',
+      'systems',
+      'technologies',
+      'technology',
+      'ventures',
+    ]);
+    const parts = line
+      .split(',')
+      .map(part => part.trim().replace(/[.]+$/g, '').toLowerCase())
+      .filter(Boolean);
+
+    return parts.length >= 2 && parts.slice(1).some(part => suffixes.has(part));
   }
 
   private static calculateConfidence(

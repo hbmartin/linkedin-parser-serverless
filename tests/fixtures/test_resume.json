@@ -28,6 +28,7 @@
     "certifications": [],
     "volunteer_work": [],
     "projects": [],
+    "publications": [],
     "summary": "Engineering Manager with ~20 years in software and 10+ in leadership. I lead teams that sit at the intersection of product, operations and integrations, recently helping to shape an ERP- style operating model for PE firms and their portfolios at Carta, connecting onboarding, offboarding, document workflows and financial integrations to firm-level outcomes with unified experience.",
     "experience": [
       {
@@ -36,7 +37,7 @@
           "start": {
             "iso": "2026-02",
             "precision": "month",
-            "text": "february 2026"
+            "text": "February 2026"
           },
           "kind": "current"
         },
@@ -73,7 +74,7 @@
           "end": {
             "iso": "2026-01",
             "precision": "month",
-            "text": "january 2026"
+            "text": "January 2026"
           },
           "kind": "completed"
         },
@@ -89,7 +90,7 @@
           "start": {
             "iso": "2019-07",
             "precision": "month",
-            "text": "july 2019"
+            "text": "July 2019"
           },
           "end": {
             "iso": "2021-10",
@@ -115,7 +116,7 @@
           "end": {
             "iso": "2019-06",
             "precision": "month",
-            "text": "june 2019"
+            "text": "June 2019"
           },
           "kind": "completed"
         },
@@ -131,7 +132,7 @@
           "start": {
             "iso": "2018-01",
             "precision": "month",
-            "text": "january 2018"
+            "text": "January 2018"
           },
           "end": {
             "iso": "2022-10",
@@ -178,7 +179,7 @@
           "end": {
             "iso": "2016-03",
             "precision": "month",
-            "text": "march 2016"
+            "text": "March 2016"
           },
           "kind": "completed"
         },
@@ -241,7 +242,7 @@
           "end": {
             "iso": "2014-07",
             "precision": "month",
-            "text": "july 2014"
+            "text": "July 2014"
           },
           "kind": "completed"
         },

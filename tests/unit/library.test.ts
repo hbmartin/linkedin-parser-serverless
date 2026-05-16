@@ -251,6 +251,7 @@ describe('LinkedIn PDF Parser Library', () => {
         certifications: [],
         volunteer_work: [],
         projects: [],
+        publications: [],
         experience: [
           {
             dates: {
