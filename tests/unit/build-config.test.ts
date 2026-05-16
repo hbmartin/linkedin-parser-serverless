@@ -22,12 +22,26 @@ function packageJson(): z.infer<typeof PackageJsonSchema> {
   );
 }
 
-function rollupOptions(): RollupOptions {
-  return rollupConfig;
+function rollupOptions(): RollupOptions[] {
+  if (Array.isArray(rollupConfig)) {
+    return rollupConfig;
+  }
+
+  return [rollupConfig];
 }
 
-function rollupOutputOptions(): OutputOptions[] {
-  const { output } = rollupOptions();
+function rollupOptionForInput(input: string): RollupOptions {
+  const option = rollupOptions().find(candidate => candidate.input === input);
+
+  if (option === undefined) {
+    throw new Error(`No rollup config found for ${input}`);
+  }
+
+  return option;
+}
+
+function rollupOutputOptions(option: RollupOptions): OutputOptions[] {
+  const { output } = option;
 
   if (Array.isArray(output)) {
     return output;
@@ -38,13 +52,17 @@ function rollupOutputOptions(): OutputOptions[] {
 
 describe('build config contract', () => {
   test('keeps runtime parser dependencies external in rollup', () => {
-    expect(rollupConfig.external).toEqual(
-      expect.arrayContaining([...REQUIRED_EXTERNALS])
-    );
+    for (const option of rollupOptions()) {
+      expect(option.external).toEqual(
+        expect.arrayContaining([...REQUIRED_EXTERNALS])
+      );
+    }
   });
 
   test('builds every production bundle with rollup', () => {
-    const outputOptions = rollupOutputOptions();
+    const outputOptions = rollupOutputOptions(
+      rollupOptionForInput('src/index.ts')
+    );
 
     expect(outputOptions).toEqual(
       expect.arrayContaining([
@@ -64,6 +82,15 @@ describe('build config contract', () => {
     );
   });
 
+  test('builds the CLI artifact consumed by the bin wrapper', () => {
+    expect(rollupOutputOptions(rollupOptionForInput('src/cli.ts'))).toEqual([
+      expect.objectContaining({
+        file: 'dist/cli.js',
+        format: 'es',
+      }),
+    ]);
+  });
+
   test('does not keep esbuild in the production build path', () => {
     const manifest = packageJson();
 
@@ -76,5 +103,25 @@ describe('build config contract', () => {
     expect(manifest.devDependencies).toHaveProperty('@rollup/plugin-terser');
     expect(manifest.devDependencies).not.toHaveProperty('esbuild');
     expect(fs.existsSync(ESBUILD_CONFIG_PATH)).toBe(false);
+  });
+
+  test('runs artifact verification for package quality gates', () => {
+    const manifest = packageJson();
+
+    expect(manifest.scripts['verify:artifacts']).toBe(
+      'node scripts/verify-artifacts.mjs'
+    );
+    expect(manifest.scripts['verify:package']).toBe(
+      'node scripts/verify-packed-package.mjs'
+    );
+    expect(manifest.scripts['size:check']).toBe(
+      'node scripts/check-size-budget.mjs'
+    );
+    expect(manifest.scripts['quality:check']).toEqual(
+      expect.stringContaining('pnpm run verify:artifacts')
+    );
+    expect(manifest.scripts['quality:check']).toEqual(
+      expect.stringContaining('pnpm run verify:package')
+    );
   });
 });

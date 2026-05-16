@@ -18,34 +18,14 @@ A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsi
 
 ---
 
-## ✨ Features
+## Features
 
-<table>
-  <tr>
-    <td align="center">🚀</td>
-    <td><strong>Simple API</strong><br/>Single function to parse PDF files or text</td>
-  </tr>
-  <tr>
-    <td align="center">📦</td>
-    <td><strong>Serverless Friendly</strong><br/>Uses <code>unpdf</code> for PDF text extraction across JavaScript runtimes</td>
-  </tr>
-  <tr>
-    <td align="center">🔧</td>
-    <td><strong>TypeScript First</strong><br/>Full type definitions included</td>
-  </tr>
-  <tr>
-    <td align="center">⚡</td>
-    <td><strong>Fast</strong><br/>Optimized parsing algorithms</td>
-  </tr>
-  <tr>
-    <td align="center">🧪</td>
-    <td><strong>Well Tested</strong><br/>Comprehensive Jest test suite</td>
-  </tr>
-  <tr>
-    <td align="center">📱</td>
-    <td><strong>ESM Ready</strong><br/>Modern ES module support</td>
-  </tr>
-</table>
+- **Simple API**: Single function to parse PDF files or text
+- **Serverless Friendly**: Uses `unpdf` for PDF text extraction across JavaScript runtimes
+- **TypeScript First**: Full type definitions included
+- **Fast**: Optimized parsing algorithms
+- **Well Tested**: Comprehensive Jest test suite
+- **ESM Ready**: Modern ES module support
 
 ## 📦 Installation
 
