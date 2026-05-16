@@ -11,6 +11,7 @@ import {
   type JsonFixtureDirectoryEntry,
   type JsonOutputFormat,
 } from './json-fixtures.js';
+import { getNodeDirectoryEntryKind } from './node-directory-entry.js';
 
 type CliExitCode = 0 | 1;
 
@@ -53,7 +54,7 @@ type CliCommand =
   | VerifyJsonCommand
   | WriteJsonCommand;
 
-export interface CliDependencies extends JsonFixtureDependencies {}
+export type CliDependencies = JsonFixtureDependencies;
 
 export interface RunCliParams {
   args: string[];
@@ -110,39 +111,6 @@ const nodeCliDependencies: CliDependencies = {
   resolvePath: path.resolve,
   writeTextFile: fs.writeFileSync,
 };
-
-function getNodeDirectoryEntryKind(
-  directoryPath: string,
-  entry: fs.Dirent
-): CliDirectoryEntry['kind'] {
-  if (entry.isFile()) {
-    return 'file';
-  }
-
-  if (entry.isDirectory()) {
-    return 'directory';
-  }
-
-  if (!entry.isSymbolicLink()) {
-    return 'other';
-  }
-
-  try {
-    const stats = fs.statSync(path.join(directoryPath, entry.name));
-
-    if (stats.isFile()) {
-      return 'file';
-    }
-
-    if (stats.isDirectory()) {
-      return 'directory';
-    }
-  } catch {
-    return 'other';
-  }
-
-  return 'other';
-}
 
 export async function runCli({
   args,

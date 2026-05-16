@@ -11,5 +11,8 @@
 		"bin/**/*.js",
 		"*.js",
 		"*.cjs"
+	],
+	"ignore": [
+		"tests/fixtures/expected-test-resume-profile.d.ts"
 	]
 }

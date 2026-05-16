@@ -5,8 +5,8 @@ import { parseLinkedInPDF } from '../../src/index.js';
 import {
   verifyJsonFixtures,
   type JsonFixtureDependencies,
-  type JsonFixtureDirectoryEntry,
 } from '../../src/json-fixtures.js';
+import { getNodeDirectoryEntryKind } from '../../src/node-directory-entry.js';
 
 describe('PDF/JSON fixture baselines', () => {
   const fixturesPath = fileURLToPath(
@@ -65,37 +65,4 @@ function createNodeJsonFixtureDependencies(): JsonFixtureDependencies {
     resolvePath: path.resolve,
     writeTextFile: fs.writeFileSync,
   };
-}
-
-function getNodeDirectoryEntryKind(
-  directoryPath: string,
-  entry: fs.Dirent
-): JsonFixtureDirectoryEntry['kind'] {
-  if (entry.isFile()) {
-    return 'file';
-  }
-
-  if (entry.isDirectory()) {
-    return 'directory';
-  }
-
-  if (!entry.isSymbolicLink()) {
-    return 'other';
-  }
-
-  try {
-    const stats = fs.statSync(path.join(directoryPath, entry.name));
-
-    if (stats.isFile()) {
-      return 'file';
-    }
-
-    if (stats.isDirectory()) {
-      return 'directory';
-    }
-  } catch {
-    return 'other';
-  }
-
-  return 'other';
 }

@@ -29,6 +29,7 @@ export function extractStructuralSectionLines({
     const header = getParserLineSectionHeader(line.text);
 
     if (header?.kind === 'target' && header.section) {
+      // Keep section context isolated per visual column to avoid cross-column leakage.
       activeSectionsByColumn.set(line.column, header.section);
 
       if (header.section === section) {
@@ -39,11 +40,13 @@ export function extractStructuralSectionLines({
     }
 
     if (header?.kind === 'boundary') {
+      // Boundary headers close the active section for this column only.
       activeSectionsByColumn.set(line.column, 'other');
       continue;
     }
 
     if (activeSectionsByColumn.get(line.column) === section) {
+      // Collect only lines in the requested active section for this column.
       lines.push(line);
     }
   }

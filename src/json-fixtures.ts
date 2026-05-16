@@ -406,6 +406,7 @@ function formatBatchFailures(header: string, failures: BatchFailure[]): string {
   ].join('\n')}\n`;
 }
 
+// Compare canonical JSON text so CLI mismatches stay stable and dependency-light.
 function formatJsonDiff(expectedJson: unknown, generatedJson: unknown): string {
   const expectedLines = formatUnknownJson(expectedJson).split('\n');
   const generatedLines = formatUnknownJson(generatedJson).split('\n');
@@ -433,12 +434,14 @@ function formatJsonDiff(expectedJson: unknown, generatedJson: unknown): string {
   return diffLines.join('\n');
 }
 
+// Use the same two-space JSON form as fixture files for readable comparisons.
 function formatUnknownJson(value: unknown): string {
   const formattedJson = JSON.stringify(value, null, 2);
 
   return typeof formattedJson === 'string' ? formattedJson : String(value);
 }
 
+// Round-trip parser output into plain JSON shapes before comparing baselines.
 function normalizeJsonValue(value: ParseResult): unknown {
   return JSON.parse(JSON.stringify(value));
 }

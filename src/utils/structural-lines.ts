@@ -111,6 +111,7 @@ function createStructuralLine(
       .join(' ')
       .replace(/[\uE000-\uF8FF]/g, ' ')
       .replace(/\u00A0/g, ' ')
+      // Join split glyph artifacts like "A rticle" while preserving valid "I " phrases.
       .replace(/\b(?!I\s)([\p{Lu}])\s+([\p{Ll}][\p{Ll}\p{M}]+)\b/gu, '$1$2')
       .replace(/\b([\p{Lu}])\s+([\p{Lu}])\b/gu, '$1$2')
   );
