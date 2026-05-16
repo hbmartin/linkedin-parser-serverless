@@ -66,6 +66,7 @@ export interface LinkedInProfile {
   certifications: string[];
   volunteer_work: string[];
   projects: string[];
+  publications: string[];
   summary?: string;
   experience: Experience[];
   education: Education[];
@@ -90,6 +91,7 @@ export type WarningSection =
   | 'certifications'
   | 'volunteer_work'
   | 'projects'
+  | 'publications'
   | 'experience'
   | 'education';
 

@@ -10,6 +10,14 @@ describe('profile text heuristics', () => {
     expect(looksLikePositionTitleText('Producer, SHARK WRANGLERS')).toBe(true);
     expect(looksLikePositionTitleText('2022 Youth Fellow')).toBe(true);
     expect(looksLikePositionTitleText('Contributing Writer')).toBe(true);
+    expect(looksLikePositionTitleText('Managing Partner')).toBe(true);
+    expect(looksLikePositionTitleText('Mentor')).toBe(true);
+    expect(looksLikePositionTitleText('Business & Technology Executive')).toBe(
+      true
+    );
+    expect(looksLikePositionTitleText('Sr. Programmer / Project Lead')).toBe(
+      true
+    );
     expect(looksLikePositionTitleText('International Bank')).toBe(false);
     expect(looksLikeOrganizationNameText('International Bank')).toBe(true);
   });
@@ -28,6 +36,11 @@ describe('profile text heuristics', () => {
     );
     expect(looksLikePositionTitleText('Engineering Manager...')).toBe(false);
     expect(looksLikeOrganizationNameText('Engineering Manager...')).toBe(false);
+    expect(
+      looksLikePositionTitleText(
+        'Executive Produced by Alexander Campbell & Naomi Steinberg'
+      )
+    ).toBe(false);
   });
 
   test('accepts only one allowlisted trailing title parenthetical', () => {

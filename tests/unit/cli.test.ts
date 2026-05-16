@@ -547,6 +547,7 @@ const defaultParseResult: ParseResult = {
     location: 'San Francisco, CA',
     name: 'Fixture User',
     projects: [],
+    publications: [],
     top_skills: [],
     volunteer_work: [],
   },

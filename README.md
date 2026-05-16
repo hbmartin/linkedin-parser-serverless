@@ -133,6 +133,7 @@ console.log(`Experience: ${profile.experience.length} positions`);
     "certifications": ["AWS Certified Solutions Architect"],
     "volunteer_work": [],
     "projects": ["Search platform migration"],
+    "publications": [],
     "languages": [
       {
         "language": "English",
@@ -282,6 +283,7 @@ interface LinkedInProfile {
   certifications: string[];
   volunteer_work: string[];
   projects: string[];
+  publications: string[];
   summary?: string;
   experience: Experience[];
   education: Education[];
@@ -412,6 +414,7 @@ interface SectionParseWarning {
     | 'certifications'
     | 'volunteer_work'
     | 'projects'
+    | 'publications'
     | 'experience'
     | 'education';
   entry?: number;

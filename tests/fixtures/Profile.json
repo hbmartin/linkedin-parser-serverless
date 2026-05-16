@@ -20,6 +20,7 @@
     ],
     "volunteer_work": [],
     "projects": [],
+    "publications": [],
     "experience": [
       {
         "dates": {
@@ -42,7 +43,7 @@
           "start": {
             "iso": "2024-01",
             "precision": "month",
-            "text": "january 2024"
+            "text": "January 2024"
           },
           "end": {
             "iso": "2025-12",
@@ -103,7 +104,7 @@
           "start": {
             "iso": "2017-07",
             "precision": "month",
-            "text": "july 2017"
+            "text": "July 2017"
           },
           "end": {
             "iso": "2021-11",
@@ -124,12 +125,12 @@
           "start": {
             "iso": "2015-01",
             "precision": "month",
-            "text": "january 2015"
+            "text": "January 2015"
           },
           "end": {
             "iso": "2016-01",
             "precision": "month",
-            "text": "january 2016"
+            "text": "January 2016"
           },
           "kind": "completed"
         },
@@ -150,7 +151,7 @@
           "end": {
             "iso": "2015-01",
             "precision": "month",
-            "text": "january 2015"
+            "text": "January 2015"
           },
           "kind": "completed"
         },
@@ -166,7 +167,7 @@
           "start": {
             "iso": "2012-06",
             "precision": "month",
-            "text": "june 2012"
+            "text": "June 2012"
           },
           "end": {
             "iso": "2014-05",
@@ -187,7 +188,7 @@
           "start": {
             "iso": "2011-06",
             "precision": "month",
-            "text": "june 2011"
+            "text": "June 2011"
           },
           "end": {
             "iso": "2011-09",
@@ -208,7 +209,7 @@
           "start": {
             "iso": "2007-06",
             "precision": "month",
-            "text": "june 2007"
+            "text": "June 2007"
           },
           "end": {
             "iso": "2007-09",

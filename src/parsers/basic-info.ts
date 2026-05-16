@@ -288,7 +288,7 @@ export class BasicInfoParser {
         .map(line => line.text)
         .filter(line => line.trim().length > 10)
         .join(' ')
-    ).slice(0, 500);
+    );
 
     return summary || undefined;
   }

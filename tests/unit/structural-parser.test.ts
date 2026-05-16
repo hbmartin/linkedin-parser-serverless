@@ -82,4 +82,19 @@ describe('StructuralParser', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0].text).toBe('I lead');
   });
+
+  test('does not join words after ampersand abbreviations', () => {
+    const lines = createStructuralLines({
+      layout: {
+        type: 'single-column',
+      },
+      textItems: [
+        item({ text: 'P&L', x: 220, y: 700 }),
+        item({ text: 'management', x: 245, y: 700 }),
+      ],
+    });
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0].text).toBe('P&L management');
+  });
 });

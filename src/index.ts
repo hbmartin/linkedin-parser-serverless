@@ -209,6 +209,7 @@ export async function parseLinkedInPDF(
     certifications: extraSections.certifications,
     volunteer_work: extraSections.volunteer_work,
     projects: extraSections.projects,
+    publications: extraSections.publications,
     summary: basicInfo.summary,
     experience,
     education,

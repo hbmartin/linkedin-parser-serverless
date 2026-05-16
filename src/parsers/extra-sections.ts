@@ -10,6 +10,7 @@ export interface ExtraProfileSections {
   certifications: string[];
   volunteer_work: string[];
   projects: string[];
+  publications: string[];
 }
 
 type ExtraSectionKey = keyof ExtraProfileSections;
@@ -32,6 +33,7 @@ const TARGET_SECTION_HEADERS = new Map<string, ExtraSectionKey>([
   ['certificacoes e licencas', 'certifications'],
   ['projects', 'projects'],
   ['projetos', 'projects'],
+  ['publications', 'publications'],
   ['volunteer experience', 'volunteer_work'],
   ['volunteer work', 'volunteer_work'],
   ['volunteering', 'volunteer_work'],
@@ -51,7 +53,6 @@ const BOUNDARY_SECTION_HEADERS = new Set([
   'education',
   'formacao',
   'courses',
-  'publications',
   'patents',
   'honors and awards',
   'organizations',
@@ -94,6 +95,7 @@ export class ExtraSectionParser {
 
       sections.certifications.push(...columnSections.value.certifications);
       sections.projects.push(...columnSections.value.projects);
+      sections.publications.push(...columnSections.value.publications);
       sections.volunteer_work.push(...columnSections.value.volunteer_work);
       warnings.push(...columnSections.warnings);
     }
@@ -115,6 +117,7 @@ export function filterMergedSectionWarnings({
   const entriesByWarningSection: Partial<Record<WarningSection, string[]>> = {
     certifications: sections.certifications,
     projects: sections.projects,
+    publications: sections.publications,
     volunteer_work: sections.volunteer_work,
   };
   const emittedEmptySectionWarnings = new Set<WarningSection>();
@@ -252,6 +255,7 @@ function createEmptySections(): ExtraProfileSections {
   return {
     certifications: [],
     projects: [],
+    publications: [],
     volunteer_work: [],
   };
 }

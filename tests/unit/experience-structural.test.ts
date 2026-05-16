@@ -51,12 +51,12 @@ describe('ExperienceStructuralParser', () => {
           start: {
             iso: '2020-01',
             precision: 'month',
-            text: 'january 2020',
+            text: 'January 2020',
           },
           end: {
             iso: '2024-03',
             precision: 'month',
-            text: 'march 2024',
+            text: 'March 2024',
           },
           kind: 'completed',
         },
@@ -103,6 +103,131 @@ describe('ExperienceStructuralParser', () => {
           expect.objectContaining({
             duration: 'November 2024 - Present',
             title: 'Investor & Advisor',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('recognizes short LinkedIn title vocabulary without turning titles into organizations', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'VDOSH', y: 670 }),
+      textItem({ text: 'Managing Partner', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'April 2016 - Present', y: 630 }),
+      textItem({ text: 'Greater Los Angeles Area', y: 610 }),
+      textItem({ text: 'Alchemist Accelerator', y: 570 }),
+      textItem({ text: 'Mentor', y: 550, fontSize: 11.5 }),
+      textItem({ text: 'January 2018 - Present', y: 530 }),
+      textItem({ text: 'Accenture', y: 490 }),
+      textItem({
+        text: 'Business & Technology Executive',
+        y: 470,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'March 2015 - January 2022', y: 450 }),
+      textItem({ text: 'Zones', y: 410 }),
+      textItem({ text: 'Sr. Web Programmer', y: 390, fontSize: 11.5 }),
+      textItem({ text: 'August 2000 - September 2001', y: 370 }),
+      textItem({ text: 'MOSUM Technology Pvt Ltd', y: 330 }),
+      textItem({ text: 'Programmer', y: 310, fontSize: 11.5 }),
+      textItem({ text: 'September 1998 - January 1999', y: 290 }),
+    ];
+
+    const experiences = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'VDOSH',
+        positions: [
+          expect.objectContaining({
+            duration: 'April 2016 - Present',
+            location: 'Greater Los Angeles Area',
+            title: 'Managing Partner',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Alchemist Accelerator',
+        positions: [
+          expect.objectContaining({
+            duration: 'January 2018 - Present',
+            title: 'Mentor',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Accenture',
+        positions: [
+          expect.objectContaining({
+            duration: 'March 2015 - January 2022',
+            title: 'Business & Technology Executive',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Zones',
+        positions: [
+          expect.objectContaining({
+            duration: 'August 2000 - September 2001',
+            title: 'Sr. Web Programmer',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'MOSUM Technology Pvt Ltd',
+        positions: [
+          expect.objectContaining({
+            duration: 'September 1998 - January 1999',
+            title: 'Programmer',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps page-break role details with the organization that started before the footer', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Microsoft', y: 670 }),
+      textItem({
+        text: 'Software Design Engineer in Test',
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'October 2002 - November 2008', y: 630 }),
+      textItem({ text: 'Redmond, WA', y: 610 }),
+      textItem({ text: '- Office Communication Server', y: 590 }),
+      textItem({ text: '- Microsoft VISIO', y: 570 }),
+      textItem({ text: 'Innosoft, Inc', y: 530 }),
+      textItem({
+        text: 'Sr. Programmer / Project Lead',
+        y: 510,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'Page 2 of 3', y: 490, fontSize: 9 }),
+      textItem({ text: 'November 2001 - October 2002', y: -9300 }),
+    ];
+
+    const experiences = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Microsoft',
+        positions: [
+          expect.objectContaining({
+            description: '- Office Communication Server - Microsoft VISIO',
+            location: 'Redmond, WA',
+            title: 'Software Design Engineer in Test',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Innosoft, Inc',
+        positions: [
+          expect.objectContaining({
+            duration: 'November 2001 - October 2002',
+            title: 'Sr. Programmer / Project Lead',
           }),
         ],
       }),

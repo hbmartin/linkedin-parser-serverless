@@ -12,6 +12,7 @@ export type ParserLineSection =
   | 'certifications'
   | 'volunteer_work'
   | 'projects'
+  | 'publications'
   | 'experience'
   | 'education'
   | 'other';
@@ -71,6 +72,7 @@ const TARGET_SECTION_HEADERS = new Map<string, ParserLineSection>([
   ['certificações e licenças', 'certifications'],
   ['projects', 'projects'],
   ['projetos', 'projects'],
+  ['publications', 'publications'],
   ['volunteer experience', 'volunteer_work'],
   ['volunteer work', 'volunteer_work'],
   ['volunteering', 'volunteer_work'],
@@ -80,7 +82,6 @@ const TARGET_SECTION_HEADERS = new Map<string, ParserLineSection>([
 
 const BOUNDARY_SECTION_HEADERS = new Set([
   'courses',
-  'publications',
   'patents',
   'honors and awards',
   'organizations',

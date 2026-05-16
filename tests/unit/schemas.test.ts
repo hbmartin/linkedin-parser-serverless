@@ -16,6 +16,7 @@ describe('exported Zod schemas', () => {
       certifications: [],
       volunteer_work: [],
       projects: [],
+      publications: [],
       experience: [
         {
           title: 'Engineer',
