@@ -751,6 +751,39 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('starts dotted position titles after complete description sentences', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Acme Labs', y: 670 }),
+      textItem({ text: 'Staff Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2021', y: 630 }),
+      textItem({ text: 'Remote', y: 610 }),
+      textItem({
+        text: 'Led distributed platform migrations across regions.',
+        y: 590,
+      }),
+      textItem({ text: 'Manager.', y: 570, fontSize: 11.5 }),
+      textItem({ text: '2022 - Present', y: 550 }),
+      textItem({ text: 'Managed support operations.', y: 530 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.positions).toEqual([
+      expect.objectContaining({
+        description: 'Led distributed platform migrations across regions.',
+        duration: '2020 - 2021',
+        location: 'Remote',
+        title: 'Staff Engineer',
+      }),
+      expect.objectContaining({
+        description: 'Managed support operations.',
+        duration: '2022 - Present',
+        title: 'Manager.',
+      }),
+    ]);
+  });
+
   test('starts dotted organization names after existing descriptions', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),

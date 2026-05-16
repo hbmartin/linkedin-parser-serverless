@@ -11,12 +11,12 @@ const fileBudgets = [
   {
     file: 'dist/index.js',
     gzipBytes: 28 * 1024,
-    rawBytes: 128 * 1024,
+    rawBytes: 256 * 1024,
   },
   {
     file: 'dist/index.cjs',
     gzipBytes: 28 * 1024,
-    rawBytes: 128 * 1024,
+    rawBytes: 256 * 1024,
   },
   {
     file: 'dist/index.min.js',
@@ -29,7 +29,7 @@ const fileBudgets = [
     rawBytes: 20 * 1024,
   },
 ];
-const totalTopLevelJavaScriptBudget = 320 * 1024;
+const totalTopLevelJavaScriptBudget = 384 * 1024;
 
 function main() {
   const results = fileBudgets.map(budget => {

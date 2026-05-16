@@ -510,6 +510,13 @@ export class ExperienceStructuralParser {
       return false;
     }
 
+    if (
+      /[.!?]$/.test(normalizedPreviousLine) &&
+      this.looksLikePosition(normalizedLine)
+    ) {
+      return false;
+    }
+
     return (
       !this.looksLikeDuration(normalizedLine) &&
       !this.looksLikeLocation(normalizedLine) &&
