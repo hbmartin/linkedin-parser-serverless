@@ -201,8 +201,8 @@ export function looksLikePositionTitleText(text: string): boolean {
     normalizedText.split(/\s+/).length > 15;
 
   const hasAllowedParenthetical =
-    !normalizedText.includes('(') ||
-    /\((?:contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\)$/iu.test(
+    !/[()]/u.test(normalizedText) ||
+    /^[^()]+ \((?:contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\)$/iu.test(
       normalizedText
     );
   const hasValidTitleFormat =

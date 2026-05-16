@@ -149,6 +149,31 @@ describe('EducationParser', () => {
     );
   });
 
+  test('does not append structural locations to an existing degree', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'Example University',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Computer Science',
+        y: 710,
+      }),
+      structuralLine({ fontSize: 10, text: 'New York, NY', y: 696 }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 660 }),
+    ]);
+
+    expect(educations[0]).toEqual(
+      expect.objectContaining({
+        degree: 'Computer Science',
+        location: 'New York, NY',
+      })
+    );
+  });
+
   test('adds structured dates for education ranges', () => {
     const [education] = EducationParser.parse(`
       Education

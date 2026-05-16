@@ -404,7 +404,7 @@ export class ExperienceStructuralParser {
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+$/, // City, State
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+/, // City, State, Country
       /^Greater\s+[\p{Lu}][\p{L}\p{M}\s]+(?:Area|,\s*[\p{Lu}\s]{2,})?$/u,
-      /^(?:Rua|R\.|Av\.?|Avenida|Street|St\.|Avenue|Ave\.|Road|Rd\.)\b/i,
+      /^(?:Rua|R\.|Av\.?|Avenida|Alameda|Praça|Street|St\.|Avenue|Ave\.|Road|Rd\.)(?!\w)/iu,
       /^\d{5}(?:-\d{3})?$/,
       /^(California|New York|Texas|Florida|United States|Brasil|Brazil|Rio de Janeiro|São Paulo)$/i,
     ];
@@ -536,11 +536,10 @@ export class ExperienceStructuralParser {
 
         case 'location':
           if (currentPosition) {
-            currentPosition.location = currentPosition.location
-              ? `${currentPosition.location} ${this.normalizeLocationText(
-                  section.text
-                )}`
-              : this.normalizeLocationText(section.text);
+            const locationText = currentPosition.location
+              ? `${currentPosition.location} ${section.text}`
+              : section.text;
+            currentPosition.location = this.normalizeLocationText(locationText);
           }
           break;
 

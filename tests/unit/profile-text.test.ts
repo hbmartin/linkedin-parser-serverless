@@ -10,6 +10,14 @@ describe('profile text heuristics', () => {
     expect(looksLikeOrganizationNameText('International Bank')).toBe(true);
   });
 
+  test('accepts only one allowlisted trailing title parenthetical', () => {
+    expect(looksLikePositionTitleText('Lead Engineer (Contractor)')).toBe(true);
+    expect(looksLikePositionTitleText('Lead Engineer (R&D)')).toBe(false);
+    expect(
+      looksLikePositionTitleText('Lead Engineer (R&D) (Contractor)')
+    ).toBe(false);
+  });
+
   test('supports accented organization words without promoting locations', () => {
     expect(looksLikeOrganizationNameText('Ação Labs')).toBe(true);
     expect(looksLikeOrganizationNameText('São Paulo Tech')).toBe(true);
