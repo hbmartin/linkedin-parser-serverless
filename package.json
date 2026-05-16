@@ -46,6 +46,7 @@
 		"build:bundle": "rollup -c",
 		"build:types:cjs": "cp dist/index.d.ts dist/index.d.cts",
 		"build:dev": "tsc",
+		"check": "pnpm run format && pnpm run dupes && pnpm run test && pnpm run build && pnpm run knip",
 		"clean": "rm -rf dist coverage",
 		"dupes": "jscpd",
 		"format": "prettier --write \"src/**/*.{ts,tsx}\"",

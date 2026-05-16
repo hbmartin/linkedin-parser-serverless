@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseLinkedInPDF } from '../../src/index.js';
+import type { LinkedInProfile } from '../../src/index.js';
 import { expectedTestResumeProfile } from '../fixtures/expected-test-resume-profile.js';
 
 describe('LinkedIn PDF Parser Library', () => {
