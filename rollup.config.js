@@ -1,7 +1,9 @@
+import terser from '@rollup/plugin-terser';
 import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
+import { defineConfig } from 'rollup';
 
-export default {
+export default defineConfig({
   input: 'src/index.ts',
   output: [
     {
@@ -21,6 +23,17 @@ export default {
       format: 'es',
       sourcemap: true,
       inlineDynamicImports: true,
+      plugins: [
+        terser({
+          compress: {
+            drop_console: true,
+            drop_debugger: true,
+          },
+          format: {
+            comments: false,
+          },
+        }),
+      ],
     },
   ],
   external: ['chrono-node', 'unpdf', 'zod'],
@@ -35,4 +48,4 @@ export default {
       rootDir: 'src',
     }),
   ],
-};
+});
