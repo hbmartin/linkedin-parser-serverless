@@ -42,7 +42,7 @@
 		"node": ">=22.0.0"
 	},
 	"scripts": {
-		"build": "pnpm run clean && tsc && pnpm run build:bundle && pnpm run build:types:cjs",
+		"build": "pnpm run clean && tsc --noEmit && pnpm run build:bundle && pnpm run build:types:cjs",
 		"build:bundle": "rollup -c",
 		"build:types:cjs": "cp dist/index.d.ts dist/index.d.cts",
 		"build:dev": "tsc",

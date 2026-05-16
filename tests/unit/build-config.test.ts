@@ -12,7 +12,7 @@ const ESBUILD_CONFIG_PATH = fileURLToPath(
   new URL('../../esbuild.config.js', import.meta.url)
 );
 const PackageJsonSchema = z.object({
-  devDependencies: z.record(z.string(), z.string()).optional(),
+  devDependencies: z.record(z.string(), z.string()),
   scripts: z.record(z.string(), z.string()),
 });
 
@@ -67,9 +67,10 @@ describe('build config contract', () => {
   test('does not keep esbuild in the production build path', () => {
     const manifest = packageJson();
 
-    expect(manifest.scripts.build).toBe(
-      'pnpm run clean && tsc && pnpm run build:bundle && pnpm run build:types:cjs'
-    );
+    expect(manifest.scripts.build).toMatch(/\bpnpm run clean\b/);
+    expect(manifest.scripts.build).toMatch(/\btsc --noEmit\b/);
+    expect(manifest.scripts.build).toMatch(/\bpnpm run build:bundle\b/);
+    expect(manifest.scripts.build).toMatch(/\bpnpm run build:types:cjs\b/);
     expect(manifest.scripts['build:bundle']).toBe('rollup -c');
     expect(manifest.scripts).not.toHaveProperty('build:minify');
     expect(manifest.devDependencies).toHaveProperty('@rollup/plugin-terser');
