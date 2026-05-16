@@ -163,6 +163,52 @@ describe('BasicInfoParser', () => {
     );
   });
 
+  test('extracts pipe-delimited headlines and phone contact fields', () => {
+    const profile = BasicInfoParser.parse(`
+      Test User
+      Product | Engineering | Operations
+      Los Angeles, California, United States
+      test.user@example.com
+      (415) 5555-0101
+    `);
+
+    expect(profile.headline).toBe('Product | Engineering | Operations');
+    expect(profile.contact).toEqual(
+      expect.objectContaining({
+        email: 'test.user@example.com',
+        phone: '(415) 5555-0101',
+      })
+    );
+  });
+
+  test('uses the multiline engineering manager headline fallback', () => {
+    const profile = BasicInfoParser.parse(`
+      Test User
+      Engineering Manager @ Acme |
+      Platform Reliability
+    `);
+
+    expect(profile.headline).toBe(
+      'Engineering Manager @ Acme | Platform Reliability'
+    );
+  });
+
+  test('builds a fallback summary from long identity lines', () => {
+    const profile = BasicInfoParser.parse(`
+      Test User
+      Principal Advisor
+      Toronto, Ontario, Canada
+      Portfolio Focus
+      Advisory Practice
+      Builds reliable product and engineering systems for teams that need repeatable delivery across multiple business units.
+      Partners with operations leaders to remove delivery risk and improve maintainability across the platform.
+    `);
+
+    expect(profile.summary).toBe(
+      'Builds reliable product and engineering systems for teams that need repeatable delivery across multiple business units.'
+    );
+  });
+
   test('preserves structural summary length consistently with fallback summary parsing', () => {
     const longSummaryLine = `Builds ${'reliable systems '.repeat(40)}`.trim();
     const result = BasicInfoParser.parseStructuralWithWarnings(

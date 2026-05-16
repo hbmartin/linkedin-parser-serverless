@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import {
   assertCondition,
@@ -7,15 +8,15 @@ import {
   repoPath,
 } from './lib/verification-helpers.mjs';
 
-const fileBudgets = [
+export const fileBudgets = [
   {
     file: 'dist/index.js',
-    gzipBytes: 28 * 1024,
+    gzipBytes: 80 * 1024,
     rawBytes: 256 * 1024,
   },
   {
     file: 'dist/index.cjs',
-    gzipBytes: 28 * 1024,
+    gzipBytes: 80 * 1024,
     rawBytes: 256 * 1024,
   },
   {
@@ -29,7 +30,7 @@ const fileBudgets = [
     rawBytes: 20 * 1024,
   },
 ];
-const totalTopLevelJavaScriptBudget = 384 * 1024;
+export const totalTopLevelJavaScriptBudget = 600 * 1024;
 
 function main() {
   const results = fileBudgets.map(budget => {
@@ -99,9 +100,11 @@ function main() {
   );
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  }
 }

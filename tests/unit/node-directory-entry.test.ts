@@ -40,9 +40,26 @@ describe('getNodeDirectoryEntryKind', () => {
     expect(readEntryKind('missing-link.pdf')).toBe('other');
   });
 
-  function readEntryKind(fileName: string): ReturnType<
-    typeof getNodeDirectoryEntryKind
-  > {
+  test('classifies non-file directory entries as other', () => {
+    const entry: fs.Dirent = {
+      isBlockDevice: () => false,
+      isCharacterDevice: () => false,
+      isDirectory: () => false,
+      isFIFO: () => true,
+      isFile: () => false,
+      isSocket: () => false,
+      isSymbolicLink: () => false,
+      name: 'pipe',
+      parentPath: directoryPath,
+      path: directoryPath,
+    };
+
+    expect(getNodeDirectoryEntryKind(directoryPath, entry)).toBe('other');
+  });
+
+  function readEntryKind(
+    fileName: string
+  ): ReturnType<typeof getNodeDirectoryEntryKind> {
     const entry = fs
       .readdirSync(directoryPath, { withFileTypes: true })
       .find(candidate => candidate.name === fileName);

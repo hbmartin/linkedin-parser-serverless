@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { OutputOptions, RollupOptions } from 'rollup';
 import { z } from 'zod';
 import rollupConfig from '../../rollup.config.js';
@@ -21,6 +21,16 @@ const PackageJsonSchema = z.object({
   devDependencies: z.record(z.string(), z.string()),
   scripts: z.record(z.string(), z.string()),
 });
+const SizeBudgetScriptSchema = z.object({
+  fileBudgets: z.array(
+    z.object({
+      file: z.string(),
+      gzipBytes: z.number().int().positive(),
+      rawBytes: z.number().int().positive(),
+    })
+  ),
+  totalTopLevelJavaScriptBudget: z.number().int().positive(),
+});
 
 function packageJson(): z.infer<typeof PackageJsonSchema> {
   return PackageJsonSchema.parse(
@@ -30,6 +40,16 @@ function packageJson(): z.infer<typeof PackageJsonSchema> {
 
 function repoFilePath(relativePath: string): string {
   return fileURLToPath(new URL(`../../${relativePath}`, import.meta.url));
+}
+
+async function sizeBudgetConfig(): Promise<
+  z.infer<typeof SizeBudgetScriptSchema>
+> {
+  const scriptExports: unknown = await import(
+    pathToFileURL(repoFilePath('scripts/check-size-budget.mjs')).href
+  );
+
+  return SizeBudgetScriptSchema.parse(scriptExports);
 }
 
 function rollupOptions(): RollupOptions[] {
@@ -138,6 +158,29 @@ describe('build config contract', () => {
   test('keeps package verification scripts present in the repo', () => {
     for (const scriptPath of REQUIRED_PACKAGE_SCRIPT_FILES) {
       expect(fs.existsSync(repoFilePath(scriptPath))).toBe(true);
+    }
+  });
+
+  test('keeps aggregate JavaScript size budget aligned with file budgets', async () => {
+    const { fileBudgets, totalTopLevelJavaScriptBudget } =
+      await sizeBudgetConfig();
+    const individualRawBudgetBytes = fileBudgets.reduce(
+      (totalBytes, budget) => totalBytes + budget.rawBytes,
+      0
+    );
+
+    expect(totalTopLevelJavaScriptBudget).toBeGreaterThanOrEqual(
+      individualRawBudgetBytes
+    );
+  });
+
+  test('keeps gzip budgets proportional to raw file budgets', async () => {
+    const { fileBudgets } = await sizeBudgetConfig();
+
+    for (const budget of fileBudgets) {
+      expect(budget.gzipBytes).toBeGreaterThanOrEqual(
+        Math.ceil(budget.rawBytes / 4)
+      );
     }
   });
 });

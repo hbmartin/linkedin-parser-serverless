@@ -367,6 +367,70 @@ describe('EducationParser', () => {
       kind: 'completed',
     });
   });
+
+  test('parses standalone year and location detail lines', () => {
+    const [education] = EducationParser.parse(`
+      Education
+      Example University
+      Bachelor of Science
+      2016
+      Austin, Texas
+    `);
+
+    expect(education).toEqual(
+      expect.objectContaining({
+        degree: 'Bachelor of Science',
+        institution: 'Example University',
+        location: 'Austin, Texas',
+        year: '2016',
+      })
+    );
+  });
+
+  test('returns no structural entries when an education section is absent', () => {
+    expect(EducationParser.parseStructural([])).toEqual([]);
+    expect(
+      EducationParser.parseStructural([
+        structuralLine({ fontSize: 16, text: 'Experience', y: 760 }),
+        structuralLine({ fontSize: 10, text: 'Example University', y: 730 }),
+      ])
+    ).toEqual([]);
+  });
+
+  test('uses the first structural detail as an institution when hierarchy is missing', () => {
+    const [education] = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Certificate in Product Design 2020',
+        y: 730,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 700 }),
+    ]);
+
+    expect(education).toEqual(
+      expect.objectContaining({
+        degree: '',
+        institution: 'Certificate in Product Design 2020',
+      })
+    );
+  });
+
+  test('warns when an education year cannot be parsed as a profile date', () => {
+    const result = EducationParser.parseWithWarnings(`
+      Education
+      Archive College
+      Certificate in Cataloging
+      1888 - 1889
+    `);
+
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'dates',
+        rawText: '1888 - 1889',
+      }),
+    ]);
+  });
 });
 
 function structuralLine({

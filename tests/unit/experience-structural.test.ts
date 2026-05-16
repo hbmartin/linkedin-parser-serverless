@@ -980,6 +980,168 @@ describe('ExperienceStructuralParser', () => {
       expect.objectContaining({ entry: 2, rawText: 'Advisor' }),
     ]);
   });
+
+  test('parses bounded right-column lines without an explicit section header', () => {
+    const items = [
+      textItem({ text: 'Ignored Sidebar', x: 80, y: 670 }),
+      textItem({ text: 'Outside Range Labs', y: 700 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2024', y: 630 }),
+      textItem({ text: 'Ignored Later Labs', y: 550 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(
+      items,
+      680,
+      580
+    );
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'Northstar Solutions',
+        positions: [
+          expect.objectContaining({
+            duration: '2020 - 2024',
+            title: 'Principal Engineer',
+          }),
+        ],
+      })
+    );
+  });
+
+  test('records organization total duration when no position title follows', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: '2020 - 2024', y: 650 }),
+    ]);
+
+    expect(result.value).toEqual([
+      {
+        organization: 'Northstar Solutions',
+        positions: [],
+        totalDuration: '2020 - 2024',
+      },
+    ]);
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'positions',
+        rawText: 'Northstar Solutions',
+      }),
+    ]);
+  });
+
+  test('starts a replacement organization before any title appears', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Blue Oak Labs', y: 640 }),
+      textItem({ text: 'Staff Engineer', y: 620, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2024', y: 600 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Northstar Solutions',
+        positions: [],
+      }),
+      expect.objectContaining({
+        organization: 'Blue Oak Labs',
+        positions: [
+          expect.objectContaining({
+            duration: '2021 - 2024',
+            title: 'Staff Engineer',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps locations that appear before dates on the current position', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'Austin, TX', y: 630 }),
+      textItem({ text: '2020 - 2024', y: 610 }),
+    ]);
+
+    expect(experience.positions).toEqual([
+      expect.objectContaining({
+        duration: '2020 - 2024',
+        location: 'Austin, TX',
+        title: 'Principal Engineer',
+      }),
+    ]);
+  });
+
+  test('splits consecutive position titles under the same organization', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'Engineering Manager', y: 630, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2024', y: 610 }),
+    ]);
+
+    expect(experience.positions).toEqual([
+      expect.objectContaining({
+        duration: '',
+        title: 'Principal Engineer',
+      }),
+      expect.objectContaining({
+        duration: '2021 - 2024',
+        title: 'Engineering Manager',
+      }),
+    ]);
+  });
+
+  test('normalizes fallback duration fragments when date parsing cannot', () => {
+    expect(
+      ExperienceStructuralParser['extractCleanDuration'](
+        'Museum archive appointment 1888 - 1889'
+      )
+    ).toBe('1888 - 1889');
+    expect(
+      ExperienceStructuralParser['extractCleanDuration'](
+        '• shipped in fiscal 1888 after launch'
+      )
+    ).toBe('fiscal 1888');
+    expect(
+      ExperienceStructuralParser['extractCleanDuration']('contract-to-hire')
+    ).toBe('contract-to-hire');
+
+    const longNonDateText =
+      'served without explicit dates in a description that is too long to be treated like a compact duration value';
+
+    expect(
+      ExperienceStructuralParser['extractCleanDuration'](longNonDateText)
+    ).toBe(longNonDateText);
+  });
+
+  test('reports unparseable non-profile date ranges separately from missing dates', () => {
+    const warnings = ExperienceStructuralParser['createExperienceWarnings']([
+      {
+        organization: 'Archive Museum',
+        positions: [
+          {
+            description: '',
+            duration: '1888 - 1889',
+            title: 'Cataloger',
+          },
+        ],
+      },
+    ]);
+
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        field: 'dates',
+        message: 'Could not parse date range',
+        rawText: '1888 - 1889',
+      }),
+    ]);
+  });
 });
 
 function structuralSection({
