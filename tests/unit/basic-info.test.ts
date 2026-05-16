@@ -1,4 +1,5 @@
 import { BasicInfoParser } from '../../src/parsers/basic-info.js';
+import type { StructuralLine } from '../../src/utils/structural-lines.js';
 
 describe('BasicInfoParser', () => {
   test('does not classify spaced email addresses as short company headlines', () => {
@@ -119,4 +120,66 @@ describe('BasicInfoParser', () => {
       }),
     ]);
   });
+
+  test('extracts structural summary from its visual column', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      [
+        'Test User',
+        'Principal Advisor',
+        'Toronto, Ontario, Canada',
+        'Summary',
+        'TypeScript',
+        'Builds products across engineering and operations.',
+        'Languages',
+        'English (Native or Bilingual)',
+        'with focus on reliable delivery and maintainable systems.',
+        'Experience',
+      ].join('\n'),
+      [
+        structuralLine({ column: 'right', text: 'Summary', y: 700 }),
+        structuralLine({ column: 'left', text: 'TypeScript', y: 690 }),
+        structuralLine({
+          column: 'right',
+          text: 'Builds products across engineering and operations.',
+          y: 690,
+        }),
+        structuralLine({ column: 'left', text: 'Languages', y: 680 }),
+        structuralLine({
+          column: 'left',
+          text: 'English (Native or Bilingual)',
+          y: 670,
+        }),
+        structuralLine({
+          column: 'right',
+          text: 'with focus on reliable delivery and maintainable systems.',
+          y: 670,
+        }),
+        structuralLine({ column: 'right', text: 'Experience', y: 660 }),
+      ]
+    );
+
+    expect(result.value.summary).toBe(
+      'Builds products across engineering and operations. with focus on reliable delivery and maintainable systems.'
+    );
+  });
 });
+
+function structuralLine({
+  column,
+  text,
+  y,
+}: {
+  column: StructuralLine['column'];
+  text: string;
+  y: number;
+}): StructuralLine {
+  return {
+    column,
+    fontSize: 10,
+    height: 10,
+    text,
+    width: text.length * 5,
+    x: column === 'left' ? 20 : 220,
+    y,
+  };
+}

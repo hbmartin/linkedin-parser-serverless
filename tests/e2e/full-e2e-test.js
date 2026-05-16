@@ -1,42 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { PDFParse } from 'pdf-parse';
 import { parseLinkedInPDF } from '../../dist/index.js';
-
-const expectedProfile = {
-  name: 'Arkady Zalkowitsch',
-  headline:
-    'Senior Engineering Manager @ Commure | ex-Carta | MBA in Business Management',
-  location: 'Sunnyvale, California, United States',
-  linkedinUrl: 'https://linkedin.com/in/arkadyzalko',
-  topSkills: [
-    'Strategic Roadmaps',
-    'Electronic Engineering',
-    'Project Planning',
-  ],
-  languages: [
-    { language: 'Inglês  Working', proficiency: 'Professional' },
-    { language: 'Espanhol', proficiency: 'Elementary' },
-  ],
-  experienceCount: 14,
-  educationCount: 5,
-  rawTextLength: 13078,
-  pdfTextLength: 13184,
-};
+import { expectedTestResumeProfile } from '../fixtures/expected-test-resume-profile.js';
 
 function valuesMatch(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
-}
-
-async function extractPdfText(pdfBuffer) {
-  const parser = new PDFParse({ data: pdfBuffer });
-
-  try {
-    const result = await parser.getText();
-    return result.text;
-  } finally {
-    await parser.destroy();
-  }
 }
 
 async function runFullE2ETest() {
@@ -61,52 +29,68 @@ async function runFullE2ETest() {
       `✅ Loaded test PDF: ${testPdfPath} (${pdfBuffer.length} bytes)`
     );
 
-    console.log('\n📋 Test 2: Independent PDF Text Extraction');
-    const text = await extractPdfText(pdfBuffer);
-    console.log(`✅ Extracted ${text.length} characters of text`);
-
-    console.log('\n📋 Test 3: Library Parsing');
+    console.log('\n📋 Test 2: Library Parsing');
     const result = await parseLinkedInPDF(pdfBuffer, { includeRawText: true });
     console.log(`✅ Parsed profile data for: ${result.profile.name}`);
 
-    console.log('\n📋 Test 4: Strict Fixture Validation');
+    console.log('\n📋 Test 3: Strict Fixture Validation');
     const checks = [
-      ['PDF text length', text.length, expectedProfile.pdfTextLength],
-      ['PDF text includes name', text.includes(expectedProfile.name), true],
       [
-        'PDF text includes education',
-        text.includes('Universidade Veiga de Almeida'),
+        'Raw text length',
+        result.rawText?.length,
+        expectedTestResumeProfile.rawTextLength,
+      ],
+      [
+        'Raw text includes name',
+        result.rawText?.includes(expectedTestResumeProfile.name),
         true,
       ],
-      ['Parsed name', result.profile.name, expectedProfile.name],
-      ['Parsed headline', result.profile.headline, expectedProfile.headline],
-      ['Parsed location', result.profile.location, expectedProfile.location],
+      [
+        'Raw text includes education',
+        result.rawText?.includes('Universidade Veiga de Almeida'),
+        true,
+      ],
+      ['Parsed name', result.profile.name, expectedTestResumeProfile.name],
+      [
+        'Parsed headline',
+        result.profile.headline,
+        expectedTestResumeProfile.headline,
+      ],
+      [
+        'Parsed location',
+        result.profile.location,
+        expectedTestResumeProfile.location,
+      ],
       ['Parsed email', result.profile.contact.email, undefined],
       [
         'Parsed LinkedIn URL',
         result.profile.contact.linkedin_url,
-        expectedProfile.linkedinUrl,
+        expectedTestResumeProfile.contact.linkedin_url,
       ],
       [
         'Parsed top skills',
         result.profile.top_skills,
-        expectedProfile.topSkills,
+        expectedTestResumeProfile.top_skills,
       ],
-      ['Parsed languages', result.profile.languages, expectedProfile.languages],
+      [
+        'Parsed summary',
+        result.profile.summary,
+        expectedTestResumeProfile.summary,
+      ],
+      [
+        'Parsed languages',
+        result.profile.languages,
+        expectedTestResumeProfile.languages,
+      ],
       [
         'Parsed experience count',
         result.profile.experience.length,
-        expectedProfile.experienceCount,
+        expectedTestResumeProfile.experienceLength,
       ],
       [
         'Parsed education count',
         result.profile.education.length,
-        expectedProfile.educationCount,
-      ],
-      [
-        'Raw text length',
-        result.rawText?.length,
-        expectedProfile.rawTextLength,
+        expectedTestResumeProfile.educationLength,
       ],
     ];
 

@@ -1,4 +1,5 @@
 import { ListParser } from '../../src/parsers/lists.js';
+import type { StructuralLine } from '../../src/utils/structural-lines.js';
 
 describe('ListParser', () => {
   test('does not treat generic experience lines as top skills', () => {
@@ -97,4 +98,66 @@ describe('ListParser', () => {
       }),
     ]);
   });
+
+  test('extracts structural languages from their visual column only', () => {
+    const result = ListParser.parseStructuralLanguagesWithWarnings([
+      structuralLine({ column: 'right', text: 'Summary', y: 700 }),
+      structuralLine({
+        column: 'right',
+        text: 'Builds product systems for operators.',
+        y: 690,
+      }),
+      structuralLine({ column: 'left', text: 'Languages', y: 680 }),
+      structuralLine({
+        column: 'left',
+        text: 'Português (Native or Bilingual)',
+        y: 670,
+      }),
+      structuralLine({
+        column: 'right',
+        text: 'This summary line should not be parsed as a language.',
+        y: 670,
+      }),
+      structuralLine({
+        column: 'left',
+        text: 'Inglês (Professional Working)',
+        y: 660,
+      }),
+      structuralLine({ column: 'right', text: 'Experience', y: 650 }),
+    ]);
+
+    expect(result).toEqual({
+      value: [
+        {
+          language: 'Português',
+          proficiency: 'Native or Bilingual',
+        },
+        {
+          language: 'Inglês',
+          proficiency: 'Professional Working',
+        },
+      ],
+      warnings: [],
+    });
+  });
 });
+
+function structuralLine({
+  column,
+  text,
+  y,
+}: {
+  column: StructuralLine['column'];
+  text: string;
+  y: number;
+}): StructuralLine {
+  return {
+    column,
+    fontSize: 10,
+    height: 10,
+    text,
+    width: text.length * 5,
+    x: column === 'left' ? 20 : 220,
+    y,
+  };
+}

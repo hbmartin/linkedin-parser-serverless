@@ -16,6 +16,8 @@ import {
   type ParserLineSection,
 } from '../utils/parser-lines.js';
 import { TOP_SKILLS_LIMIT } from '../utils/parser-limits.js';
+import { extractStructuralSectionLines } from '../utils/structural-sections.js';
+import type { StructuralLine } from '../utils/structural-lines.js';
 
 interface SkillCandidateContext {
   skill: string;
@@ -99,6 +101,35 @@ export class ListParser {
       isHeaderForSection(line.text, 'languages')
     );
 
+    return this.parseLanguageLines({
+      hasLanguagesSection,
+      lines: parserLines
+        .filter(line => line.section === 'languages')
+        .map(line => line.text),
+    });
+  }
+
+  static parseStructuralLanguagesWithWarnings(
+    structuralLines: StructuralLine[]
+  ): ParsedSectionResult<Language[]> {
+    const sectionLines = extractStructuralSectionLines({
+      section: 'languages',
+      structuralLines,
+    });
+
+    return this.parseLanguageLines({
+      hasLanguagesSection: sectionLines.hasSection,
+      lines: sectionLines.lines.map(line => line.text),
+    });
+  }
+
+  private static parseLanguageLines({
+    hasLanguagesSection,
+    lines,
+  }: {
+    hasLanguagesSection: boolean;
+    lines: string[];
+  }): ParsedSectionResult<Language[]> {
     if (!hasLanguagesSection) {
       return {
         value: [],
@@ -106,12 +137,11 @@ export class ListParser {
       };
     }
 
-    const lines = parserLines.filter(line => line.section === 'languages');
     const languages: Language[] = [];
     const warnings: SectionParseWarning[] = [];
 
     for (const line of lines) {
-      const normalizedLine = normalizeWhitespace(line.text);
+      const normalizedLine = normalizeWhitespace(line);
 
       if (
         !normalizedLine ||
@@ -158,9 +188,9 @@ export class ListParser {
     // Handle specific patterns from LinkedIn PDFs
     const specificPatterns = [
       // "Português (Native or Bilingual)" or "Inglês (Professional Working)"
-      /^([A-Za-zção]+)\s*\(([^)]+)\)/,
+      /^([\p{L}\s.+-]+?)\s*\(([^)]+)\)/u,
       // "Inglês Professional Working" - without parentheses
-      /^([A-Za-zção]+)\s+((?:Professional|Native|Elementary|Bilingual|Working|Limited|Fluent)(?:\s+\w+)?)/i,
+      /^([\p{L}\s.+-]+?)\s+((?:Professional|Native|Elementary|Bilingual|Working|Limited|Fluent)(?:\s+\w+)?)/iu,
     ];
 
     for (const pattern of specificPatterns) {
@@ -189,7 +219,7 @@ export class ListParser {
       }
     }
 
-    if (line.length > 1 && line.length < 20 && /^[A-Za-zção]+$/.test(line)) {
+    if (line.length > 1 && line.length < 20 && /^[\p{L}.+-]+$/u.test(line)) {
       return {
         language: line,
         proficiency: 'Unknown',
