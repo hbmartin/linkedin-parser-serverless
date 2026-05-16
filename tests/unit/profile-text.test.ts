@@ -36,6 +36,8 @@ describe('profile text heuristics', () => {
     );
     expect(looksLikePositionTitleText('Engineering Manager...')).toBe(false);
     expect(looksLikeOrganizationNameText('Engineering Manager...')).toBe(false);
+    expect(looksLikePositionTitleText('Engineering Manager…')).toBe(false);
+    expect(looksLikeOrganizationNameText('Engineering Manager…')).toBe(false);
     expect(
       looksLikePositionTitleText(
         'Executive Produced by Alexander Campbell & Naomi Steinberg'

@@ -41,6 +41,12 @@ describe('profile date parser', () => {
         start: expect.objectContaining({ text: 'March 2015' }),
       })
     );
+    expect(parseProfileDateRange('May 2019 - May 2020')).toEqual(
+      expect.objectContaining({
+        end: expect.objectContaining({ text: 'May 2020' }),
+        start: expect.objectContaining({ text: 'May 2019' }),
+      })
+    );
   });
 
   test('parses localized month ranges', () => {
@@ -59,9 +65,9 @@ describe('profile date parser', () => {
   });
 
   test('extracts embedded year ranges and rejects relative durations', () => {
-    expect(extractProfileDateRangeText('Provided support from 2019 - 2021')).toBe(
-      '2019 - 2021'
-    );
+    expect(
+      extractProfileDateRangeText('Provided support from 2019 - 2021')
+    ).toBe('2019 - 2021');
     expect(parseProfileDateRange('in 3 months')).toBeUndefined();
     expect(parseProfileDateRange('sometime later')).toBeUndefined();
   });

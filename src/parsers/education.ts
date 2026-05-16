@@ -12,6 +12,7 @@ import {
 import { createTextParserLines } from '../utils/parser-lines.js';
 import {
   isEducationSectionHeaderText,
+  isLikelyLocationText,
   isSectionHeaderText,
 } from '../utils/profile-text.js';
 
@@ -294,10 +295,14 @@ export class EducationParser {
   }
 
   private static looksLikeLocation(line: string): boolean {
+    const hasLocationShape =
+      isLikelyLocationText(line) ||
+      (line.includes(',') && this.LOCATION_PATTERN.test(line));
+
     return (
       line.length > 2 &&
       line.length < 50 &&
-      this.LOCATION_PATTERN.test(line) &&
+      hasLocationShape &&
       !this.looksLikeYear(line) &&
       !this.looksLikeDegree(line)
     );

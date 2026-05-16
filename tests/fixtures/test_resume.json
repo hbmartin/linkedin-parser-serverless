@@ -237,7 +237,7 @@
           "start": {
             "iso": "2010-05",
             "precision": "month",
-            "text": "may 2010"
+            "text": "May 2010"
           },
           "end": {
             "iso": "2014-07",
@@ -284,7 +284,7 @@
           "end": {
             "iso": "2006-05",
             "precision": "month",
-            "text": "may 2006"
+            "text": "May 2006"
           },
           "kind": "completed"
         },

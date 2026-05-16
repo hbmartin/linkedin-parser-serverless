@@ -212,7 +212,7 @@ export function looksLikePositionTitleText(text: string): boolean {
     lowerText.includes(' to ') ||
     /^[a-z]/.test(normalizedText) ||
     normalizedText.includes('•') ||
-    normalizedText.includes('...') ||
+    hasEllipsisText(normalizedText) ||
     normalizedText.split(/\s+/).length > 15;
 
   const hasAllowedParenthetical =
@@ -253,7 +253,7 @@ export function looksLikeOrganizationNameText(text: string): boolean {
     /https?:\/\//i.test(normalizedText) ||
     /\blinkedin\.com\b/i.test(normalizedText) ||
     normalizedText.includes('•') ||
-    normalizedText.includes('...') ||
+    hasEllipsisText(normalizedText) ||
     /^page\s+\d+\s+of\s+\d+$/i.test(normalizedText) ||
     looksLikeDateOrDurationText(normalizedText) ||
     looksLikePositionTitleText(normalizedText) ||
@@ -345,6 +345,10 @@ function normalizeProfileText(text: string): string {
     .replace(/[\uE000-\uF8FF]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function hasEllipsisText(text: string): boolean {
+  return text.includes('...') || text.includes('…');
 }
 
 function looksLikeDateOrDurationText(text: string): boolean {
