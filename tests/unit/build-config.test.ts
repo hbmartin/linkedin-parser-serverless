@@ -5,6 +5,12 @@ import { z } from 'zod';
 import rollupConfig from '../../rollup.config.js';
 
 const REQUIRED_EXTERNALS = ['chrono-node', 'unpdf', 'zod'] as const;
+const REQUIRED_PACKAGE_SCRIPT_FILES: readonly string[] = [
+  'scripts/verify-artifacts.mjs',
+  'scripts/verify-packed-package.mjs',
+  'scripts/check-size-budget.mjs',
+  'scripts/lib/verification-helpers.mjs',
+];
 const PACKAGE_JSON_PATH = fileURLToPath(
   new URL('../../package.json', import.meta.url)
 );
@@ -20,6 +26,10 @@ function packageJson(): z.infer<typeof PackageJsonSchema> {
   return PackageJsonSchema.parse(
     JSON.parse(fs.readFileSync(PACKAGE_JSON_PATH, 'utf8'))
   );
+}
+
+function repoFilePath(relativePath: string): string {
+  return fileURLToPath(new URL(`../../${relativePath}`, import.meta.url));
 }
 
 function rollupOptions(): RollupOptions[] {
@@ -123,5 +133,11 @@ describe('build config contract', () => {
     expect(manifest.scripts['quality:check']).toEqual(
       expect.stringContaining('pnpm run verify:package')
     );
+  });
+
+  test('keeps package verification scripts present in the repo', () => {
+    for (const scriptPath of REQUIRED_PACKAGE_SCRIPT_FILES) {
+      expect(fs.existsSync(repoFilePath(scriptPath))).toBe(true);
+    }
   });
 });

@@ -2,53 +2,171 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   parseLinkedInPDF,
+  type Education,
+  type Experience,
   type Language,
   type LinkedInProfile,
+  type ParseWarning,
 } from '../../src/index.js';
 
-const expectedTestResumeProfile = {
-  name: 'John Silva',
+interface ExpectedTestResumeProfile {
+  name: string;
+  headline: string;
+  location: string;
+  contact: LinkedInProfile['contact'];
+  top_skills: string[];
+  languages: Language[];
+  summary: string;
+  experienceLength: number;
+  educationLength: number;
+  firstExperience: Experience;
+  cartaSeniorEngineerExperience: Experience;
+  firstEducation: Education;
+  warnings: ParseWarning[];
+}
+
+const expectedTestResumeProfile: ExpectedTestResumeProfile = {
+  name: 'Arkady Zalkowitsch',
   headline:
-    'Senior Product Manager @ TechCorp | Building scalable products and leading high-performance teams | MBA in Technology Management',
-  location: 'New York, New York, United States',
+    'Senior Engineering Manager @ Commure | ex-Carta | MBA in Business Management',
+  location: 'Sunnyvale, California, United States',
   contact: {
-    email: 'john.silva@email.com',
-    linkedin_url: 'https://linkedin.com/in/johnsilva',
+    linkedin_url: 'https://linkedin.com/in/arkadyzalko',
   },
   top_skills: [
-    'Strategic Planning',
-    'Product Development',
-    'Team Leadership',
+    'Strategic Roadmaps',
+    'Electronic Engineering',
+    'Project Planning',
   ],
   languages: [
     {
-      language: 'English',
-      proficiency: 'Native or Bilingual',
+      language: 'Inglês  Working',
+      proficiency: 'Professional',
     },
     {
-      language: 'Spanish',
-      proficiency: 'Professional Working',
-    },
-    {
-      language: 'Portuguese',
+      language: 'Espanhol',
       proficiency: 'Elementary',
     },
-  ] satisfies Language[],
+  ],
+  summary:
+    'Strategic Roadmaps Electronic Engineering Engineering Manager with ~20 years in software and 10+ in Project Planning leadership. I lead teams that sit at the intersection of product, operations and integrations, recently helping to shape an ERP- style operating model for PE firms and their portfolios at Carta, Português (Native or Bilingual) connecting onboarding, offboarding, document workflows and Inglês (Professional Working) financial integrations to firm-level outcomes with unified',
+  experienceLength: 14,
+  educationLength: 5,
   firstExperience: {
-    title: 'Senior Product Manager',
-    company: 'DataFlow Inc',
-    duration: 'October 2021 - Present',
-    location: 'San Francisco, CA',
+    dates: {
+      originalText: 'February 2026 - Present',
+      start: {
+        iso: '2026-02',
+        precision: 'month',
+        text: 'february 2026',
+      },
+      kind: 'current',
+    },
+    title: 'Senior Engineering Manager',
+    company: 'Commure',
+    duration: 'February 2026 - Present',
+    location: 'Mountain View, California, United States',
+    description: '',
   },
-  seniorEngineerExperience: {
+  cartaSeniorEngineerExperience: {
+    dates: {
+      originalText: 'October 2017 - June 2019',
+      start: {
+        iso: '2017-10',
+        precision: 'month',
+        text: 'October 2017',
+      },
+      end: {
+        iso: '2019-06',
+        precision: 'month',
+        text: 'june 2019',
+      },
+      kind: 'completed',
+    },
     title: 'Senior Software Engineer',
-    company: 'DataFlow Inc',
+    company: 'Carta',
     duration: 'October 2017 - June 2019',
-    location: 'Austin, TX',
+    location: 'Rio de Janeiro',
+    description:
+      '• Developed core equity features in Carta (e.g. regular/custom vesting schedule, and option exercises). • Implemented natural language search capabilities, streamlining user navigation for entities and documents. • Worked on the first initiative to domain decomposition in Carta to define the foundation (standards and services) for microservices. • Contributed to doubling development velocity by improving team standards • Served as a technical reference, guiding code reviews and design clarifications for scalable solutions.',
   },
   firstEducation: {
-    institution: 'Austin Business School',
+    institution: 'Universidade Veiga de Almeida',
+    degree: 'Master of Business Administration - MBA, Business',
+    year: 'Management · (2017 - 2018)',
+    location: '',
   },
+  warnings: [
+    {
+      code: 'missing_profile_field',
+      field: 'profile.contact.email',
+      message: 'Could not extract contact email',
+    },
+    {
+      code: 'section_parse_warning',
+      field: 'item',
+      message: 'Discarded language line that did not match a language shape',
+      rawText:
+        'style operating model for PE firms and their portfolios at Carta,',
+      section: 'languages',
+    },
+    {
+      code: 'section_parse_warning',
+      field: 'item',
+      message: 'Discarded language line that did not match a language shape',
+      rawText: 'Português (Native or Bilingual)',
+      section: 'languages',
+    },
+    {
+      code: 'section_parse_warning',
+      field: 'item',
+      message: 'Discarded language line that did not match a language shape',
+      rawText: 'connecting onboarding, offboarding, document workflows and',
+      section: 'languages',
+    },
+    {
+      code: 'section_parse_warning',
+      entry: 2,
+      field: 'dates',
+      message: 'Could not extract date range for experience entry',
+      rawText:
+        'As a co-founder and strategic partner at Boba Joy, I focus on turning a great',
+      section: 'experience',
+    },
+    {
+      code: 'section_parse_warning',
+      entry: 7,
+      field: 'positions',
+      message: 'Could not extract any positions for experience entry',
+      rawText: 'CEPEL',
+      section: 'experience',
+    },
+    {
+      code: 'section_parse_warning',
+      entry: 12,
+      field: 'dates',
+      message: 'Could not extract date range for experience entry',
+      rawText:
+        'Worked as a Researcher in renewable energy projects for the Department',
+      section: 'experience',
+    },
+    {
+      code: 'section_parse_warning',
+      entry: 0,
+      field: 'dates',
+      message: 'Could not parse education date range',
+      rawText: 'Management · (2017 - 2018)',
+      section: 'education',
+    },
+    {
+      code: 'section_parse_warning',
+      entry: 3,
+      field: 'dates',
+      message: 'Could not parse education date range',
+      rawText: 'Technician · (2002 - 2005)',
+      section: 'education',
+    },
+  ],
 };
 
 describe('LinkedIn PDF Parser Library', () => {
@@ -72,9 +190,7 @@ describe('LinkedIn PDF Parser Library', () => {
       const result = await parseLinkedInPDF(pdfBuffer);
 
       expect(result.profile.name).toBe(expectedTestResumeProfile.name);
-      expect(result.profile.contact.email).toBe(
-        expectedTestResumeProfile.contact.email
-      );
+      expect(result.profile.contact.email).toBeUndefined();
       expect(result.profile.contact.linkedin_url).toBe(
         expectedTestResumeProfile.contact.linkedin_url
       );
@@ -84,9 +200,7 @@ describe('LinkedIn PDF Parser Library', () => {
       const result = await parseLinkedInPDF(new Uint8Array(pdfBuffer));
 
       expect(result.profile.name).toBe(expectedTestResumeProfile.name);
-      expect(result.profile.contact.email).toBe(
-        expectedTestResumeProfile.contact.email
-      );
+      expect(result.profile.contact.email).toBeUndefined();
     });
 
     test('should parse ArrayBuffer successfully', async () => {
@@ -95,9 +209,7 @@ describe('LinkedIn PDF Parser Library', () => {
       const result = await parseLinkedInPDF(arrayBuffer);
 
       expect(result.profile.name).toBe(expectedTestResumeProfile.name);
-      expect(result.profile.contact.email).toBe(
-        expectedTestResumeProfile.contact.email
-      );
+      expect(result.profile.contact.email).toBeUndefined();
     });
 
     test('should parse extracted text directly', async () => {
@@ -121,8 +233,7 @@ describe('LinkedIn PDF Parser Library', () => {
       });
 
       expect(result.profile.name).toBe(expectedTestResumeProfile.name);
-      expect(typeof result.rawText).toBe('string');
-      expect(result.rawText!.length).toBeGreaterThan(100);
+      expect(result.rawText).toHaveLength(13078);
     });
   });
 
@@ -146,10 +257,14 @@ describe('LinkedIn PDF Parser Library', () => {
       expect(typeof profile.headline).toBe('string');
       expect(typeof profile.location).toBe('string');
       expect(typeof profile.contact).toBe('object');
-      expect(Array.isArray(profile.top_skills)).toBe(true);
-      expect(Array.isArray(profile.languages)).toBe(true);
-      expect(Array.isArray(profile.experience)).toBe(true);
-      expect(Array.isArray(profile.education)).toBe(true);
+      expect(profile.top_skills).toEqual(expectedTestResumeProfile.top_skills);
+      expect(profile.languages).toEqual(expectedTestResumeProfile.languages);
+      expect(profile.experience).toHaveLength(
+        expectedTestResumeProfile.experienceLength
+      );
+      expect(profile.education).toHaveLength(
+        expectedTestResumeProfile.educationLength
+      );
     });
 
     test('should extract contact information', () => {
@@ -160,43 +275,58 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should have reasonable data completeness', () => {
       expect(profile.top_skills).toEqual(expectedTestResumeProfile.top_skills);
       expect(profile.languages).toEqual(expectedTestResumeProfile.languages);
-      expect(profile.experience[0]).toEqual(
-        expect.objectContaining(expectedTestResumeProfile.firstExperience)
+      expect(profile.summary).toBe(expectedTestResumeProfile.summary);
+      expect(profile.experience).toHaveLength(
+        expectedTestResumeProfile.experienceLength
       );
-      expect(profile.experience[2]).toEqual(
-        expect.objectContaining(
-          expectedTestResumeProfile.seniorEngineerExperience
-        )
+      expect(profile.experience[0]).toEqual(
+        expectedTestResumeProfile.firstExperience
+      );
+      expect(profile.experience[5]).toEqual(
+        expectedTestResumeProfile.cartaSeniorEngineerExperience
+      );
+      expect(profile.education).toHaveLength(
+        expectedTestResumeProfile.educationLength
       );
       expect(profile.education[0]).toEqual(
-        expect.objectContaining(expectedTestResumeProfile.firstEducation)
+        expectedTestResumeProfile.firstEducation
       );
     });
   });
 
   describe('Test Data Validation', () => {
     test('should contain expected test data', async () => {
-      const result = await parseLinkedInPDF(pdfBuffer, { includeRawText: true });
+      const result = await parseLinkedInPDF(pdfBuffer, {
+        includeRawText: true,
+      });
       const profile = result.profile;
 
       expect(profile.name).toBe(expectedTestResumeProfile.name);
       expect(profile.contact).toEqual(expectedTestResumeProfile.contact);
       expect(profile.top_skills).toEqual(expectedTestResumeProfile.top_skills);
-      expect(profile.experience[0]).toEqual(
-        expect.objectContaining(expectedTestResumeProfile.firstExperience)
+      expect(profile.languages).toEqual(expectedTestResumeProfile.languages);
+      expect(profile.summary).toBe(expectedTestResumeProfile.summary);
+      expect(profile.experience).toHaveLength(
+        expectedTestResumeProfile.experienceLength
       );
-      expect(profile.experience[2]).toEqual(
-        expect.objectContaining(
-          expectedTestResumeProfile.seniorEngineerExperience
-        )
+      expect(profile.experience[0]).toEqual(
+        expectedTestResumeProfile.firstExperience
+      );
+      expect(profile.experience[5]).toEqual(
+        expectedTestResumeProfile.cartaSeniorEngineerExperience
+      );
+      expect(profile.education).toHaveLength(
+        expectedTestResumeProfile.educationLength
       );
       expect(profile.education[0]).toEqual(
-        expect.objectContaining(expectedTestResumeProfile.firstEducation)
+        expectedTestResumeProfile.firstEducation
       );
-      expect(result.rawText).toEqual(expect.stringContaining('DataFlow Inc'));
+      expect(result.warnings).toEqual(expectedTestResumeProfile.warnings);
+      expect(result.rawText).toEqual(expect.stringContaining('Commure'));
       expect(result.rawText).toEqual(
-        expect.stringContaining('Austin Business School')
+        expect.stringContaining('Universidade Veiga de Almeida')
       );
+      expect(result.rawText).toEqual(expect.stringContaining('Page 7 of 7'));
     });
   });
 
@@ -276,8 +406,54 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(minimalText);
-      expect(result.profile).toBeDefined();
-      expect(result.profile.contact.email).toContain('@');
+      expect(result.profile).toEqual({
+        name: 'John Doe',
+        contact: {
+          email: 'john.doe@example.com',
+        },
+        top_skills: [],
+        languages: [],
+        certifications: [],
+        volunteer_work: [],
+        projects: [],
+        experience: [
+          {
+            dates: {
+              originalText: '2020-2022',
+              start: {
+                iso: '2020',
+                precision: 'year',
+                text: '2020',
+              },
+              end: {
+                iso: '2022',
+                precision: 'year',
+                text: '2022',
+              },
+              kind: 'completed',
+            },
+            title: 'Developer',
+            company: 'Company',
+            duration: '2020-2022',
+            location: '',
+            description: '',
+          },
+        ],
+        education: [
+          {
+            institution: 'Computer Science',
+            degree: '',
+            year: '',
+            location: '',
+          },
+          {
+            institution: 'University',
+            degree: '',
+            year: '',
+            location: '',
+          },
+        ],
+      });
     });
 
     test('should handle text with missing sections', async () => {
@@ -288,7 +464,7 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(sparseText);
-      expect(result.profile.name).toBeTruthy();
+      expect(result.profile.name).toBe('Jane Smith');
       expect(result.profile.contact.email).toBe('jane@test.com');
       expect(result.profile.experience).toEqual([]);
       expect(result.profile.education).toEqual([]);
@@ -307,7 +483,24 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(languageText);
-      expect(result.profile.languages.length).toBeGreaterThan(0);
+      expect(result.profile.languages).toEqual([
+        {
+          language: 'English',
+          proficiency: 'Native or Bilingual',
+        },
+        {
+          language: 'Spanish',
+          proficiency: 'Professional Working',
+        },
+        {
+          language: 'French',
+          proficiency: 'Elementary',
+        },
+        {
+          language: 'German',
+          proficiency: 'Unknown',
+        },
+      ]);
     });
 
     test('should handle various contact patterns', async () => {
@@ -321,7 +514,9 @@ describe('LinkedIn PDF Parser Library', () => {
 
       const result = await parseLinkedInPDF(contactText);
       expect(result.profile.contact.email).toBe('contact@example.com');
-      expect(result.profile.contact.linkedin_url).toContain('linkedin.com');
+      expect(result.profile.contact.linkedin_url).toBe(
+        'https://linkedin.com/in/contactperson'
+      );
     });
 
     test('should handle fallback name extraction patterns', async () => {
@@ -331,7 +526,7 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(nameText);
-      expect(result.profile.name).toBeTruthy();
+      expect(result.profile.name).toBe('John Smith');
     });
 
     test('should handle location patterns', async () => {
@@ -346,7 +541,7 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(locationText);
-      expect(result.profile.location).toBeTruthy();
+      expect(result.profile.location).toBe('New York, NY');
     });
 
     test('should handle summary extraction fallback', async () => {
@@ -363,7 +558,9 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(summaryText);
-      expect(result.profile.summary).toBeTruthy();
+      expect(result.profile.summary).toBe(
+        'User summary@example.com This is a longer summary text that describes the professional background and'
+      );
     });
 
     test('should handle language proficiency patterns', async () => {
@@ -378,14 +575,20 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(languageProficiencyText);
-      expect(result.profile.languages.length).toBeGreaterThan(0);
-      const hasElementary = result.profile.languages.some(l =>
-        l.proficiency.includes('Elementary')
-      );
-      const hasProfessional = result.profile.languages.some(l =>
-        l.proficiency.includes('Professional')
-      );
-      expect(hasElementary || hasProfessional).toBe(true);
+      expect(result.profile.languages).toEqual([
+        {
+          language: 'Portuguese',
+          proficiency: 'Elementary',
+        },
+        {
+          language: 'Italian',
+          proficiency: 'Professional',
+        },
+        {
+          language: 'Chinese',
+          proficiency: 'Unknown',
+        },
+      ]);
     });
 
     test('should handle empty skills section', async () => {
@@ -430,7 +633,29 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(educationText);
-      expect(result.profile.education.length).toBeGreaterThan(0);
+      expect(result.profile.education).toEqual([
+        {
+          institution: 'Computer Science Degree',
+          degree: '',
+          year: '',
+          location: '',
+        },
+        {
+          dates: {
+            originalText: '2020',
+            start: {
+              iso: '2020',
+              precision: 'year',
+              text: '2020',
+            },
+            kind: 'single',
+          },
+          institution: 'Stanford University',
+          degree: '',
+          year: '2020',
+          location: '',
+        },
+      ]);
     });
 
     test('should handle missing profile information gracefully', async () => {
@@ -452,7 +677,7 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(fallbackNameText);
-      expect(result.profile.name).toBeTruthy();
+      expect(result.profile.name).toBe('John Smith');
     });
 
     test('should handle summary fallback extraction with line break conditions', async () => {
@@ -469,8 +694,9 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(longSummaryText);
-      expect(result.profile.summary).toBeTruthy();
-      expect(result.profile.summary!.length).toBeGreaterThan(50);
+      expect(result.profile.summary).toBe(
+        'Test User summarytest@example.com Short line Medium length line here This is a very long line that should be captured in the summary section because it meets all the length requirements and criteria for inclusion in the profile summary Another qualifying line that meets the length and content requirements for summary inclusion and should be processed correctly Even more qualifying content that should be included in the summary extraction process Final qualifying summary line that completes the s'
+      );
     });
 
     test('should handle language proficiency regex patterns', async () => {
@@ -485,7 +711,12 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(proficiencyText);
-      expect(result.profile.languages.length).toBeGreaterThan(0);
+      expect(result.profile.languages).toEqual([
+        {
+          language: 'French',
+          proficiency: 'Intermediate',
+        },
+      ]);
     });
 
     test('should handle single word language fallback', async () => {
@@ -500,8 +731,16 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(singleLangText);
-      // Even if no languages are extracted, test that the function handles it gracefully
-      expect(Array.isArray(result.profile.languages)).toBe(true);
+      expect(result.profile.languages).toEqual([
+        {
+          language: 'Korean',
+          proficiency: 'Unknown',
+        },
+        {
+          language: 'Vietnamese',
+          proficiency: 'Unknown',
+        },
+      ]);
     });
 
     test('should handle skills section with no content', async () => {
@@ -543,7 +782,8 @@ describe('LinkedIn PDF Parser Library', () => {
         {
           code: 'section_parse_warning',
           field: 'entry',
-          message: 'Detected an experience section but could not extract entries',
+          message:
+            'Detected an experience section but could not extract entries',
           rawText: 'Developer',
           section: 'experience',
         },
@@ -573,7 +813,8 @@ describe('LinkedIn PDF Parser Library', () => {
         {
           code: 'section_parse_warning',
           field: 'entry',
-          message: 'Detected an experience section but could not extract entries',
+          message:
+            'Detected an experience section but could not extract entries',
           rawText: 'Principal Engineer 2020 - 2024',
           section: 'experience',
         },
@@ -588,7 +829,7 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(nameEdgeCaseText);
-      expect(result.profile.name).toBeTruthy();
+      expect(result.profile.name).toBe('John Smith');
     });
 
     test('should handle education section edge case', async () => {
@@ -602,7 +843,14 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(educationEdgeText);
-      expect(Array.isArray(result.profile.education)).toBe(true);
+      expect(result.profile.education).toEqual([
+        {
+          institution: 'Short',
+          degree: '',
+          year: '',
+          location: '',
+        },
+      ]);
     });
 
     test('should handle lists edge cases', async () => {
@@ -619,8 +867,8 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(listsEdgeText);
-      expect(Array.isArray(result.profile.top_skills)).toBe(true);
-      expect(Array.isArray(result.profile.languages)).toBe(true);
+      expect(result.profile.top_skills).toEqual([]);
+      expect(result.profile.languages).toEqual([]);
     });
 
     test('should handle summary with break condition', async () => {
@@ -636,7 +884,9 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(summaryBreakText);
-      expect(result.profile.summary).toBeTruthy();
+      expect(result.profile.summary).toBe(
+        'Break User break@example.com Short Medium This is exactly the right length line that should trigger the summary extraction and demonstrate the break condition working properly when the accumulated text reaches the specified threshold More content after break condition Even more content that should be ignored after break'
+      );
     });
 
     test('should handle basic-info name extraction with multiple spaces', async () => {
@@ -647,7 +897,6 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(nameWithSpacesText);
-      expect(result.profile.name).toBeTruthy();
       expect(result.profile.name).toBe('John Smith');
     });
 
@@ -669,19 +918,23 @@ describe('LinkedIn PDF Parser Library', () => {
       const result = await parseLinkedInPDF(
         textWithoutSummarySection.join('\n')
       );
-      expect(result.profile.summary).toBeTruthy();
-      expect(result.profile.summary!.length).toBeGreaterThan(50);
+      expect(result.profile.summary).toBe(
+        'extraction because it contains enough content Additional qualifying content that should be included in the summary extraction process for testing coverage More qualifying text for the summary that meets length requirements'
+      );
     });
 
     test('should handle edge cases that increase coverage', async () => {
       // This test is designed to hit various edge cases for coverage
       const result = await parseLinkedInPDF(pdfBuffer);
 
-      // Just verify the basic functionality works
-      expect(result.profile.name).toBeTruthy();
-      expect(result.profile.contact.email).toBeTruthy();
-      expect(Array.isArray(result.profile.top_skills)).toBe(true);
-      expect(Array.isArray(result.profile.languages)).toBe(true);
+      expect(result.profile.name).toBe(expectedTestResumeProfile.name);
+      expect(result.profile.contact.email).toBeUndefined();
+      expect(result.profile.top_skills).toEqual(
+        expectedTestResumeProfile.top_skills
+      );
+      expect(result.profile.languages).toEqual(
+        expectedTestResumeProfile.languages
+      );
     });
 
     test('should handle education line length validation', async () => {
@@ -699,10 +952,23 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(educationShortText);
-      expect(result.profile.education.length).toBeGreaterThanOrEqual(0);
-      if (result.profile.education.length > 0) {
-        expect(result.profile.education[0].institution).toBeTruthy();
-      }
+      expect(result.profile.education).toEqual([
+        {
+          dates: {
+            originalText: '2020',
+            start: {
+              iso: '2020',
+              precision: 'year',
+              text: '2020',
+            },
+            kind: 'single',
+          },
+          institution: 'Stanford University',
+          degree: 'Computer Science',
+          year: '2020',
+          location: '',
+        },
+      ]);
     });
 
     test('should handle specific code coverage cases', async () => {
@@ -723,10 +989,10 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(complexText);
-      expect(result.profile.name).toBeTruthy();
-      expect(result.profile.contact.email).toBeTruthy();
-      expect(Array.isArray(result.profile.top_skills)).toBe(true);
-      expect(Array.isArray(result.profile.languages)).toBe(true);
+      expect(result.profile.name).toBe('John Smith Johnson');
+      expect(result.profile.contact.email).toBe('john.smith@test.com');
+      expect(result.profile.top_skills).toEqual([]);
+      expect(result.profile.languages).toEqual([]);
     });
 
     test('should handle edge case name patterns', async () => {
@@ -737,7 +1003,7 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(namePatternText);
-      expect(result.profile.name).toBeTruthy();
+      expect(result.profile.name).toBe('Mary Jane');
     });
 
     test('should cover line 53-54 in basic-info.ts', async () => {
@@ -765,8 +1031,9 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(text);
-      expect(result.profile.summary).toBeTruthy();
-      expect(result.profile.summary!.length).toBeGreaterThan(100);
+      expect(result.profile.summary).toBe(
+        'extraction because it meets all the length requirements and is more than 50 characters This is another qualifying line that should be captured in the summary section for proper coverage testing and validation More qualifying content here that meets the requirements'
+      );
     });
 
     test('should cover line 56 in lists.ts', async () => {
@@ -784,20 +1051,27 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(text);
-      expect(Array.isArray(result.profile.languages)).toBe(true);
+      expect(result.profile.languages).toEqual([]);
     });
 
     test('should achieve maximum code coverage', async () => {
       // Combined test for maximum coverage
       const result = await parseLinkedInPDF(pdfBuffer);
 
-      // Just verify the parsing works
-      expect(result.profile.name).toBeTruthy();
-      expect(result.profile.contact.email).toBeTruthy();
-      expect(Array.isArray(result.profile.top_skills)).toBe(true);
-      expect(Array.isArray(result.profile.languages)).toBe(true);
-      expect(Array.isArray(result.profile.experience)).toBe(true);
-      expect(Array.isArray(result.profile.education)).toBe(true);
+      expect(result.profile.name).toBe(expectedTestResumeProfile.name);
+      expect(result.profile.contact.email).toBeUndefined();
+      expect(result.profile.top_skills).toEqual(
+        expectedTestResumeProfile.top_skills
+      );
+      expect(result.profile.languages).toEqual(
+        expectedTestResumeProfile.languages
+      );
+      expect(result.profile.experience).toHaveLength(
+        expectedTestResumeProfile.experienceLength
+      );
+      expect(result.profile.education).toHaveLength(
+        expectedTestResumeProfile.educationLength
+      );
     });
 
     test('should cover line 58 in education.ts', async () => {
@@ -814,7 +1088,9 @@ describe('LinkedIn PDF Parser Library', () => {
 
       const result = await parseLinkedInPDF(text);
       expect(result.profile.education.length).toBeGreaterThan(0);
-      expect(result.profile.education[0].institution).toBeTruthy();
+      expect(result.profile.education[0].institution).toBe(
+        'University of Texas'
+      );
     });
 
     test('should cover lines 53-54 and 129-142 in basic-info.ts', async () => {
@@ -832,8 +1108,9 @@ describe('LinkedIn PDF Parser Library', () => {
 
       const result = await parseLinkedInPDF(text);
       expect(result.profile.name).toBe('John Smith');
-      expect(result.profile.summary).toBeTruthy();
-      expect(result.profile.summary!.length).toBeGreaterThan(100);
+      expect(result.profile.summary).toBe(
+        'extraction because it has more than 50 characters and less than 200 characters Another qualifying line for summary extraction that meets the length requirements and should be included in the summary More content to reach the 100 character threshold for the summary extraction logic'
+      );
     });
 
     test('should cover lines 86-90 and 98 in lists.ts', async () => {
@@ -855,18 +1132,40 @@ describe('LinkedIn PDF Parser Library', () => {
       const textWithSummary = text.replace('Languages', 'Languages Summary');
       const result2 = await parseLinkedInPDF(textWithSummary);
 
-      // Verify both paths work
-      expect(Array.isArray(result.profile.languages)).toBe(true);
-      expect(Array.isArray(result2.profile.languages)).toBe(true);
+      expect(result.profile.languages).toEqual([
+        {
+          language: 'Portuguese',
+          proficiency: 'Native',
+        },
+        {
+          language: 'English',
+          proficiency: 'Unknown',
+        },
+        {
+          language: 'Spanish',
+          proficiency: 'Professional',
+        },
+        {
+          language: 'French',
+          proficiency: 'Unknown',
+        },
+      ]);
+      expect(result2.profile.languages).toEqual([]);
+      expect(result2.profile.summary).toBe(
+        'Native Portuguese English Professional Spanish French'
+      );
     });
 
     test('should increase branch coverage for lists.ts', async () => {
       // Test with PDF buffer to ensure coverage
       const result = await parseLinkedInPDF(pdfBuffer);
 
-      // Just verify arrays are present
-      expect(Array.isArray(result.profile.languages)).toBe(true);
-      expect(Array.isArray(result.profile.top_skills)).toBe(true);
+      expect(result.profile.languages).toEqual(
+        expectedTestResumeProfile.languages
+      );
+      expect(result.profile.top_skills).toEqual(
+        expectedTestResumeProfile.top_skills
+      );
     });
 
     test('should cover education edge case line 58', async () => {
@@ -891,8 +1190,8 @@ describe('LinkedIn PDF Parser Library', () => {
       const bufferResult = await parseLinkedInPDF(pdfBuffer, {
         includeRawText: true,
       });
-      expect(bufferResult.rawText).toBeTruthy();
-      expect(bufferResult.profile.name).toBeTruthy();
+      expect(bufferResult.rawText).toHaveLength(13078);
+      expect(bufferResult.profile.name).toBe(expectedTestResumeProfile.name);
     });
   });
 });
