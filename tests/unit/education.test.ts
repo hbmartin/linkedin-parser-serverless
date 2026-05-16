@@ -149,6 +149,47 @@ describe('EducationParser', () => {
     );
   });
 
+  test('splits structural institution names that contain degree keywords', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 12,
+        text: 'Fletcher, The Graduate School of Global Affairs at Tufts University',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10.5,
+        text: 'Post-MBA Fellowship · (2019 - 2020)',
+        y: 710,
+      }),
+      structuralLine({
+        fontSize: 12,
+        text: 'The London School of Economics and Political Science (LSE)',
+        y: 680,
+      }),
+      structuralLine({
+        fontSize: 10.5,
+        text: 'Graduate Diploma, Economics · (2017 - 2019)',
+        y: 660,
+      }),
+    ]);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'Post-MBA Fellowship',
+        institution:
+          'Fletcher, The Graduate School of Global Affairs at Tufts University',
+        year: '2019 - 2020',
+      }),
+      expect.objectContaining({
+        degree: 'Graduate Diploma, Economics',
+        institution:
+          'The London School of Economics and Political Science (LSE)',
+        year: '2017 - 2019',
+      }),
+    ]);
+  });
+
   test('does not append structural locations to an existing degree', () => {
     const educations = EducationParser.parseStructural([
       structuralLine({ fontSize: 16, text: 'Education', y: 760 }),

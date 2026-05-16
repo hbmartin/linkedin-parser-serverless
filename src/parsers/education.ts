@@ -166,7 +166,8 @@ export class EducationParser {
 
       const isInstitutionLine =
         line.fontSize >= institutionThreshold &&
-        !this.looksLikeDegree(normalizedLine) &&
+        (this.looksLikeInstitutionHeading(normalizedLine) ||
+          !this.looksLikeDegree(normalizedLine)) &&
         !this.looksLikeYear(normalizedLine);
 
       if (isInstitutionLine) {
@@ -212,11 +213,15 @@ export class EducationParser {
     return (
       line.length > 5 &&
       line.length < 100 &&
-      (/university|college|school|institute/.test(lower) ||
+      (this.looksLikeInstitutionHeading(line) ||
         /^[\p{Lu}][\p{L}\p{M}]+(?:\s+[\p{Lu}][\p{L}\p{M}]*)*$/u.test(line)) &&
       !this.looksLikeDegree(line) &&
       !this.looksLikeYear(line)
     );
+  }
+
+  private static looksLikeInstitutionHeading(line: string): boolean {
+    return /university|college|school|institute/i.test(line);
   }
 
   private static looksLikeDegree(line: string): boolean {
@@ -225,7 +230,7 @@ export class EducationParser {
     return (
       line.length > 3 &&
       line.length < 80 &&
-      /bachelor|master|phd|mba|engineering|science|business|bacharelado|bacharel|licenciatura|mestrado|mestre|doutorado|doutor|p[oó]s[-\s]?gradua[cç][aã]o|tecn[oó]logo|tecnologia/.test(
+      /bachelor|master|phd|mba|diploma|engineering|science|business|bacharelado|bacharel|licenciatura|mestrado|mestre|doutorado|doutor|p[oó]s[-\s]?gradua[cç][aã]o|tecn[oó]logo|tecnologia/.test(
         lower
       ) &&
       !/^\s*[()·-]?\s*(19|20)\d{2}/.test(line)

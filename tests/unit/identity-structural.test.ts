@@ -68,4 +68,20 @@ describe('IdentityStructuralParser', () => {
     expect(identity.headline).toBe('CTO @ Example Labs');
     expect(identity.location).toBe('München, Bayern, Deutschland');
   });
+
+  test('keeps country-only locations out of the headline', () => {
+    const identity = IdentityStructuralParser.parse([
+      line({ fontSize: 26, text: 'Niko Le Mieux', y: 760 }),
+      line({
+        fontSize: 12,
+        text: 'Web2.5 Finance & Payments Innovation',
+        y: 730,
+      }),
+      line({ fontSize: 12, text: 'United States', y: 710 }),
+      line({ fontSize: 16, text: 'Summary', y: 680 }),
+    ]);
+
+    expect(identity.headline).toBe('Web2.5 Finance & Payments Innovation');
+    expect(identity.location).toBe('United States');
+  });
 });

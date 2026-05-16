@@ -297,12 +297,12 @@ describe('ExperienceStructuralParser', () => {
         organization: 'CEPEL',
         positions: [
           expect.objectContaining({
-            description:
-              'Worked as a Researcher in renewable energy projects.',
+            description: 'Worked as a Researcher in renewable energy projects.',
             duration: 'December 2006 - April 2010',
             location:
               'Av. Horácio Macedo, 354 - Cidade Universitária - Rio de Janeiro - RJ, 21941-911',
-            title: 'Technical Researcher – Automation and Robotics (Contractor)',
+            title:
+              'Technical Researcher – Automation and Robotics (Contractor)',
           }),
         ],
       })
@@ -467,6 +467,106 @@ describe('ExperienceStructuralParser', () => {
             title: "Producer, KING'S OF CRASH",
           }),
         ],
+      })
+    );
+  });
+
+  test('parses page-break descriptions, fellow roles, and greater area locations', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Hexagon Wireless', y: 670 }),
+      textItem({ text: 'Co-Founder', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'November 2021 - January 2023', y: 630 }),
+      textItem({
+        text: 'Hexagon Wireless was a leader in building decentralized physical',
+        y: 610,
+      }),
+      textItem({
+        text: 'infrastructure networks and accelerating DePIN technologies in',
+        y: 590,
+      }),
+      textItem({ text: 'the United States and Colombia.', y: 570 }),
+      textItem({ text: 'International Monetary Fund', y: 540 }),
+      textItem({ text: '2022 Youth Fellow', y: 520, fontSize: 11.5 }),
+      textItem({ text: '2022 - 2022', y: 500 }),
+      textItem({ text: 'Foreign Brief', y: 460 }),
+      textItem({ text: 'Contributing Writer', y: 440, fontSize: 11.5 }),
+      textItem({ text: 'February 2020 - August 2021', y: 420 }),
+      textItem({ text: 'Page 1 of 2', y: 390, fontSize: 9 }),
+      textItem({
+        text: 'Weekly columns and interviews analyzing global geopolitical events and their',
+        y: -9260,
+      }),
+      textItem({ text: 'implications.', y: -9280 }),
+      textItem({ text: 'Bank of America Merrill Lynch', y: -9320 }),
+      textItem({ text: 'Investment Advisor', y: -9340, fontSize: 11.5 }),
+      textItem({ text: 'November 2017 - August 2018', y: -9360 }),
+      textItem({
+        text: 'Minneapolis, Minnesota, United States',
+        y: -9380,
+      }),
+      textItem({ text: 'Inspire Medical $INSP IPO', y: -9400 }),
+      textItem({
+        text: 'Organisation for the Prohibition of Chemical Weapons (OPCW)',
+        y: -9440,
+      }),
+      textItem({ text: 'Business Analyst', y: -9460, fontSize: 11.5 }),
+      textItem({ text: 'June 2016 - December 2016', y: -9480 }),
+      textItem({ text: 'The Hague Area, Netherlands', y: -9500 }),
+      textItem({ text: 'Fermilab', y: -9540 }),
+      textItem({ text: 'Student Manager', y: -9560, fontSize: 11.5 }),
+      textItem({ text: 'October 2011 - October 2013', y: -9580 }),
+      textItem({ text: 'Greater Minneapolis-St. Paul Area', y: -9600 }),
+      textItem({ text: 'Education', y: -9700, fontSize: 16 }),
+    ];
+
+    const experiences = ExperienceStructuralParser.parseExperience(items);
+    const byOrganization = new Map(
+      experiences.map(experience => [experience.organization, experience])
+    );
+
+    expect(
+      byOrganization.get('Hexagon Wireless')?.positions[0]?.description
+    ).toBe(
+      'Hexagon Wireless was a leader in building decentralized physical infrastructure networks and accelerating DePIN technologies in the United States and Colombia.'
+    );
+    expect(
+      byOrganization.get('International Monetary Fund')?.positions[0]
+    ).toEqual(
+      expect.objectContaining({
+        duration: '2022 - 2022',
+        title: '2022 Youth Fellow',
+      })
+    );
+    expect(byOrganization.get('Foreign Brief')?.positions[0]).toEqual(
+      expect.objectContaining({
+        description:
+          'Weekly columns and interviews analyzing global geopolitical events and their implications.',
+        title: 'Contributing Writer',
+      })
+    );
+    expect(
+      byOrganization.get('Bank of America Merrill Lynch')?.positions[0]
+    ).toEqual(
+      expect.objectContaining({
+        description: 'Inspire Medical $INSP IPO',
+        title: 'Investment Advisor',
+      })
+    );
+    expect(
+      byOrganization.get(
+        'Organisation for the Prohibition of Chemical Weapons (OPCW)'
+      )?.positions[0]
+    ).toEqual(
+      expect.objectContaining({
+        location: 'The Hague Area, Netherlands',
+        title: 'Business Analyst',
+      })
+    );
+    expect(byOrganization.get('Fermilab')?.positions[0]).toEqual(
+      expect.objectContaining({
+        location: 'Greater Minneapolis-St. Paul Area',
+        title: 'Student Manager',
       })
     );
   });
