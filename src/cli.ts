@@ -54,7 +54,7 @@ type CliCommand =
   | VerifyJsonCommand
   | WriteJsonCommand;
 
-export type CliDependencies = JsonFixtureDependencies;
+export interface CliDependencies extends JsonFixtureDependencies {}
 
 export interface RunCliParams {
   args: string[];

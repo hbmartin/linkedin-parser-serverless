@@ -57,16 +57,10 @@
           "kind": "current"
         },
         "title": "Investor & Advisor",
-        "company": "Commure",
+        "company": "Boba Joy",
         "duration": "November 2024 - Present",
         "location": "Brazil",
-        "description": ""
-      },
-      {
-        "title": "As a co-founder and strategic partner at Boba Joy, I focus on turning a great",
-        "company": "Commure",
-        "duration": "",
-        "description": "product into a scalable brand and operation. I lead brand positioning, store expansion strategy, and the overall vision of Boba Joy as a next-gen bubble I defined the brand vision, mission, and “second-wave” positioning, with a clear focus on real fruit, quality, and a family-friendly experience. On the digital side, I led initiatives to improve customer experience through our website and our rewards/loyalty app, connecting the physical stores with an ongoing digital relationship with our customers. I also built and supported the team responsible for operational standards (SOPs/POPs), recipes, and processes to ensure consistency and scalability across locations. From a growth perspective, I co-led the expansion from 1 to 3 stores in just over a year, serving more than 12k customers and validating the model for future franchising. I worked closely with the on-the-ground operating partner to improve store performance, cost control, and the end-to-end customer experience. In parallel, I developed the early franchise playbook including personas, positioning, and scalable processes, to prepare Boba Joy for broader roll-out and structured growth."
+        "description": "As a co-founder and strategic partner at Boba Joy, I focus on turning a great product into a scalable brand and operation. I lead brand positioning, store expansion strategy, and the overall vision of Boba Joy as a next-gen bubble I defined the brand vision, mission, and “second-wave” positioning, with a clear focus on real fruit, quality, and a family-friendly experience. On the digital side, I led initiatives to improve customer experience through our website and our rewards/loyalty app, connecting the physical stores with an ongoing digital relationship with our customers. I also built and supported the team responsible for operational standards (SOPs/POPs), recipes, and processes to ensure consistency and scalability across locations. From a growth perspective, I co-led the expansion from 1 to 3 stores in just over a year, serving more than 12k customers and validating the model for future franchising. I worked closely with the on-the-ground operating partner to improve store performance, cost control, and the end-to-end customer experience. In parallel, I developed the early franchise playbook including personas, positioning, and scalable processes, to prepare Boba Joy for broader roll-out and structured growth."
       },
       {
         "dates": {
@@ -168,7 +162,7 @@
           "kind": "completed"
         },
         "title": "Head of Engineering",
-        "company": "Zestt",
+        "company": "Partiu Vantagens!",
         "duration": "October 2015 - October 2017",
         "location": "Rio de Janeiro, Brasil",
         "description": "I led the Engineering Org at Partiu, partnering directly with the CEO to build and scale a rewards platform connecting residents, stores and property managers, while ensuring the technology roadmap matched the company’s • Managed 3 teams (~12 engineers and 2 designers), balancing short-term delivery with the longer-term evolution of the platform and its integrations. • Led the development of the main consumer rewards mobile app, the in- store POS for real-time reward validation, and the merchant admin portal for configuring discounts, campaigns and performance tracking. • Delivered a staff-facing view and a deep integration with a condominium management system, enabling rewards charges and billing to flow directly onto rent/HOA invoices and unlocking a new distribution and revenue channel. • Translated company goals into clear technical priorities and sequencing, aligning product, engineering and business stakeholders and making build-vs- buy and vendor decisions with cost and complexity in mind. • Mentored other leads and engineers on architecture, delivery practices and people leadership, introducing more structured feedback and coaching to improve ownership, collaboration and reliability of delivery."
@@ -230,6 +224,7 @@
         },
         "title": "Lead Project Engineer",
         "company": "CEPEL",
+        "location": "Greater Rio de Janeiro",
         "duration": "August 2014 - April 2015",
         "description": "I worked on CEPEL’s SOMA asset-monitoring platform, which provides real- time condition monitoring and predictive maintenance for power generation units used by utilities such as FURNAS. • Built data analysis and visualization components in Polymer, JavaScript, TypeScript and Java to improve how operators explored and interpreted asset • Improved robustness and performance of SOMA, including a ~60% improvement in query performance for configuration data mapping. • Implemented a tool to analyze the lifespan of thermoelectric turbines in Tubarão (southern Brazil), enabling vibration data acquisition for advanced • Contributed to real-time monitoring and predictive maintenance for plants such as Simplício and Furnas, helping reduce downtime and optimize • Applied TDD and agile practices to increase test coverage and make deliveries more predictable and easier to evolve safely."
       },
@@ -251,13 +246,15 @@
         "title": "Robotics Researcher",
         "company": "CPTI / PUC-Rio",
         "duration": "May 2010 - July 2014",
-        "description": "Rua Marquês de São Vicente, 255 - Gávea, Rio de Janeiro - RJ, 22453-900 Focusing on advanced inspection technologies, quality assurance, and critical system recovery in the oil and gas sector. Key responsibilities included: • Developing, testing, and operating underwater inspection equipment for high- • Working on field operations logistics on platforms, ships, and testing sites, including embarks on P-52, P-25, and RSV Joe Griffin, where I conducted tests and homologated inspection tools. • Analyzing riser and pipeline data and producing technical reports for clients • Leading the design and homologation of hardware and software projects, including the AURI (Autonomous Underwater Riser Inspector), which won • Ensuring quality control and resolving issues in critical systems to maintain This role had a strong focus on quality assurance for systems and processes, particularly for embedded systems used in mission-critical applications. My work involved ensuring reliability and compliance in challenging environments where precision and robustness were essential."
+        "location": "Rua Marquês de São Vicente, 255 - Gávea, Rio de Janeiro - RJ, 22453-900",
+        "description": "Focusing on advanced inspection technologies, quality assurance, and critical system recovery in the oil and gas sector. Key responsibilities included: • Developing, testing, and operating underwater inspection equipment for high- • Working on field operations logistics on platforms, ships, and testing sites, including embarks on P-52, P-25, and RSV Joe Griffin, where I conducted tests and homologated inspection tools. • Analyzing riser and pipeline data and producing technical reports for clients • Leading the design and homologation of hardware and software projects, including the AURI (Autonomous Underwater Riser Inspector), which won • Ensuring quality control and resolving issues in critical systems to maintain This role had a strong focus on quality assurance for systems and processes, particularly for embedded systems used in mission-critical applications. My work involved ensuring reliability and compliance in challenging environments where precision and robustness were essential."
       },
       {
-        "title": "Worked as a Researcher in renewable energy projects for the Department",
-        "company": "21941-911",
-        "duration": "",
-        "description": "of Specialized Technologies, contributing to key initiatives that advanced the company’s capabilities in the sector. My responsibilities included: • Developing and implementing measurement platforms for solar and wind energy in remote areas, resulting in systems that operated uninterruptedly for over 5 years in challenging environments. • Creating analytical tools to evaluate energy performance and identify optimization opportunities, including one that reduced a 2-month process to • Coordinating engineers and technicians in the development of electronic systems, leading the testing and deployment of cutting-edge tools for solar and • Establishing homologation processes for critical systems to ensure compliance, operational reliability, and long-term sustainability. I also led smaller projects that delivered innovative electronic solutions, driving progress in renewable energy technologies. Additionally, I supported an initiative by Brazil’s Ministry of Mines and Energy, evaluating companies, sites, and technologies to enable strategic entry into the wind energy market."
+        "title": "Technical Researcher – Automation and Robotics (Contractor)",
+        "company": "CEPEL",
+        "duration": "December 2006 - April 2010",
+        "location": "Av. Horácio Macedo, 354 - Cidade Universitária - Rio de Janeiro - RJ, 21941-911",
+        "description": "Worked as a Researcher in renewable energy projects for the Department of Specialized Technologies, contributing to key initiatives that advanced the company’s capabilities in the sector. My responsibilities included: • Developing and implementing measurement platforms for solar and wind energy in remote areas, resulting in systems that operated uninterruptedly for over 5 years in challenging environments. • Creating analytical tools to evaluate energy performance and identify optimization opportunities, including one that reduced a 2-month process to • Coordinating engineers and technicians in the development of electronic systems, leading the testing and deployment of cutting-edge tools for solar and • Establishing homologation processes for critical systems to ensure compliance, operational reliability, and long-term sustainability. I also led smaller projects that delivered innovative electronic solutions, driving progress in renewable energy technologies. Additionally, I supported an initiative by Brazil’s Ministry of Mines and Energy, evaluating companies, sites, and technologies to enable strategic entry into the wind energy market."
       },
       {
         "dates": {
@@ -275,7 +272,7 @@
           "kind": "completed"
         },
         "title": "Technical Support Analyst",
-        "company": "21941-911",
+        "company": "Arena Games",
         "duration": "August 2005 - May 2006",
         "location": "Rio de Janeiro, Brasil",
         "description": ""
@@ -283,9 +280,23 @@
     ],
     "education": [
       {
+        "dates": {
+          "originalText": "2017 - 2018",
+          "start": {
+            "iso": "2017",
+            "precision": "year",
+            "text": "2017"
+          },
+          "end": {
+            "iso": "2018",
+            "precision": "year",
+            "text": "2018"
+          },
+          "kind": "completed"
+        },
         "institution": "Universidade Veiga de Almeida",
-        "degree": "Master of Business Administration - MBA, Business",
-        "year": "Management · (2017 - 2018)",
+        "degree": "Master of Business Administration - MBA, Business Management",
+        "year": "2017 - 2018",
         "location": ""
       },
       {
@@ -329,9 +340,23 @@
         "location": ""
       },
       {
+        "dates": {
+          "originalText": "2002 - 2005",
+          "start": {
+            "iso": "2002",
+            "precision": "year",
+            "text": "2002"
+          },
+          "end": {
+            "iso": "2005",
+            "precision": "year",
+            "text": "2005"
+          },
+          "kind": "completed"
+        },
         "institution": "ETE Ferreira Viana (FAETEC)",
-        "degree": "Telecommunications Technician, Telecommunications Technology/",
-        "year": "Technician · (2002 - 2005)",
+        "degree": "Telecommunications Technician, Telecommunications Technology/Technician",
+        "year": "2002 - 2005",
         "location": ""
       },
       {
@@ -361,46 +386,6 @@
       "code": "missing_profile_field",
       "field": "profile.contact.email",
       "message": "Could not extract contact email"
-    },
-    {
-      "code": "section_parse_warning",
-      "entry": 2,
-      "field": "dates",
-      "message": "Could not extract date range for experience entry",
-      "rawText": "As a co-founder and strategic partner at Boba Joy, I focus on turning a great",
-      "section": "experience"
-    },
-    {
-      "code": "section_parse_warning",
-      "entry": 7,
-      "field": "positions",
-      "message": "Could not extract any positions for experience entry",
-      "rawText": "CEPEL",
-      "section": "experience"
-    },
-    {
-      "code": "section_parse_warning",
-      "entry": 12,
-      "field": "dates",
-      "message": "Could not extract date range for experience entry",
-      "rawText": "Worked as a Researcher in renewable energy projects for the Department",
-      "section": "experience"
-    },
-    {
-      "code": "section_parse_warning",
-      "entry": 0,
-      "field": "dates",
-      "message": "Could not parse education date range",
-      "rawText": "Management · (2017 - 2018)",
-      "section": "education"
-    },
-    {
-      "code": "section_parse_warning",
-      "entry": 3,
-      "field": "dates",
-      "message": "Could not parse education date range",
-      "rawText": "Technician · (2002 - 2005)",
-      "section": "education"
     }
   ]
 }

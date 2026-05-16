@@ -79,6 +79,36 @@ describe('ExperienceStructuralParser', () => {
     expect(experiences).toEqual([]);
   });
 
+  test('starts a new visual organization for person-shaped brand names after descriptions', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Staff Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2024', y: 630 }),
+      textItem({ text: 'Built internal systems.', y: 610 }),
+      textItem({ text: 'Boba Joy', y: 580 }),
+      textItem({ text: 'Investor & Advisor', y: 560, fontSize: 11.5 }),
+      textItem({ text: 'November 2024 - Present', y: 540 }),
+    ];
+
+    const experiences = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Northstar Solutions',
+      }),
+      expect.objectContaining({
+        organization: 'Boba Joy',
+        positions: [
+          expect.objectContaining({
+            duration: 'November 2024 - Present',
+            title: 'Investor & Advisor',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('detects generic organizations without a source allowlist', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -235,6 +265,46 @@ describe('ExperienceStructuralParser', () => {
     expect(experience.positions[0]).toEqual(
       expect.objectContaining({
         location: 'New York, NY',
+      })
+    );
+  });
+
+  test('keeps split address locations before contractor descriptions', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'CEPEL', y: 670 }),
+      textItem({
+        text: 'Technical Researcher – Automation and Robotics (Contractor)',
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'December 2006 - April 2010', y: 630 }),
+      textItem({
+        text: 'Av. Horácio Macedo, 354 - Cidade Universitária - Rio de Janeiro - RJ,',
+        y: 610,
+      }),
+      textItem({ text: '21941-911', y: 595 }),
+      textItem({
+        text: 'Worked as a Researcher in renewable energy projects.',
+        y: 570,
+      }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'CEPEL',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Worked as a Researcher in renewable energy projects.',
+            duration: 'December 2006 - April 2010',
+            location:
+              'Av. Horácio Macedo, 354 - Cidade Universitária - Rio de Janeiro - RJ, 21941-911',
+            title: 'Technical Researcher – Automation and Robotics (Contractor)',
+          }),
+        ],
       })
     );
   });

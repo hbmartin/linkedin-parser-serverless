@@ -86,6 +86,69 @@ describe('EducationParser', () => {
     ]);
   });
 
+  test('joins wrapped structural degree lines before extracting dates', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'Universidade Veiga de Almeida',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Master of Business Administration - MBA, Business',
+        y: 710,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Management · (2017 - 2018)',
+        y: 696,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 660 }),
+    ]);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        dates: expect.objectContaining({
+          originalText: '2017 - 2018',
+        }),
+        degree: 'Master of Business Administration - MBA, Business Management',
+        institution: 'Universidade Veiga de Almeida',
+        year: '2017 - 2018',
+      }),
+    ]);
+  });
+
+  test('joins slash-wrapped structural degree lines without adding a space', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'ETE Ferreira Viana (FAETEC)',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Telecommunications Technician, Telecommunications Technology/',
+        y: 710,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Technician · (2002 - 2005)',
+        y: 696,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 660 }),
+    ]);
+
+    expect(educations[0]).toEqual(
+      expect.objectContaining({
+        degree:
+          'Telecommunications Technician, Telecommunications Technology/Technician',
+        year: '2002 - 2005',
+      })
+    );
+  });
+
   test('adds structured dates for education ranges', () => {
     const [education] = EducationParser.parse(`
       Education

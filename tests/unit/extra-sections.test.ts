@@ -68,6 +68,34 @@ describe('ExtraSectionParser', () => {
     expect(sections.volunteer_work).toEqual(['Open Source Mentor']);
   });
 
+  test('merges wrapped structural extra section entries', () => {
+    const sections = ExtraSectionParser.parseStructural([
+      line({ column: 'left', text: 'Certifications', y: 760 }),
+      line({
+        column: 'left',
+        text: 'MITx 14.310Fx: Data Analysis in',
+        y: 740,
+      }),
+      line({ column: 'left', text: 'Social Science', y: 728 }),
+      line({
+        column: 'left',
+        text: 'Certificate of Completion - 23 hours',
+        y: 708,
+      }),
+      line({
+        column: 'left',
+        text: 'of Android development training',
+        y: 696,
+      }),
+      line({ column: 'left', text: 'Experience', y: 660 }),
+    ]);
+
+    expect(sections.certifications).toEqual([
+      'MITx 14.310Fx: Data Analysis in Social Science',
+      'Certificate of Completion - 23 hours of Android development training',
+    ]);
+  });
+
   test('returns warnings for detected empty extra sections', () => {
     const result = ExtraSectionParser.parseTextWithWarnings(`
       Certifications

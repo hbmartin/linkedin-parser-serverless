@@ -102,16 +102,6 @@ export async function parseLinkedInPDF(
   const basicInfo = basicInfoResult.value;
   sectionWarnings.push(...basicInfoResult.warnings);
 
-  const topSkillsResult = ListParser.parseSkillsWithWarnings(cleanedText);
-  const topSkills = topSkillsResult.value;
-  sectionWarnings.push(...topSkillsResult.warnings);
-
-  const languagesResult = structuralLines
-    ? ListParser.parseStructuralLanguagesWithWarnings(structuralLines)
-    : ListParser.parseLanguagesWithWarnings(cleanedText);
-  const languages = languagesResult.value;
-  sectionWarnings.push(...languagesResult.warnings);
-
   const structuralIdentityResult = structuralLines
     ? IdentityStructuralParser.parseWithWarnings(structuralLines)
     : undefined;
@@ -120,6 +110,23 @@ export async function parseLinkedInPDF(
   if (structuralIdentityResult) {
     sectionWarnings.push(...structuralIdentityResult.warnings);
   }
+
+  const topSkillsResult = structuralIdentity?.topSkills.length
+    ? undefined
+    : ListParser.parseSkillsWithWarnings(cleanedText);
+  const topSkills = structuralIdentity?.topSkills.length
+    ? structuralIdentity.topSkills
+    : (topSkillsResult?.value ?? []);
+
+  if (topSkillsResult) {
+    sectionWarnings.push(...topSkillsResult.warnings);
+  }
+
+  const languagesResult = structuralLines
+    ? ListParser.parseStructuralLanguagesWithWarnings(structuralLines)
+    : ListParser.parseLanguagesWithWarnings(cleanedText);
+  const languages = languagesResult.value;
+  sectionWarnings.push(...languagesResult.warnings);
 
   const extraSectionsResult = structuralLines
     ? ExtraSectionParser.parseStructuralWithWarnings(structuralLines)
@@ -197,9 +204,7 @@ export async function parseLinkedInPDF(
     headline: structuralIdentity?.headline ?? basicInfo.headline,
     location: structuralIdentity?.location ?? basicInfo.location,
     contact,
-    top_skills: structuralIdentity?.topSkills.length
-      ? structuralIdentity.topSkills
-      : topSkills,
+    top_skills: topSkills,
     languages,
     certifications: extraSections.certifications,
     volunteer_work: extraSections.volunteer_work,

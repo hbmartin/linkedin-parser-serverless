@@ -17,6 +17,7 @@ import {
   cleanOrganizationNameText,
   isEducationSectionHeaderText,
   isExperienceSectionHeaderText,
+  isLikelyLocationText,
   isSectionHeaderText,
   looksLikeOrganizationNameText,
   looksLikePersonNameText,
@@ -189,7 +190,8 @@ export class ExperienceStructuralParser {
           text,
           line.fontSize ?? 0,
           index,
-          lineTexts
+          lineTexts,
+          { allowPersonLikeName: false }
         )
           ? 'organization'
           : this.fallbackLineType(text, line.fontSize ?? 0, index, lineTexts);
@@ -203,7 +205,13 @@ export class ExperienceStructuralParser {
         }
 
         if (
-          this.looksLikeOrganization(text, line.fontSize ?? 0, index, lineTexts)
+          this.looksLikeOrganization(
+            text,
+            line.fontSize ?? 0,
+            index,
+            lineTexts,
+            { allowPersonLikeName: false }
+          )
         ) {
           return 'organization';
         }
@@ -224,7 +232,13 @@ export class ExperienceStructuralParser {
         }
 
         if (
-          this.looksLikeOrganization(text, line.fontSize ?? 0, index, lineTexts)
+          this.looksLikeOrganization(
+            text,
+            line.fontSize ?? 0,
+            index,
+            lineTexts,
+            { allowPersonLikeName: false }
+          )
         ) {
           return 'organization';
         }
@@ -235,6 +249,18 @@ export class ExperienceStructuralParser {
 
         return text.length > 15 ? 'description' : 'other';
       case 'in_description':
+        if (
+          this.looksLikeOrganization(
+            text,
+            line.fontSize ?? 0,
+            index,
+            lineTexts,
+            { allowPersonLikeName: true }
+          )
+        ) {
+          return 'organization';
+        }
+
         return this.fallbackLineType(
           text,
           line.fontSize ?? 0,
@@ -274,16 +300,16 @@ export class ExperienceStructuralParser {
       return 'duration';
     }
 
+    if (this.looksLikeLocation(line)) {
+      return 'location';
+    }
+
     if (this.looksLikeOrganization(line, fontSize, index, allLines)) {
       return 'organization';
     }
 
     if (this.looksLikePosition(line)) {
       return 'position';
-    }
-
-    if (this.looksLikeLocation(line)) {
-      return 'location';
     }
 
     return line.length > 30 ? 'description' : 'other';
@@ -293,7 +319,8 @@ export class ExperienceStructuralParser {
     line: string,
     fontSize: number,
     index: number,
-    allLines: string[]
+    allLines: string[],
+    options: { allowPersonLikeName: boolean } = { allowPersonLikeName: false }
   ): boolean {
     const normalizedLine = line.trim();
 
@@ -303,7 +330,7 @@ export class ExperienceStructuralParser {
       this.looksLikeLocation(normalizedLine) ||
       this.looksLikePosition(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
-      looksLikePersonNameText(normalizedLine)
+      (!options.allowPersonLikeName && looksLikePersonNameText(normalizedLine))
     ) {
       return false;
     }
@@ -317,10 +344,42 @@ export class ExperienceStructuralParser {
         /^\d+\s+(years?|months?|anos?|meses?)/.test(nextLine)
     );
 
+    const hasOrganizationShape =
+      looksLikeOrganizationNameText(normalizedLine) ||
+      (options.allowPersonLikeName &&
+        this.looksLikeVisualOrganizationHeaderText(normalizedLine));
+
     return (
       hasJobDetailsAfter &&
-      looksLikeOrganizationNameText(normalizedLine) &&
+      hasOrganizationShape &&
       (fontSize > 10 || normalizedLine.length <= 40)
+    );
+  }
+
+  private static looksLikeVisualOrganizationHeaderText(line: string): boolean {
+    const normalizedLine = line.trim();
+
+    if (
+      normalizedLine.length < 2 ||
+      normalizedLine.length > 80 ||
+      normalizedLine.includes('@') ||
+      normalizedLine.includes('•') ||
+      /https?:\/\//i.test(normalizedLine) ||
+      /^page\s+\d+\s+of\s+\d+$/i.test(normalizedLine) ||
+      this.looksLikeDuration(normalizedLine) ||
+      this.looksLikeLocation(normalizedLine) ||
+      this.looksLikePosition(normalizedLine) ||
+      isSectionHeaderText(normalizedLine)
+    ) {
+      return false;
+    }
+
+    const words = normalizedLine.split(/\s+/).filter(Boolean);
+
+    return (
+      words.length > 0 &&
+      words.length <= 5 &&
+      words.every(word => /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!-]*$/u.test(word))
     );
   }
 
@@ -344,13 +403,16 @@ export class ExperienceStructuralParser {
       /^[A-Z][A-Za-z\s]+,\s*[A-Z\s]{2,}$/, // City, ST
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+$/, // City, State
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+/, // City, State, Country
-      /^Greater\s+[A-Z][A-Za-z\s]+(?:Area|,\s*[A-Z\s]{2,})/,
+      /^Greater\s+[\p{Lu}][\p{L}\p{M}\s]+(?:Area|,\s*[\p{Lu}\s]{2,})?$/u,
+      /^(?:Rua|R\.|Av\.?|Avenida|Street|St\.|Avenue|Ave\.|Road|Rd\.)\b/i,
+      /^\d{5}(?:-\d{3})?$/,
       /^(California|New York|Texas|Florida|United States|Brasil|Brazil|Rio de Janeiro|São Paulo)$/i,
     ];
 
     return (
-      normalizedLine.length < 80 &&
-      locationPatterns.some(pattern => pattern.test(normalizedLine)) &&
+      normalizedLine.length < 120 &&
+      (isLikelyLocationText(normalizedLine) ||
+        locationPatterns.some(pattern => pattern.test(normalizedLine))) &&
       !this.looksLikeDuration(normalizedLine)
     );
   }
@@ -474,7 +536,11 @@ export class ExperienceStructuralParser {
 
         case 'location':
           if (currentPosition) {
-            currentPosition.location = this.normalizeLocationText(section.text);
+            currentPosition.location = currentPosition.location
+              ? `${currentPosition.location} ${this.normalizeLocationText(
+                  section.text
+                )}`
+              : this.normalizeLocationText(section.text);
           }
           break;
 
@@ -554,7 +620,20 @@ export class ExperienceStructuralParser {
   private static extractCleanOrganizationName(
     text: string
   ): string | undefined {
-    return cleanOrganizationNameText(text);
+    const cleanOrganizationName = cleanOrganizationNameText(text);
+
+    if (cleanOrganizationName) {
+      return cleanOrganizationName;
+    }
+
+    const normalizedText = text
+      .replace(/[\uE000-\uF8FF]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return this.looksLikeVisualOrganizationHeaderText(normalizedText)
+      ? normalizedText
+      : undefined;
   }
 
   private static extractCleanDuration(text: string): string {

@@ -14,12 +14,9 @@
     ],
     "languages": [],
     "certifications": [
-      "MITx 14.310Fx: Data Analysis in",
-      "Social Science",
-      "Certificate of Completion - 23 hours",
-      "of Android development training",
-      "MITx 6.431x: Probability - The",
-      "Science of Uncertainty and Data"
+      "MITx 14.310Fx: Data Analysis in Social Science",
+      "Certificate of Completion - 23 hours of Android development training",
+      "MITx 6.431x: Probability - The Science of Uncertainty and Data"
     ],
     "volunteer_work": [],
     "projects": [],
@@ -250,27 +247,5 @@
       }
     ]
   },
-  "warnings": [
-    {
-      "code": "section_parse_warning",
-      "field": "item",
-      "message": "Discarded top skills line that did not look like a skill",
-      "rawText": "Amazon Web Services (AWS)",
-      "section": "top_skills"
-    },
-    {
-      "code": "section_parse_warning",
-      "field": "item",
-      "message": "Discarded top skills line that did not look like a skill",
-      "rawText": "Chief Technology Officer",
-      "section": "top_skills"
-    },
-    {
-      "code": "section_parse_warning",
-      "field": "item",
-      "message": "Discarded top skills line that did not look like a skill",
-      "rawText": "November 2025 - Present (7 months)",
-      "section": "top_skills"
-    }
-  ]
+  "warnings": []
 }
