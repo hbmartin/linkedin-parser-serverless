@@ -1,0 +1,276 @@
+{
+  "profile": {
+    "name": "Harold Martin",
+    "headline": "CTO @ SVRN",
+    "location": "Los Angeles, California, United States",
+    "contact": {
+      "email": "harold.martin@gmail.com",
+      "linkedin_url": "https://linkedin.com/in/harold-martin-98526971"
+    },
+    "top_skills": [
+      "Python",
+      "Amazon Web Services (AWS)",
+      "ElasticSearch"
+    ],
+    "languages": [],
+    "certifications": [
+      "MITx 14.310Fx: Data Analysis in",
+      "Social Science",
+      "Certificate of Completion - 23 hours",
+      "of Android development training",
+      "MITx 6.431x: Probability - The",
+      "Science of Uncertainty and Data"
+    ],
+    "volunteer_work": [],
+    "projects": [],
+    "experience": [
+      {
+        "dates": {
+          "originalText": "November 2025 - Present",
+          "start": {
+            "iso": "2025-11",
+            "precision": "month",
+            "text": "November 2025"
+          },
+          "kind": "current"
+        },
+        "title": "Chief Technology Officer",
+        "company": "SVRN",
+        "duration": "November 2025 - Present",
+        "description": ""
+      },
+      {
+        "dates": {
+          "originalText": "January 2024 - December 2025",
+          "start": {
+            "iso": "2024-01",
+            "precision": "month",
+            "text": "january 2024"
+          },
+          "end": {
+            "iso": "2025-12",
+            "precision": "month",
+            "text": "December 2025"
+          },
+          "kind": "completed"
+        },
+        "title": "Mobile and AI Consultant",
+        "company": "Self-employed",
+        "duration": "January 2024 - December 2025",
+        "description": ""
+      },
+      {
+        "dates": {
+          "originalText": "December 2022 - November 2023",
+          "start": {
+            "iso": "2022-12",
+            "precision": "month",
+            "text": "December 2022"
+          },
+          "end": {
+            "iso": "2023-11",
+            "precision": "month",
+            "text": "November 2023"
+          },
+          "kind": "completed"
+        },
+        "title": "Mobile Lead",
+        "company": "Jump",
+        "duration": "December 2022 - November 2023",
+        "location": "Los Angeles, California, United States",
+        "description": ""
+      },
+      {
+        "dates": {
+          "originalText": "November 2021 - December 2022",
+          "start": {
+            "iso": "2021-11",
+            "precision": "month",
+            "text": "November 2021"
+          },
+          "end": {
+            "iso": "2022-12",
+            "precision": "month",
+            "text": "December 2022"
+          },
+          "kind": "completed"
+        },
+        "title": "Senior Android Engineer",
+        "company": "AllTrails",
+        "duration": "November 2021 - December 2022",
+        "description": ""
+      },
+      {
+        "dates": {
+          "originalText": "July 2017 - November 2021",
+          "start": {
+            "iso": "2017-07",
+            "precision": "month",
+            "text": "july 2017"
+          },
+          "end": {
+            "iso": "2021-11",
+            "precision": "month",
+            "text": "November 2021"
+          },
+          "kind": "completed"
+        },
+        "title": "Senior Android Engineer",
+        "company": "Tinder, Inc.",
+        "duration": "July 2017 - November 2021",
+        "location": "Greater Los Angeles Area",
+        "description": ""
+      },
+      {
+        "dates": {
+          "originalText": "January 2015 - January 2016",
+          "start": {
+            "iso": "2015-01",
+            "precision": "month",
+            "text": "january 2015"
+          },
+          "end": {
+            "iso": "2016-01",
+            "precision": "month",
+            "text": "january 2016"
+          },
+          "kind": "completed"
+        },
+        "title": "Lead Engineer",
+        "company": "WikiRealty",
+        "duration": "January 2015 - January 2016",
+        "location": "Santa Monica, CA",
+        "description": ""
+      },
+      {
+        "dates": {
+          "originalText": "May 2014 - January 2015",
+          "start": {
+            "iso": "2014-05",
+            "precision": "month",
+            "text": "may 2014"
+          },
+          "end": {
+            "iso": "2015-01",
+            "precision": "month",
+            "text": "january 2015"
+          },
+          "kind": "completed"
+        },
+        "title": "Technical Manager",
+        "company": "Whisper",
+        "duration": "May 2014 - January 2015",
+        "location": "Venice, CA",
+        "description": ""
+      },
+      {
+        "dates": {
+          "originalText": "June 2012 - May 2014",
+          "start": {
+            "iso": "2012-06",
+            "precision": "month",
+            "text": "june 2012"
+          },
+          "end": {
+            "iso": "2014-05",
+            "precision": "month",
+            "text": "may 2014"
+          },
+          "kind": "completed"
+        },
+        "title": "Software Engineer",
+        "company": "OpenX",
+        "duration": "June 2012 - May 2014",
+        "location": "Pasadena, CA",
+        "description": ""
+      },
+      {
+        "dates": {
+          "originalText": "June 2011 - September 2011",
+          "start": {
+            "iso": "2011-06",
+            "precision": "month",
+            "text": "june 2011"
+          },
+          "end": {
+            "iso": "2011-09",
+            "precision": "month",
+            "text": "September 2011"
+          },
+          "kind": "completed"
+        },
+        "title": "Undergraduate Researcher",
+        "company": "California Institute of Technology",
+        "duration": "June 2011 - September 2011",
+        "location": "Pasadena, CA",
+        "description": "Designed an ARM microprocessor based self-configuring controller for mobile experiments. Selected computing architecture, constructed electronics, and programmed a/d interfaces. Performed literature review of available algorithms, optimized and implemented for chosen platform. Created friendly device interface for real time monitoring and reconfiguring. Analyzed"
+      },
+      {
+        "dates": {
+          "originalText": "June 2007 - September 2007",
+          "start": {
+            "iso": "2007-06",
+            "precision": "month",
+            "text": "june 2007"
+          },
+          "end": {
+            "iso": "2007-09",
+            "precision": "month",
+            "text": "September 2007"
+          },
+          "kind": "completed"
+        },
+        "title": "Platform Engineer Intern",
+        "company": "Intel Corporation",
+        "duration": "June 2007 - September 2007",
+        "location": "Dupont, WA",
+        "description": ""
+      }
+    ],
+    "education": [
+      {
+        "dates": {
+          "originalText": "2006 - 2012",
+          "start": {
+            "iso": "2006",
+            "precision": "year",
+            "text": "2006"
+          },
+          "end": {
+            "iso": "2012",
+            "precision": "year",
+            "text": "2012"
+          },
+          "kind": "completed"
+        },
+        "institution": "California Institute of Technology",
+        "degree": "BS, Chemical Engineering",
+        "year": "2006 - 2012",
+        "location": ""
+      }
+    ]
+  },
+  "warnings": [
+    {
+      "code": "section_parse_warning",
+      "field": "item",
+      "message": "Discarded top skills line that did not look like a skill",
+      "rawText": "Amazon Web Services (AWS)",
+      "section": "top_skills"
+    },
+    {
+      "code": "section_parse_warning",
+      "field": "item",
+      "message": "Discarded top skills line that did not look like a skill",
+      "rawText": "Chief Technology Officer",
+      "section": "top_skills"
+    },
+    {
+      "code": "section_parse_warning",
+      "field": "item",
+      "message": "Discarded top skills line that did not look like a skill",
+      "rawText": "November 2025 - Present (7 months)",
+      "section": "top_skills"
+    }
+  ]
+}
