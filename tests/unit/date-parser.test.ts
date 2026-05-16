@@ -116,4 +116,53 @@ describe('profile date parser', () => {
       },
     });
   });
+
+  test('parses ISO day ranges without relying on chrono range detection', () => {
+    expect(parseProfileDateRange('2020-01-31 - 2020-02-28')).toEqual({
+      end: {
+        iso: '2020-02-28',
+        precision: 'day',
+        text: '2020-02-28',
+      },
+      kind: 'completed',
+      originalText: '2020-01-31 - 2020-02-28',
+      start: {
+        iso: '2020-01-31',
+        precision: 'day',
+        text: '2020-01-31',
+      },
+    });
+  });
+
+  test('parses chrono-only year and day ranges', () => {
+    expect(parseProfileDateRange('during 2020')).toEqual({
+      kind: 'single',
+      originalText: 'during 2020',
+      start: {
+        iso: '2020',
+        precision: 'year',
+        text: '2020',
+      },
+    });
+
+    expect(parseProfileDateRange('January 5 to February 6 2020')).toEqual(
+      expect.objectContaining({
+        end: expect.objectContaining({
+          iso: '2020-02-06',
+          precision: 'day',
+        }),
+        kind: 'completed',
+        start: expect.objectContaining({
+          iso: '2020-01-05',
+          precision: 'day',
+        }),
+      })
+    );
+  });
+
+  test('rejects empty and incomplete date ranges', () => {
+    expect(parseProfileDateRange('')).toBeUndefined();
+    expect(parseProfileDateRange('2020 - eventually')).toBeUndefined();
+    expect(parseProfileDateRange('Present')).toBeUndefined();
+  });
 });
