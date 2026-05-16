@@ -84,4 +84,50 @@ describe('IdentityStructuralParser', () => {
     expect(identity.headline).toBe('Web2.5 Finance & Payments Innovation');
     expect(identity.location).toBe('United States');
   });
+
+  test('returns warnings for malformed sidebar sections without identity candidates', () => {
+    const result = IdentityStructuralParser.parseWithWarnings([
+      line({ column: 'left', text: 'Contact', y: 760 }),
+      line({ column: 'left', text: 'linkedin.com/in/', y: 740 }),
+      line({ column: 'left', text: 'Top Skills', y: 720 }),
+      line({ column: 'left', text: 'Languages', y: 700 }),
+      line({ fontSize: 16, text: 'Experience', y: 760 }),
+    ]);
+
+    expect(result.value).toEqual({
+      headline: undefined,
+      linkedinUrl: undefined,
+      location: undefined,
+      name: undefined,
+      topSkills: [],
+    });
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'section',
+        section: 'top_skills',
+      }),
+      expect.objectContaining({
+        field: 'linkedin_url',
+        section: 'contact',
+      }),
+    ]);
+  });
+
+  test('uses a later larger identity line and unbounded top skills', () => {
+    const identity = IdentityStructuralParser.parse([
+      line({ column: 'left', text: 'Top Skills', y: 760 }),
+      line({ column: 'left', text: 'TypeScript', y: 740 }),
+      line({ column: 'left', text: 'Product Strategy', y: 720 }),
+      line({ fontSize: 12, text: 'Technical Advisor', y: 760 }),
+      line({ fontSize: 26, text: 'Alex Rivera', y: 730 }),
+    ]);
+
+    expect(identity).toEqual({
+      headline: undefined,
+      linkedinUrl: undefined,
+      location: undefined,
+      name: 'Alex Rivera',
+      topSkills: ['TypeScript', 'Product Strategy'],
+    });
+  });
 });

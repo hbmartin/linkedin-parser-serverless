@@ -3,6 +3,7 @@ import type {
   StructuralSection,
   TextItem,
 } from '../../src/types/structural.js';
+import type { NormalizedParserLine } from '../../src/utils/parser-lines.js';
 
 function textItem({
   text,
@@ -1142,6 +1143,302 @@ describe('ExperienceStructuralParser', () => {
       }),
     ]);
   });
+
+  test('classifies sparse parser lines through fallback states', () => {
+    const sections = ExperienceStructuralParser['classifyLines']([
+      parserLine({ text: 'Experience' }),
+      parserLine({ index: 1, text: '2020 - 2021' }),
+      parserLine({ index: 2, text: 'Remote' }),
+      parserLine({
+        fontSize: 13,
+        index: 3,
+        text: 'Northstar Solutions',
+      }),
+      parserLine({ index: 4, text: 'Principal Engineer' }),
+      parserLine({
+        index: 5,
+        text: 'A description line long enough to classify as prose.',
+      }),
+      parserLine({ index: 6, text: 'x' }),
+    ]);
+
+    expect(sections.map(section => section.type)).toEqual([
+      'other',
+      'duration',
+      'location',
+      'organization',
+      'position',
+      'description',
+    ]);
+  });
+
+  test('covers fallback line classification outcomes directly', () => {
+    expect(
+      ExperienceStructuralParser['fallbackLineType']('Blue Oak Labs', 9, 0, [
+        'Blue Oak Labs',
+        'Staff Engineer',
+        '2020 - 2022',
+      ])
+    ).toBe('organization');
+    expect(
+      ExperienceStructuralParser['fallbackLineType']('ok', 12, 0, ['ok'])
+    ).toBe('other');
+    expect(
+      ExperienceStructuralParser['fallbackLineType'](
+        'This description line is long enough to be treated as prose.',
+        12,
+        0,
+        []
+      )
+    ).toBe('description');
+  });
+
+  test('classifies explicit states with missing optional structural metadata', () => {
+    const organizationLine = parserLine({ text: 'Blue Oak Labs' });
+    const otherLine = parserLine({ text: 'tiny' });
+    const sentenceLine = parserLine({ text: 'Wrapped sentence.' });
+
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        allLines: [
+          organizationLine,
+          parserLine({ index: 1, text: 'Staff Engineer' }),
+        ],
+        index: 0,
+        line: organizationLine,
+        state: 'seeking_title',
+      })
+    ).toBe('organization');
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        allLines: [otherLine],
+        index: 0,
+        line: otherLine,
+        state: 'seeking_title',
+      })
+    ).toBe('other');
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        allLines: [
+          parserLine({
+            text: 'Previous role description with enough context.',
+          }),
+          organizationLine,
+          parserLine({ index: 2, text: 'Staff Engineer' }),
+        ],
+        index: 1,
+        line: organizationLine,
+        state: 'in_description',
+      })
+    ).toBe('organization');
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        allLines: [sentenceLine],
+        index: 0,
+        line: sentenceLine,
+        state: 'in_description',
+      })
+    ).toBe('other');
+  });
+
+  test('covers description continuation helpers directly', () => {
+    expect(ExperienceStructuralParser['looksLikeDescriptionLine']('Tiny')).toBe(
+      false
+    );
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionLine'](
+        'Migration rollout',
+        'Owned migration planning for'
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
+        'continued rollout'
+      )
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
+        'Shipped safely.',
+        'Owned migration planning with enough context'
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser[
+        'looksLikeSentenceEndingDescriptionContinuationLine'
+      ]('Manager.', 'This previous sentence is complete.')
+    ).toBe(false);
+  });
+
+  test('handles orphan structural sections and optional position fields', () => {
+    const experiences = ExperienceStructuralParser['buildWorkExperiences']([
+      structuralSection({
+        text: 'Austin, TX',
+        type: 'organization',
+      }),
+      structuralSection({
+        text: 'Principal Engineer',
+        type: 'position',
+      }),
+      structuralSection({
+        text: '2020 - 2021',
+        type: 'duration',
+      }),
+      structuralSection({
+        text: 'Remote',
+        type: 'location',
+      }),
+      structuralSection({
+        text: 'Northstar Solutions',
+        type: 'organization',
+      }),
+      structuralSection({
+        text: '2022 - 2024',
+        type: 'duration',
+      }),
+      structuralSection({
+        text: 'Austin, TX',
+        type: 'location',
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      {
+        organization: 'Northstar Solutions',
+        positions: [],
+        totalDuration: '2022 - 2024',
+      },
+    ]);
+    expect(
+      ExperienceStructuralParser['buildWorkExperiences']([
+        structuralSection({
+          text: 'Principal Engineer',
+          type: 'position',
+        }),
+        structuralSection({
+          text: '2020 - 2021',
+          type: 'duration',
+        }),
+        structuralSection({
+          text: 'Staff Engineer',
+          type: 'position',
+        }),
+      ])
+    ).toEqual([]);
+    expect(
+      ExperienceStructuralParser['buildWorkExperiences']([
+        structuralSection({
+          text: 'Northstar Solutions',
+          type: 'organization',
+        }),
+        structuralSection({
+          text: '2020 - 2021',
+          type: 'duration',
+        }),
+        structuralSection({
+          text: '2022 - 2024',
+          type: 'duration',
+        }),
+      ])
+    ).toEqual([
+      {
+        organization: 'Northstar Solutions',
+        positions: [],
+        totalDuration: '2020 - 2021',
+      },
+    ]);
+    expect(
+      ExperienceStructuralParser['completePosition']({
+        descriptionLines: [],
+        position: {
+          title: 'Advisor',
+        },
+      })
+    ).toEqual({
+      description: '',
+      duration: '',
+      title: 'Advisor',
+    });
+    expect(
+      ExperienceStructuralParser['completeWorkExperience']({
+        descriptionLines: [],
+        position: null,
+        workExperience: {
+          organization: 'Existing Roles',
+          positions: [
+            {
+              description: '',
+              duration: '',
+              title: 'Advisor',
+            },
+          ],
+        },
+      })
+    ).toEqual({
+      organization: 'Existing Roles',
+      positions: [
+        {
+          description: '',
+          duration: '',
+          title: 'Advisor',
+        },
+      ],
+      totalDuration: undefined,
+    });
+    expect(
+      ExperienceStructuralParser['completeWorkExperience']({
+        descriptionLines: [],
+        position: {
+          duration: '',
+          title: 'Advisor',
+        },
+        workExperience: {
+          organization: 'No Existing Roles',
+        },
+      })
+    ).toEqual({
+      organization: 'No Existing Roles',
+      positions: [
+        {
+          description: '',
+          duration: '',
+          title: 'Advisor',
+        },
+      ],
+      totalDuration: undefined,
+    });
+  });
+
+  test('covers organization, confidence, and duration fallback edges', () => {
+    expect(
+      ExperienceStructuralParser['looksLikeOrganization'](
+        'International Research Systems Group Partners',
+        9,
+        0,
+        [
+          'International Research Systems Group Partners',
+          'Staff Engineer',
+          '2020 - 2022',
+        ]
+      )
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['calculateConfidence'](
+        'Northstar Solutions',
+        'organization',
+        13
+      )
+    ).toBeCloseTo(0.9);
+    expect(
+      ExperienceStructuralParser['calculateConfidence'](
+        'Present',
+        'duration',
+        12
+      )
+    ).toBe(0.5);
+    expect(
+      ExperienceStructuralParser['extractCleanDuration']('Launched in 2025')
+    ).toBe('2025');
+  });
 });
 
 function structuralSection({
@@ -1157,5 +1454,26 @@ function structuralSection({
     text,
     type,
     y: 0,
+  };
+}
+
+function parserLine({
+  fontSize,
+  index = 0,
+  text,
+  y,
+}: {
+  fontSize?: number;
+  index?: number;
+  text: string;
+  y?: number;
+}): NormalizedParserLine {
+  return {
+    ...(fontSize !== undefined ? { fontSize } : {}),
+    ...(y !== undefined ? { y } : {}),
+    index,
+    section: 'experience',
+    source: 'structural',
+    text,
   };
 }

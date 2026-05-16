@@ -140,6 +140,25 @@ describe('ListParser', () => {
       warnings: [],
     });
   });
+
+  test('ignores blank skill rows and rejects proficiency-only languages', () => {
+    const skills = ListParser.parseSkillsWithWarnings(`
+      Top Skills
+
+      TypeScript
+
+      Languages
+      English
+    `);
+
+    expect(skills).toEqual({
+      value: ['TypeScript'],
+      warnings: [],
+    });
+    expect(
+      ListParser['extractLanguageInfo']('Native VeryVeryVeryLongLanguageName')
+    ).toBeNull();
+  });
 });
 
 function structuralLine({

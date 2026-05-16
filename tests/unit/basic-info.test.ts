@@ -163,6 +163,51 @@ describe('BasicInfoParser', () => {
     );
   });
 
+  test('covers fallback headline and summary branch outcomes directly', () => {
+    expect(
+      BasicInfoParser['extractHeadline'](
+        ['Test User', 'Product | Engineering'].join('\n')
+      )
+    ).toBeUndefined();
+
+    const longSummaryLine =
+      'Builds durable platform systems for operating teams with enough detail to exceed the fallback parser stop threshold.';
+
+    expect(
+      BasicInfoParser['extractSummary'](
+        [
+          'Alpha',
+          'Beta',
+          'Gamma',
+          'Delta',
+          'Epsilon',
+          longSummaryLine,
+          'This later line should not be reached by fallback parsing.',
+        ].join('\n')
+      )
+    ).toBe(longSummaryLine);
+
+    expect(
+      BasicInfoParser['extractStructuralSummary']([
+        structuralLine({ column: 'right', text: 'Summary', y: 700 }),
+        structuralLine({ column: 'right', text: 'short', y: 690 }),
+      ])
+    ).toBeUndefined();
+  });
+
+  test('skips blank identity lines while finding header warning boundaries', () => {
+    const result = BasicInfoParser.parseWithWarnings(
+      ['Test User', '', 'Contact'].join('\n')
+    );
+
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'contact',
+        section: 'contact',
+      }),
+    ]);
+  });
+
   test('extracts pipe-delimited headlines and phone contact fields', () => {
     const profile = BasicInfoParser.parse(`
       Test User
