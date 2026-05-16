@@ -2,6 +2,11 @@ import { getDocumentProxy, extractTextItems } from 'unpdf';
 import { TextItem, LayoutInfo } from '../types/structural.js';
 
 export class StructuralParser {
+  private static readonly COLUMN_SPLIT_BOUNDARY = 150;
+  private static readonly MIN_LEFT_ITEMS_FOR_TWO_COLUMN = 7;
+  private static readonly MIN_RIGHT_ITEMS_FOR_TWO_COLUMN = 20;
+  private static readonly MIN_COLUMN_GAP = 20;
+
   static async extractStructuredText(
     pdfInput: ArrayBuffer | Uint8Array
   ): Promise<{
@@ -44,19 +49,26 @@ export class StructuralParser {
 
     // Look for two distinct clusters of X positions
     // Based on analysis, left column is around x=20, right column around x=220
-    const leftItems = textItems.filter(item => item.x < 150);
-    const rightItems = textItems.filter(item => item.x >= 150);
+    const leftItems = textItems.filter(
+      item => item.x < this.COLUMN_SPLIT_BOUNDARY
+    );
+    const rightItems = textItems.filter(
+      item => item.x >= this.COLUMN_SPLIT_BOUNDARY
+    );
 
     // Check if there's a significant gap indicating columns. Some exports only
     // have contact details and top skills in the sidebar, so item count alone is
     // not enough to reject a two-column layout.
-    if (leftItems.length >= 7 && rightItems.length > 20) {
+    if (
+      leftItems.length >= this.MIN_LEFT_ITEMS_FOR_TWO_COLUMN &&
+      rightItems.length > this.MIN_RIGHT_ITEMS_FOR_TWO_COLUMN
+    ) {
       const sidebarRight = Math.max(
         ...leftItems.map(item => item.x + (item.width || 100))
       );
       const mainLeft = Math.min(...rightItems.map(item => item.x));
 
-      if (mainLeft - sidebarRight < 20) {
+      if (mainLeft - sidebarRight < this.MIN_COLUMN_GAP) {
         return {
           type: 'single-column',
         };
@@ -93,8 +105,12 @@ export class StructuralParser {
 
     if (layout.type === 'two-column') {
       // Process each column separately using the fixed boundary
-      const leftItems = textItems.filter(item => item.x < 150);
-      const rightItems = textItems.filter(item => item.x >= 150);
+      const leftItems = textItems.filter(
+        item => item.x < this.COLUMN_SPLIT_BOUNDARY
+      );
+      const rightItems = textItems.filter(
+        item => item.x >= this.COLUMN_SPLIT_BOUNDARY
+      );
 
       const leftGroups = this.groupItemsByY(leftItems, maxYDistance);
       const rightGroups = this.groupItemsByY(rightItems, maxYDistance);

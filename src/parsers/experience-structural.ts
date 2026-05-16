@@ -36,6 +36,9 @@ type ExperienceLineState =
   | 'in_description';
 
 export class ExperienceStructuralParser {
+  private static readonly MIN_DESCRIPTION_LINE_LENGTH = 30;
+  private static readonly MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH = 20;
+
   static parseExperience(
     textItems: TextItem[],
     experienceStartY?: number,
@@ -338,7 +341,9 @@ export class ExperienceStructuralParser {
       return 'position';
     }
 
-    return line.length > 30 ? 'description' : 'other';
+    return line.length > this.MIN_DESCRIPTION_LINE_LENGTH
+      ? 'description'
+      : 'other';
   }
 
   private static looksLikeOrganization(
@@ -432,18 +437,22 @@ export class ExperienceStructuralParser {
     const normalizedLine = line.trim();
     const normalizedPreviousLine = previousLine?.trim();
 
-    if (normalizedLine.length > 30) {
+    // Longer lines are usually prose, while short lines need continuation cues.
+    if (normalizedLine.length > this.MIN_DESCRIPTION_LINE_LENGTH) {
       return true;
     }
 
+    // Stock ticker fragments often appear in description text for public companies.
     if (/\$[A-Z]{1,8}\b/.test(normalizedLine)) {
       return true;
     }
 
-    if (!normalizedPreviousLine || normalizedPreviousLine.length < 20) {
+    if (!normalizedPreviousLine) {
       return false;
     }
 
+    // Short continuations rely on syntax: lowercase starts, sentence endings, or
+    // previous-line connector words that imply the sentence is not finished.
     return (
       /^[a-z]/.test(normalizedLine) ||
       /[.!?]$/.test(normalizedLine) ||
@@ -458,12 +467,20 @@ export class ExperienceStructuralParser {
     const normalizedLine = line.trim();
     const normalizedPreviousLine = previousLine?.trim();
 
-    if (!normalizedPreviousLine || normalizedPreviousLine.length < 20) {
+    if (
+      !normalizedPreviousLine ||
+      normalizedPreviousLine.length <
+        this.MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH
+    ) {
       return false;
     }
 
+    // Run before structural classifiers, so require stronger context here.
     return (
       /^[a-z]/.test(normalizedLine) ||
+      (/[.!?]$/.test(normalizedLine) &&
+        !looksLikeOrganizationNameText(normalizedLine) &&
+        !this.looksLikeVisualOrganizationHeaderText(normalizedLine)) ||
       /\b(?:and|for|from|in|of|the|their|to|with)$/i.test(
         normalizedPreviousLine
       )

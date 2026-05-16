@@ -149,6 +149,36 @@ describe('EducationParser', () => {
     );
   });
 
+  test('joins no-date wrapped structural degree lines', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'Universidade Veiga de Almeida',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Master of Business Administration - MBA, Business',
+        y: 710,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Management',
+        y: 696,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 660 }),
+    ]);
+
+    expect(educations[0]).toEqual(
+      expect.objectContaining({
+        degree: 'Master of Business Administration - MBA, Business Management',
+        location: '',
+        year: '',
+      })
+    );
+  });
+
   test('splits structural institution names that contain degree keywords', () => {
     const educations = EducationParser.parseStructural([
       structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
@@ -186,6 +216,46 @@ describe('EducationParser', () => {
         institution:
           'The London School of Economics and Political Science (LSE)',
         year: '2017 - 2019',
+      }),
+    ]);
+  });
+
+  test('recognizes dotted and hyphenated structural education locations', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'Example University',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Computer Science',
+        y: 710,
+      }),
+      structuralLine({ fontSize: 10, text: 'Winston-Salem, NC', y: 696 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'State College',
+        y: 660,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Bachelor of Science',
+        y: 640,
+      }),
+      structuralLine({ fontSize: 10, text: 'Washington, D.C.', y: 626 }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 600 }),
+    ]);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'Computer Science',
+        location: 'Winston-Salem, NC',
+      }),
+      expect.objectContaining({
+        degree: 'Bachelor of Science',
+        location: 'Washington, D.C.',
       }),
     ]);
   });

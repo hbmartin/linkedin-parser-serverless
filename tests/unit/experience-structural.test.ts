@@ -471,6 +471,112 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('keeps short description fragments after short location lines', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Acme Labs', y: 670 }),
+      textItem({ text: 'Engineering Manager', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2021', y: 630 }),
+      textItem({ text: 'Remote', y: 610 }),
+      textItem({ text: 'led rollout.', y: 590 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.positions).toEqual([
+      expect.objectContaining({
+        description: 'led rollout.',
+        duration: '2020 - 2021',
+        location: 'Remote',
+        title: 'Engineering Manager',
+      }),
+    ]);
+  });
+
+  test('keeps sentence-ending title words inside existing descriptions', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Community Relief Services', y: 670 }),
+      textItem({ text: 'Director of Online Media', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'June 2008 - January 2012', y: 630 }),
+      textItem({
+        text: 'Full-time staff member, under the direction of the Secretary and Publishing',
+        y: 610,
+      }),
+      textItem({ text: 'Manager.', y: 590 }),
+      textItem({
+        text: 'I oversaw paid and volunteer staff in the multimedia division.',
+        y: 570,
+      }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.positions).toEqual([
+      expect.objectContaining({
+        description:
+          'Full-time staff member, under the direction of the Secretary and Publishing Manager. I oversaw paid and volunteer staff in the multimedia division.',
+        title: 'Director of Online Media',
+      }),
+    ]);
+  });
+
+  test('starts dotted organization names after existing descriptions', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Omnispace360', y: 670 }),
+      textItem({ text: 'President', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2015 - December 2023', y: 630 }),
+      textItem({
+        text: 'We believe this is the final digital medium for conveying stories.',
+        y: 610,
+      }),
+      textItem({ text: 'Golden Angle Productions, LLC.', y: 590 }),
+      textItem({ text: 'Chief Executive Officer', y: 570, fontSize: 11.5 }),
+      textItem({ text: 'April 2011 - March 2014', y: 550 }),
+      textItem({
+        text: 'Led talent acquisition and improved hiring signal over time.',
+        y: 520,
+      }),
+      textItem({ text: 'Partiu Vantagens!', y: 500 }),
+      textItem({ text: 'Head of Engineering', y: 480, fontSize: 11.5 }),
+      textItem({ text: 'October 2015 - October 2017', y: 460 }),
+    ];
+
+    const experiences = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Omnispace360',
+        positions: [
+          expect.objectContaining({
+            description:
+              'We believe this is the final digital medium for conveying stories.',
+            title: 'President',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Golden Angle Productions, LLC.',
+        positions: [
+          expect.objectContaining({
+            duration: 'April 2011 - March 2014',
+            title: 'Chief Executive Officer',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Partiu Vantagens!',
+        positions: [
+          expect.objectContaining({
+            duration: 'October 2015 - October 2017',
+            title: 'Head of Engineering',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('parses page-break descriptions, fellow roles, and greater area locations', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),

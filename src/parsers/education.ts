@@ -32,6 +32,11 @@ interface ShouldAppendStructuralDegreePartParams {
   year: string;
 }
 
+interface StructuralDegreeContinuationParams {
+  existingDegree: string;
+  degreePart: string;
+}
+
 export class EducationParser {
   static parse(text: string): Education[] {
     return this.parseWithWarnings(text).value;
@@ -283,7 +288,9 @@ export class EducationParser {
     return (
       line.length > 2 &&
       line.length < 50 &&
-      /^[\p{Lu}][\p{L}\p{M}\s]+(?:,\s*[\p{Lu}][\p{L}\p{M}\s]*)*$/u.test(line) &&
+      /^[\p{Lu}][\p{L}\p{M}\s.-]+(?:,\s*[\p{Lu}][\p{L}\p{M}\s.-]*)*$/u.test(
+        line
+      ) &&
       !this.looksLikeYear(line) &&
       !this.looksLikeDegree(line)
     );
@@ -392,11 +399,35 @@ export class EducationParser {
       return true;
     }
 
-    return (
-      existingDegree !== undefined &&
-      year.length > 0 &&
-      !this.looksLikeLocation(line)
-    );
+    if (existingDegree === undefined) {
+      return false;
+    }
+
+    if (year.length > 0) {
+      return !this.looksLikeLocation(line);
+    }
+
+    return this.looksLikeStructuralDegreeContinuation({
+      degreePart,
+      existingDegree,
+    });
+  }
+
+  private static looksLikeStructuralDegreeContinuation({
+    existingDegree,
+    degreePart,
+  }: StructuralDegreeContinuationParams): boolean {
+    const hasContinuationBoundary =
+      /[,/&-]\s*$/u.test(existingDegree) ||
+      /,\s*[\p{L}\p{M}\s/-]+$/u.test(existingDegree) ||
+      /\b(?:and|for|in|of)\s*$/iu.test(existingDegree);
+    const isShortAcademicFragment =
+      degreePart.split(/\s+/).length <= 4 &&
+      /\b(?:administration|analytics|arts|business|communications|data|design|economics|education|engineering|finance|law|management|marketing|mathematics|policy|product|science|sciences|software|systems|technician|technology)\b/iu.test(
+        degreePart
+      );
+
+    return hasContinuationBoundary && isShortAcademicFragment;
   }
 
   private static appendDegreeText({
