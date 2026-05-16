@@ -54,6 +54,36 @@ describe('EducationParser', () => {
     ]);
   });
 
+  test('recognizes associate and certificate degree names', () => {
+    const educations = EducationParser.parse(`
+      Education
+      Example Community College
+      Associate of Arts 2012
+      Technical Institute
+      Certificate in Data Analytics 2014
+      Faculdade Municipal
+      Certificação em Gestão 2018
+    `);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'Associate of Arts',
+        institution: 'Example Community College',
+        year: '2012',
+      }),
+      expect.objectContaining({
+        degree: 'Certificate in Data Analytics',
+        institution: 'Technical Institute',
+        year: '2014',
+      }),
+      expect.objectContaining({
+        degree: 'Certificação em Gestão',
+        institution: 'Faculdade Municipal',
+        year: '2018',
+      }),
+    ]);
+  });
+
   test('parses structural education by visual hierarchy', () => {
     const educations = EducationParser.parseStructural([
       structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
@@ -175,6 +205,34 @@ describe('EducationParser', () => {
         degree: 'Master of Business Administration - MBA, Business Management',
         location: '',
         year: '',
+      })
+    );
+  });
+
+  test('does not append comma-adjacent non-academic details to degree text', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'Example University',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Certificate, Honors',
+        y: 710,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Policy',
+        y: 696,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 660 }),
+    ]);
+
+    expect(educations[0]).toEqual(
+      expect.objectContaining({
+        degree: 'Certificate, Honors',
       })
     );
   });

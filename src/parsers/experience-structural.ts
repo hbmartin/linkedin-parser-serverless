@@ -257,15 +257,6 @@ export class ExperienceStructuralParser {
         }
 
         if (
-          this.looksLikeDescriptionContinuationLine(
-            text,
-            lineTexts[index - 1] ?? undefined
-          )
-        ) {
-          return 'description';
-        }
-
-        if (
           this.looksLikeOrganization(
             text,
             line.fontSize ?? 0,
@@ -287,6 +278,15 @@ export class ExperienceStructuralParser {
 
         if (this.looksLikePosition(text)) {
           return 'position';
+        }
+
+        if (
+          this.looksLikeDescriptionContinuationLine(
+            text,
+            lineTexts[index - 1] ?? undefined
+          )
+        ) {
+          return 'description';
         }
 
         if (
@@ -357,6 +357,7 @@ export class ExperienceStructuralParser {
 
     if (
       normalizedLine.length > 80 ||
+      /^[a-z]/.test(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikeLocation(normalizedLine) ||
       this.looksLikePosition(normalizedLine) ||
@@ -415,6 +416,10 @@ export class ExperienceStructuralParser {
   }
 
   private static looksLikePosition(line: string): boolean {
+    if (/[.!?]$/.test(line.trim())) {
+      return false;
+    }
+
     return (
       looksLikePositionTitleText(line) &&
       !this.looksLikeDuration(line) &&
@@ -467,33 +472,49 @@ export class ExperienceStructuralParser {
     const normalizedLine = line.trim();
     const normalizedPreviousLine = previousLine?.trim();
 
+    if (!normalizedPreviousLine) {
+      return false;
+    }
+
     if (
-      !normalizedPreviousLine ||
+      /\b(?:and|at|by|for|from|in|of|on|the|their|to|with)$/i.test(
+        normalizedPreviousLine
+      )
+    ) {
+      return true;
+    }
+
+    if (
       normalizedPreviousLine.length <
-        this.MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH
+      this.MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH
     ) {
       return false;
     }
 
-    // Run before structural classifiers, so require stronger context here.
     return (
       /^[a-z]/.test(normalizedLine) ||
       (/[.!?]$/.test(normalizedLine) &&
+        !this.looksLikeDuration(normalizedLine) &&
+        !this.looksLikeLocation(normalizedLine) &&
+        !this.looksLikePosition(normalizedLine) &&
         !looksLikeOrganizationNameText(normalizedLine) &&
-        !this.looksLikeVisualOrganizationHeaderText(normalizedLine)) ||
-      /\b(?:and|for|from|in|of|the|their|to|with)$/i.test(
-        normalizedPreviousLine
-      )
+        !this.looksLikeVisualOrganizationHeaderText(normalizedLine))
     );
   }
 
   private static looksLikeLocation(line: string): boolean {
     const normalizedLine = this.normalizeLocationText(line);
 
+    if (/^[a-z]/.test(normalizedLine)) {
+      return false;
+    }
+
     // Common location patterns
     const locationPatterns = [
       /^[A-Z][A-Za-z\s]+,\s*[A-Z\s]{2,}$/, // City, ST
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+$/, // City, State
+      /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*[\p{Lu}\s]{2,}$/u,
+      /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*(?:[\p{Lu}]\.){2,}$/u,
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+/, // City, State, Country
       /^Greater\s+[\p{Lu}][\p{L}\p{M}.'\-\s]+(?:Area|,\s*[\p{Lu}\s]{2,})?$/u,
       /^(?:Rua|R\.|Av\.?|Avenida|Alameda|Praça|Street|St\.|Avenue|Ave\.|Road|Rd\.)(?!\w)/iu,

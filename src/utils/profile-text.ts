@@ -247,6 +247,7 @@ export function looksLikeOrganizationNameText(text: string): boolean {
     /https?:\/\//i.test(normalizedText) ||
     /\blinkedin\.com\b/i.test(normalizedText) ||
     normalizedText.includes('•') ||
+    normalizedText.includes('...') ||
     /^page\s+\d+\s+of\s+\d+$/i.test(normalizedText) ||
     looksLikeDateOrDurationText(normalizedText) ||
     looksLikePositionTitleText(normalizedText) ||

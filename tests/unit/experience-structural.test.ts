@@ -493,6 +493,70 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('starts a new organization after a description ending with a preposition', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2021', y: 630 }),
+      textItem({ text: 'Owned platform migrations and rollout of', y: 610 }),
+      textItem({ text: 'Blue Oak Labs', y: 580 }),
+      textItem({ text: 'Staff Engineer', y: 560, fontSize: 11.5 }),
+      textItem({ text: '2022 - 2023', y: 540 }),
+    ];
+
+    const experiences = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Northstar Solutions',
+        positions: [
+          expect.objectContaining({
+            description: 'Owned platform migrations and rollout of',
+            title: 'Principal Engineer',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Blue Oak Labs',
+        positions: [
+          expect.objectContaining({
+            duration: '2022 - 2023',
+            title: 'Staff Engineer',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test.each([
+    ['worked at', 'Client Sites', 'worked at Client Sites'],
+    ['guided by', 'Senior Advisors', 'guided by Senior Advisors'],
+    ['served on', 'Advisory Boards', 'served on Advisory Boards'],
+  ])(
+    'continues uppercase fragments after short preposition line "%s"',
+    (firstFragment, secondFragment, expectedDescription) => {
+      const items = [
+        textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+        textItem({ text: 'Acme Labs', y: 670 }),
+        textItem({ text: 'Engineering Manager', y: 650, fontSize: 11.5 }),
+        textItem({ text: '2020 - 2021', y: 630 }),
+        textItem({ text: 'Remote', y: 610 }),
+        textItem({ text: firstFragment, y: 590 }),
+        textItem({ text: secondFragment, y: 570 }),
+      ];
+
+      const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+      expect(experience.positions).toEqual([
+        expect.objectContaining({
+          description: expectedDescription,
+          title: 'Engineering Manager',
+        }),
+      ]);
+    }
+  );
+
   test('keeps sentence-ending title words inside existing descriptions', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -575,6 +639,30 @@ describe('ExperienceStructuralParser', () => {
         ],
       }),
     ]);
+  });
+
+  test('keeps sentence-ending locations out of existing descriptions', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2021', y: 630 }),
+      textItem({
+        text: 'Led distributed platform migrations across regions.',
+        y: 610,
+      }),
+      textItem({ text: 'Washington, D.C.', y: 590 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        description: 'Led distributed platform migrations across regions.',
+        location: 'Washington, D.C.',
+        title: 'Principal Engineer',
+      })
+    );
   });
 
   test('parses page-break descriptions, fellow roles, and greater area locations', () => {

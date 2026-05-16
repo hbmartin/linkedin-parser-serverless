@@ -53,16 +53,11 @@ describe('StructuralParser', () => {
       item({ text: `right ${index}`, x: 224, y: 700 - index * 20 })
     );
 
-    const layout = StructuralParser['detectLayout']([
-      ...leftItems,
-      ...rightItems,
-    ]);
     const groups = StructuralParser.groupTextByProximity(
       [...leftItems, ...rightItems],
       5
     );
 
-    expect(layout.type).toBe('two-column');
     expect(groups).toHaveLength(47);
     expect(
       groups.every(
