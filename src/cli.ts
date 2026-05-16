@@ -1,19 +1,20 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { parseLinkedInPDF, type ParseResult } from './index.js';
 import {
-  parseLinkedInPDF,
-  type ParseOptions,
-  type ParseResult,
-} from './index.js';
-import { isDeepStrictEqual } from 'node:util';
+  formatErrorMessage,
+  formatJson,
+  hasFileExtension,
+  verifyJsonFixtures,
+  writeJsonFixtures,
+  type JsonFixtureDependencies,
+  type JsonFixtureDirectoryEntry,
+  type JsonOutputFormat,
+} from './json-fixtures.js';
 
-type JsonOutputFormat = 'pretty' | 'compact';
 type CliExitCode = 0 | 1;
 
-export interface CliDirectoryEntry {
-  kind: 'directory' | 'file' | 'other';
-  name: string;
-}
+export type CliDirectoryEntry = JsonFixtureDirectoryEntry;
 
 interface ParseCommand {
   kind: 'parse';
@@ -52,16 +53,7 @@ type CliCommand =
   | VerifyJsonCommand
   | WriteJsonCommand;
 
-export interface CliDependencies {
-  directoryExists: (directoryPath: string) => boolean;
-  fileExists: (filePath: string) => boolean;
-  listDirectory: (directoryPath: string) => CliDirectoryEntry[];
-  parsePdf: (input: Uint8Array, options: ParseOptions) => Promise<ParseResult>;
-  readFile: (filePath: string) => Uint8Array;
-  readTextFile: (filePath: string) => string;
-  resolvePath: (filePath: string) => string;
-  writeTextFile: (filePath: string, content: string) => void;
-}
+export interface CliDependencies extends JsonFixtureDependencies {}
 
 export interface RunCliParams {
   args: string[];
@@ -333,132 +325,24 @@ async function runWriteJsonCommand(
   command: WriteJsonCommand,
   dependencies: CliDependencies
 ): Promise<CliResult> {
-  const folderFiles = resolveFolderFiles(command.folderPath, dependencies);
-
-  if (folderFiles.kind === 'invalid') {
-    return folderFiles.result;
-  }
-
-  const failures: BatchFailure[] = [];
-  const writtenFiles: string[] = [];
-
-  for (const pdfEntry of folderFiles.pdfEntries) {
-    const pdfPath = path.join(folderFiles.folderPath, pdfEntry.name);
-    const existingJsonEntry = findMatchingStemEntry(
-      pdfEntry.name,
-      folderFiles.jsonEntries
-    );
-    const outputJsonName =
-      existingJsonEntry?.name ?? replaceExtension(pdfEntry.name, '.json');
-    const outputJsonPath = path.join(folderFiles.folderPath, outputJsonName);
-
-    if (existingJsonEntry && !command.overwriteExisting) {
-      failures.push({
-        filePath: pdfPath,
-        message: `JSON already exists: ${outputJsonPath}`,
-      });
-      continue;
-    }
-
-    try {
-      const result = await parsePdfFile({
-        dependencies,
-        includeRawText: command.includeRawText,
-        pdfPath,
-      });
-
-      dependencies.writeTextFile(
-        outputJsonPath,
-        `${formatJson(result, command.outputFormat)}\n`
-      );
-      writtenFiles.push(outputJsonPath);
-    } catch (error) {
-      failures.push({
-        filePath: pdfPath,
-        message: formatErrorMessage(error),
-      });
-    }
-  }
-
-  return {
-    exitCode: failures.length === 0 ? 0 : 1,
-    stderr: formatBatchFailures('Failed to write JSON for files', failures),
-    stdout: formatWrittenFiles(folderFiles.folderPath, writtenFiles),
-  };
+  return writeJsonFixtures({
+    dependencies,
+    folderPath: command.folderPath,
+    includeRawText: command.includeRawText,
+    outputFormat: command.outputFormat,
+    overwriteExisting: command.overwriteExisting,
+  });
 }
 
 async function runVerifyJsonCommand(
   command: VerifyJsonCommand,
   dependencies: CliDependencies
 ): Promise<CliResult> {
-  const folderFiles = resolveFolderFiles(command.folderPath, dependencies);
-
-  if (folderFiles.kind === 'invalid') {
-    return folderFiles.result;
-  }
-
-  const matchedPairs = createMatchedPairs(
-    folderFiles.folderPath,
-    folderFiles.pdfEntries,
-    folderFiles.jsonEntries
-  );
-  const failures = [
-    ...matchedPairs.missingJsonFailures,
-    ...matchedPairs.missingPdfFailures,
-  ];
-  const passedFiles: string[] = [];
-
-  if (matchedPairs.pairs.length === 0 && failures.length === 0) {
-    return {
-      exitCode: 1,
-      stderr: `Error: No matching PDF/JSON pairs found in ${folderFiles.folderPath}\n`,
-      stdout: '',
-    };
-  }
-
-  for (const pair of matchedPairs.pairs) {
-    let expectedJson: unknown;
-
-    try {
-      expectedJson = JSON.parse(dependencies.readTextFile(pair.jsonPath));
-    } catch (error) {
-      failures.push({
-        filePath: pair.jsonPath,
-        message: `Invalid JSON baseline: ${formatErrorMessage(error)}`,
-      });
-      continue;
-    }
-
-    try {
-      const generatedJson = await parsePdfFile({
-        dependencies,
-        includeRawText: command.includeRawText,
-        pdfPath: pair.pdfPath,
-      });
-
-      if (isDeepStrictEqual(expectedJson, generatedJson)) {
-        passedFiles.push(pair.pdfPath);
-        continue;
-      }
-
-      failures.push({
-        details: formatJsonDiff(expectedJson, generatedJson),
-        filePath: pair.pdfPath,
-        message: `Generated JSON differs from ${pair.jsonPath}`,
-      });
-    } catch (error) {
-      failures.push({
-        filePath: pair.pdfPath,
-        message: formatErrorMessage(error),
-      });
-    }
-  }
-
-  return {
-    exitCode: failures.length === 0 ? 0 : 1,
-    stderr: formatBatchFailures('Verification failed for files', failures),
-    stdout: formatVerifiedFiles(folderFiles.folderPath, passedFiles),
-  };
+  return verifyJsonFixtures({
+    dependencies,
+    folderPath: command.folderPath,
+    includeRawText: command.includeRawText,
+  });
 }
 
 async function parsePdfFile({
@@ -471,262 +355,8 @@ async function parsePdfFile({
   });
 }
 
-function formatJson(
-  result: ParseResult,
-  outputFormat: JsonOutputFormat
-): string {
-  return outputFormat === 'pretty'
-    ? JSON.stringify(result, null, 2)
-    : JSON.stringify(result);
-}
-
-interface BatchFailure {
-  details?: string;
-  filePath: string;
-  message: string;
-}
-
-interface MatchedPair {
-  jsonPath: string;
-  pdfPath: string;
-}
-
-interface MatchedPairs {
-  missingJsonFailures: BatchFailure[];
-  missingPdfFailures: BatchFailure[];
-  pairs: MatchedPair[];
-}
-
 interface ParsePdfFileParams {
   dependencies: CliDependencies;
   includeRawText: boolean;
   pdfPath: string;
-}
-
-interface ResolvedDirectory {
-  kind: 'valid';
-  path: string;
-}
-
-interface InvalidDirectory {
-  kind: 'invalid';
-  result: CliResult;
-}
-
-interface ResolvedFolderFiles {
-  folderPath: string;
-  jsonEntries: CliDirectoryEntry[];
-  kind: 'valid';
-  pdfEntries: CliDirectoryEntry[];
-}
-
-function resolveDirectory(
-  folderPath: string,
-  dependencies: CliDependencies
-): InvalidDirectory | ResolvedDirectory {
-  const resolvedPath = dependencies.resolvePath(folderPath);
-
-  if (dependencies.directoryExists(resolvedPath)) {
-    return {
-      kind: 'valid',
-      path: resolvedPath,
-    };
-  }
-
-  if (dependencies.fileExists(resolvedPath)) {
-    return {
-      kind: 'invalid',
-      result: {
-        exitCode: 1,
-        stderr: `Error: Path must be a directory: ${resolvedPath}\n`,
-        stdout: '',
-      },
-    };
-  }
-
-  return {
-    kind: 'invalid',
-    result: {
-      exitCode: 1,
-      stderr: `Error: Directory not found: ${resolvedPath}\n`,
-      stdout: '',
-    },
-  };
-}
-
-function resolveFolderFiles(
-  folderPath: string,
-  dependencies: CliDependencies
-): InvalidDirectory | ResolvedFolderFiles {
-  const folder = resolveDirectory(folderPath, dependencies);
-
-  if (folder.kind === 'invalid') {
-    return folder;
-  }
-
-  const entries = dependencies.listDirectory(folder.path);
-
-  return {
-    folderPath: folder.path,
-    jsonEntries: listFilesByExtension(entries, '.json'),
-    kind: 'valid',
-    pdfEntries: listFilesByExtension(entries, '.pdf'),
-  };
-}
-
-function listFilesByExtension(
-  entries: CliDirectoryEntry[],
-  extension: string
-): CliDirectoryEntry[] {
-  return entries
-    .filter(
-      entry => entry.kind === 'file' && hasFileExtension(entry.name, extension)
-    )
-    .sort((left, right) => left.name.localeCompare(right.name));
-}
-
-function createMatchedPairs(
-  folderPath: string,
-  pdfEntries: CliDirectoryEntry[],
-  jsonEntries: CliDirectoryEntry[]
-): MatchedPairs {
-  const pairs: MatchedPair[] = [];
-  const missingJsonFailures: BatchFailure[] = [];
-  const matchedJsonNames = new Set<string>();
-
-  for (const pdfEntry of pdfEntries) {
-    const jsonEntry = findMatchingStemEntry(pdfEntry.name, jsonEntries);
-    const pdfPath = path.join(folderPath, pdfEntry.name);
-
-    if (!jsonEntry) {
-      missingJsonFailures.push({
-        filePath: pdfPath,
-        message: `Missing JSON baseline: ${path.join(
-          folderPath,
-          replaceExtension(pdfEntry.name, '.json')
-        )}`,
-      });
-      continue;
-    }
-
-    matchedJsonNames.add(jsonEntry.name);
-    pairs.push({
-      jsonPath: path.join(folderPath, jsonEntry.name),
-      pdfPath,
-    });
-  }
-
-  const missingPdfFailures = jsonEntries
-    .filter(jsonEntry => !matchedJsonNames.has(jsonEntry.name))
-    .map(jsonEntry => ({
-      filePath: path.join(folderPath, jsonEntry.name),
-      message: `Missing PDF source: ${path.join(
-        folderPath,
-        replaceExtension(jsonEntry.name, '.pdf')
-      )}`,
-    }));
-
-  return {
-    missingJsonFailures,
-    missingPdfFailures,
-    pairs,
-  };
-}
-
-function findMatchingStemEntry(
-  fileName: string,
-  entries: CliDirectoryEntry[]
-): CliDirectoryEntry | undefined {
-  const stem = getFileStem(fileName).toLowerCase();
-
-  return entries.find(entry => getFileStem(entry.name).toLowerCase() === stem);
-}
-
-function formatWrittenFiles(
-  folderPath: string,
-  writtenFiles: string[]
-): string {
-  const lines = [
-    `Wrote ${writtenFiles.length} JSON file(s) in ${folderPath}.`,
-    ...writtenFiles.map(filePath => `- ${filePath}`),
-  ];
-
-  return `${lines.join('\n')}\n`;
-}
-
-function formatVerifiedFiles(
-  folderPath: string,
-  passedFiles: string[]
-): string {
-  const lines = [
-    `Verified ${passedFiles.length} PDF/JSON pair(s) in ${folderPath}.`,
-    ...passedFiles.map(filePath => `- ${filePath}`),
-  ];
-
-  return `${lines.join('\n')}\n`;
-}
-
-function formatBatchFailures(header: string, failures: BatchFailure[]): string {
-  if (failures.length === 0) {
-    return '';
-  }
-
-  return `${[
-    `${header}:`,
-    ...failures.flatMap(failure => [
-      `- ${failure.filePath}: ${failure.message}`,
-      ...(failure.details ? [failure.details] : []),
-    ]),
-  ].join('\n')}\n`;
-}
-
-function formatJsonDiff(expectedJson: unknown, generatedJson: unknown): string {
-  const expectedLines = formatUnknownJson(expectedJson).split('\n');
-  const generatedLines = formatUnknownJson(generatedJson).split('\n');
-  const lineCount = Math.max(expectedLines.length, generatedLines.length);
-  const diffLines = ['--- expected', '+++ generated'];
-
-  for (let index = 0; index < lineCount; index += 1) {
-    const expectedLine = expectedLines[index];
-    const generatedLine = generatedLines[index];
-
-    if (expectedLine === generatedLine && expectedLine !== undefined) {
-      diffLines.push(`  ${expectedLine}`);
-      continue;
-    }
-
-    if (expectedLine !== undefined) {
-      diffLines.push(`- ${expectedLine}`);
-    }
-
-    if (generatedLine !== undefined) {
-      diffLines.push(`+ ${generatedLine}`);
-    }
-  }
-
-  return diffLines.join('\n');
-}
-
-function formatUnknownJson(value: unknown): string {
-  const formattedJson = JSON.stringify(value, null, 2);
-
-  return typeof formattedJson === 'string' ? formattedJson : String(value);
-}
-
-function hasFileExtension(filePath: string, extension: string): boolean {
-  return filePath.toLowerCase().endsWith(extension);
-}
-
-function replaceExtension(fileName: string, extension: string): string {
-  return `${getFileStem(fileName)}${extension}`;
-}
-
-function getFileStem(fileName: string): string {
-  const extensionIndex = fileName.lastIndexOf('.');
-
-  return extensionIndex === -1 ? fileName : fileName.slice(0, extensionIndex);
-}
-
-function formatErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
