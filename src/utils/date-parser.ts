@@ -80,6 +80,7 @@ const MONTH_REPLACEMENTS: ReadonlyArray<readonly [string, string]> = [
   ['aprile', 'April'],
   ['april', 'April'],
   ['maio', 'May'],
+  ['may', 'May'],
   ['mayo', 'May'],
   ['mai', 'May'],
   ['maggio', 'May'],

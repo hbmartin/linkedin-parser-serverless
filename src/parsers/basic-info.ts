@@ -238,8 +238,7 @@ export class BasicInfoParser {
       const summary = normalizeWhitespace(summarySection)
         .split('\n')
         .filter(line => line.trim().length > 10)
-        .join(' ')
-        .slice(0, 500);
+        .join(' ');
 
       return summary || undefined;
     }
@@ -266,7 +265,7 @@ export class BasicInfoParser {
       }
     }
 
-    const summary = potentialSummaryLines.join(' ').slice(0, 500);
+    const summary = potentialSummaryLines.join(' ');
 
     return summary || undefined;
   }

@@ -531,7 +531,7 @@ describe('LinkedIn PDF Parser Library', () => {
 
       const result = await parseLinkedInPDF(longSummaryText);
       expect(result.profile.summary).toBe(
-        'Test User summarytest@example.com Short line Medium length line here This is a very long line that should be captured in the summary section because it meets all the length requirements and criteria for inclusion in the profile summary Another qualifying line that meets the length and content requirements for summary inclusion and should be processed correctly Even more qualifying content that should be included in the summary extraction process Final qualifying summary line that completes the s'
+        'Test User summarytest@example.com Short line Medium length line here This is a very long line that should be captured in the summary section because it meets all the length requirements and criteria for inclusion in the profile summary Another qualifying line that meets the length and content requirements for summary inclusion and should be processed correctly Even more qualifying content that should be included in the summary extraction process Final qualifying summary line that completes the summary content extraction process'
       );
     });
 

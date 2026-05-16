@@ -618,6 +618,47 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('accepts dotted position titles and lowercase location markers', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Acme Labs', y: 670 }),
+      textItem({ text: 'Manager.', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2021', y: 630 }),
+      textItem({ text: 'remote', y: 610 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.positions).toEqual([
+      expect.objectContaining({
+        duration: '2020 - 2021',
+        location: 'remote',
+        title: 'Manager.',
+      }),
+    ]);
+  });
+
+  test('classifies Colorado state abbreviation as a location', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Acme Labs', y: 670 }),
+      textItem({ text: 'Staff Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2022', y: 630 }),
+      textItem({ text: 'Denver, CO', y: 610 }),
+      textItem({ text: 'Built internal systems for support teams.', y: 590 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.positions).toEqual([
+      expect.objectContaining({
+        description: 'Built internal systems for support teams.',
+        location: 'Denver, CO',
+        title: 'Staff Engineer',
+      }),
+    ]);
+  });
+
   test('starts a new organization after a description ending with a preposition', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),

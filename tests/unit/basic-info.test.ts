@@ -162,6 +162,19 @@ describe('BasicInfoParser', () => {
       'Builds products across engineering and operations. with focus on reliable delivery and maintainable systems.'
     );
   });
+
+  test('preserves structural summary length consistently with fallback summary parsing', () => {
+    const longSummaryLine = `Builds ${'reliable systems '.repeat(40)}`.trim();
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      ['Test User', 'Principal Advisor', 'Summary', longSummaryLine].join('\n'),
+      [
+        structuralLine({ column: 'right', text: 'Summary', y: 700 }),
+        structuralLine({ column: 'right', text: longSummaryLine, y: 690 }),
+      ]
+    );
+
+    expect(result.value.summary).toBe(longSummaryLine);
+  });
 });
 
 function structuralLine({

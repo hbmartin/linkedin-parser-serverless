@@ -233,6 +233,7 @@ describe('EducationParser', () => {
     expect(educations[0]).toEqual(
       expect.objectContaining({
         degree: 'Certificate, Honors',
+        location: '',
       })
     );
   });

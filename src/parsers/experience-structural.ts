@@ -38,6 +38,24 @@ type ExperienceLineState =
 export class ExperienceStructuralParser {
   private static readonly MIN_DESCRIPTION_LINE_LENGTH = 30;
   private static readonly MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH = 20;
+  private static readonly DESCRIPTION_CONTINUATION_CONNECTOR_PATTERN =
+    /\b(?:and|at|by|for|from|in|of|on|the|their|to|with)$/i;
+  private static readonly COMMA_SEPARATED_ORGANIZATION_SUFFIXES: ReadonlySet<string> =
+    new Set([
+      'company',
+      'corp',
+      'corporation',
+      'inc',
+      'labs',
+      'llc',
+      'ltd',
+      'partners',
+      'solutions',
+      'systems',
+      'technologies',
+      'technology',
+      'ventures',
+    ]);
 
   static parseExperience(
     textItems: TextItem[],
@@ -276,6 +294,15 @@ export class ExperienceStructuralParser {
           return 'location';
         }
 
+        if (
+          this.looksLikeSentenceEndingDescriptionContinuationLine(
+            text,
+            lineTexts[index - 1] ?? undefined
+          )
+        ) {
+          return 'description';
+        }
+
         if (this.looksLikePosition(text)) {
           return 'position';
         }
@@ -416,10 +443,6 @@ export class ExperienceStructuralParser {
   }
 
   private static looksLikePosition(line: string): boolean {
-    if (/[.!?]$/.test(line.trim())) {
-      return false;
-    }
-
     return (
       looksLikePositionTitleText(line) &&
       !this.looksLikeDuration(line) &&
@@ -465,7 +488,33 @@ export class ExperienceStructuralParser {
     return (
       /^[a-z]/.test(normalizedLine) ||
       /[.!?]$/.test(normalizedLine) ||
-      /\b(?:and|for|from|in|of|the|to|with)$/i.test(normalizedPreviousLine)
+      this.DESCRIPTION_CONTINUATION_CONNECTOR_PATTERN.test(
+        normalizedPreviousLine
+      )
+    );
+  }
+
+  private static looksLikeSentenceEndingDescriptionContinuationLine(
+    line: string,
+    previousLine?: string
+  ): boolean {
+    const normalizedLine = line.trim();
+    const normalizedPreviousLine = previousLine?.trim();
+
+    if (
+      !normalizedPreviousLine ||
+      normalizedPreviousLine.length <
+        this.MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH ||
+      !/[.!?]$/.test(normalizedLine)
+    ) {
+      return false;
+    }
+
+    return (
+      !this.looksLikeDuration(normalizedLine) &&
+      !this.looksLikeLocation(normalizedLine) &&
+      !looksLikeOrganizationNameText(normalizedLine) &&
+      !this.looksLikeVisualOrganizationHeaderText(normalizedLine)
     );
   }
 
@@ -481,7 +530,7 @@ export class ExperienceStructuralParser {
     }
 
     if (
-      /\b(?:and|at|by|for|from|in|of|on|the|their|to|with)$/i.test(
+      this.DESCRIPTION_CONTINUATION_CONNECTOR_PATTERN.test(
         normalizedPreviousLine
       )
     ) {
@@ -509,7 +558,10 @@ export class ExperienceStructuralParser {
   private static looksLikeLocation(line: string): boolean {
     const normalizedLine = this.normalizeLocationText(line);
 
-    if (/^[a-z]/.test(normalizedLine)) {
+    if (
+      /^[a-z]/.test(normalizedLine) &&
+      !isLikelyLocationText(normalizedLine)
+    ) {
       return false;
     }
 
@@ -548,31 +600,25 @@ export class ExperienceStructuralParser {
       .trim();
   }
 
+  /**
+   * Detects comma-separated organization suffixes such as "Company, Inc" while
+   * preserving locations like "Los Angeles, California" and "Denver, CO".
+   * Parts are normalized by trimming whitespace and trailing dots first.
+   */
   private static looksLikeCommaSeparatedOrganizationName(
     line: string
   ): boolean {
-    const suffixes = new Set([
-      'co',
-      'company',
-      'corp',
-      'corporation',
-      'inc',
-      'labs',
-      'llc',
-      'ltd',
-      'partners',
-      'solutions',
-      'systems',
-      'technologies',
-      'technology',
-      'ventures',
-    ]);
     const parts = line
       .split(',')
-      .map(part => part.trim().replace(/[.]+$/g, '').toLowerCase())
+      .map(part => part.trim().replace(/[.]+$/, '').toLowerCase())
       .filter(Boolean);
 
-    return parts.length >= 2 && parts.slice(1).some(part => suffixes.has(part));
+    return (
+      parts.length >= 2 &&
+      parts
+        .slice(1)
+        .some(part => this.COMMA_SEPARATED_ORGANIZATION_SUFFIXES.has(part))
+    );
   }
 
   private static calculateConfidence(

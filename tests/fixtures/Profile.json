@@ -146,7 +146,7 @@
           "start": {
             "iso": "2014-05",
             "precision": "month",
-            "text": "may 2014"
+            "text": "May 2014"
           },
           "end": {
             "iso": "2015-01",
@@ -172,7 +172,7 @@
           "end": {
             "iso": "2014-05",
             "precision": "month",
-            "text": "may 2014"
+            "text": "May 2014"
           },
           "kind": "completed"
         },
