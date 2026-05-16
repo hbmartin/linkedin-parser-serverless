@@ -14,8 +14,12 @@ describe('profile text heuristics', () => {
     expect(looksLikeOrganizationNameText('International Bank')).toBe(true);
   });
 
-  test('rejects sentence fragments that end with punctuation as titles', () => {
-    expect(looksLikePositionTitleText('Manager.')).toBe(false);
+  test('keeps dotted position titles from looking like organizations', () => {
+    expect(looksLikePositionTitleText('Manager.')).toBe(true);
+    expect(looksLikeOrganizationNameText('Manager.')).toBe(false);
+    expect(looksLikePositionTitleText('I was responsible for hiring.')).toBe(
+      false
+    );
   });
 
   test('accepts only one allowlisted trailing title parenthetical', () => {

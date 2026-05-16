@@ -204,7 +204,6 @@ export function looksLikePositionTitleText(text: string): boolean {
     lowerText.includes('joined the') ||
     lowerText.includes('my role') ||
     lowerText.includes(' to ') ||
-    normalizedText.endsWith('.') ||
     /^[a-z]/.test(normalizedText) ||
     normalizedText.includes('•') ||
     normalizedText.includes('...') ||
