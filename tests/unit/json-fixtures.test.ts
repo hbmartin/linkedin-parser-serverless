@@ -144,6 +144,63 @@ describe('JSON fixture batch operations', () => {
     expect(memoryFixtures.readFilePaths).toEqual(['/baselines/Profile.PDF']);
   });
 
+  test('verifies structurally equivalent JSON regardless of formatting or key order', async () => {
+    const memoryFixtures = createMemoryJsonFixtureDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      textFiles: new Map([
+        [
+          '/baselines/Profile.json',
+          `{
+            "warnings": [],
+            "profile": {
+              "volunteer_work": [],
+              "top_skills": [],
+              "projects": [],
+              "name": "Fixture User",
+              "location": "San Francisco, CA",
+              "languages": [],
+              "headline": "Fixture headline",
+              "experience": [
+                {
+                  "title": "Fixture Role",
+                  "duration": "January 2020 - Present",
+                  "company": "Fixture Co"
+                }
+              ],
+              "education": [],
+              "contact": {
+                "email": "fixture@example.com"
+              },
+              "certifications": []
+            }
+          }`,
+        ],
+      ]),
+    });
+
+    const result = await verifyJsonFixtures({
+      dependencies: memoryFixtures.dependencies,
+      folderPath: '/baselines',
+      includeRawText: false,
+    });
+
+    expect(result).toEqual({
+      exitCode: 0,
+      stderr: '',
+      stdout: expect.stringContaining('Verified 1 PDF/JSON pair(s)'),
+    });
+  });
+
   test('prints a full diff when generated JSON differs from the fixture', async () => {
     const expectedResult: ParseResult = {
       ...defaultParseResult,

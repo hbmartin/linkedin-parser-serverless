@@ -1,4 +1,5 @@
 import {
+  isLikelyLocationText,
   looksLikeOrganizationNameText,
   looksLikePositionTitleText,
 } from '../../src/utils/profile-text.js';
@@ -6,8 +7,13 @@ import {
 describe('profile text heuristics', () => {
   test('matches position keywords as whole words only', () => {
     expect(looksLikePositionTitleText('Lead Engineer')).toBe(true);
+    expect(looksLikePositionTitleText('Producer, SHARK WRANGLERS')).toBe(true);
     expect(looksLikePositionTitleText('International Bank')).toBe(false);
     expect(looksLikeOrganizationNameText('International Bank')).toBe(true);
+  });
+
+  test('rejects sentence fragments that end with punctuation as titles', () => {
+    expect(looksLikePositionTitleText('Manager.')).toBe(false);
   });
 
   test('accepts only one allowlisted trailing title parenthetical', () => {
@@ -33,5 +39,9 @@ describe('profile text heuristics', () => {
     expect(
       looksLikeOrganizationNameText('Los Angeles, California, United States')
     ).toBe(false);
+  });
+
+  test('recognizes Bay Area profile locations', () => {
+    expect(isLikelyLocationText('San Francisco Bay Area')).toBe(true);
   });
 });

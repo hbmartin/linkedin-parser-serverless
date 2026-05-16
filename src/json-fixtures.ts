@@ -176,7 +176,9 @@ export async function verifyJsonFixtures({
     let expectedJson: unknown;
 
     try {
-      expectedJson = JSON.parse(dependencies.readTextFile(pair.jsonPath));
+      expectedJson = normalizeJsonValue(
+        JSON.parse(dependencies.readTextFile(pair.jsonPath))
+      );
     } catch (error) {
       failures.push({
         filePath: pair.jsonPath,
@@ -441,8 +443,8 @@ function formatUnknownJson(value: unknown): string {
   return typeof formattedJson === 'string' ? formattedJson : String(value);
 }
 
-// Round-trip parser output into plain JSON shapes before comparing baselines.
-function normalizeJsonValue(value: ParseResult): unknown {
+// Round-trip values into plain JSON shapes before comparing baselines.
+function normalizeJsonValue(value: unknown): unknown {
   return JSON.parse(JSON.stringify(value));
 }
 

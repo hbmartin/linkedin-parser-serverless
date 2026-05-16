@@ -200,7 +200,7 @@
         "company": "California Institute of Technology",
         "duration": "June 2011 - September 2011",
         "location": "Pasadena, CA",
-        "description": "Designed an ARM microprocessor based self-configuring controller for mobile experiments. Selected computing architecture, constructed electronics, and programmed a/d interfaces. Performed literature review of available algorithms, optimized and implemented for chosen platform. Created friendly device interface for real time monitoring and reconfiguring. Analyzed"
+        "description": "Designed an ARM microprocessor based self-configuring controller for mobile experiments. Selected computing architecture, constructed electronics, and programmed a/d interfaces. Performed literature review of available algorithms, optimized and implemented for chosen platform. Created friendly device interface for real time monitoring and reconfiguring. Analyzed performance results."
       },
       {
         "dates": {

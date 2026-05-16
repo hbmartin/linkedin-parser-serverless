@@ -45,6 +45,29 @@ describe('StructuralParser', () => {
     ).toBe(true);
   });
 
+  test('treats compact seven-item sidebars as a two-column layout', () => {
+    const leftItems = Array.from({ length: 7 }, (_, index) =>
+      item({ text: `left ${index}`, x: 22, y: 700 - index * 20 })
+    );
+    const rightItems = Array.from({ length: 40 }, (_, index) =>
+      item({ text: `right ${index}`, x: 224, y: 700 - index * 20 })
+    );
+
+    const groups = StructuralParser.groupTextByProximity(
+      [...leftItems, ...rightItems],
+      5
+    );
+
+    expect(groups).toHaveLength(47);
+    expect(
+      groups.every(
+        group =>
+          group.every(groupItem => groupItem.x < 150) ||
+          group.every(groupItem => groupItem.x >= 150)
+      )
+    ).toBe(true);
+  });
+
   test('does not join the pronoun I into the following word', () => {
     const lines = createStructuralLines({
       layout: {
