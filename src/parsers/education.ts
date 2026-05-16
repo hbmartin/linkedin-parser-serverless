@@ -20,6 +20,18 @@ type EducationLineState =
   | 'seeking_degree'
   | 'in_details';
 
+interface AppendDegreeTextParams {
+  existingDegree: string;
+  degreePart: string;
+}
+
+interface ShouldAppendStructuralDegreePartParams {
+  existingDegree?: string;
+  degreePart: string;
+  line: string;
+  year: string;
+}
+
 export class EducationParser {
   static parse(text: string): Education[] {
     return this.parseWithWarnings(text).value;
@@ -266,7 +278,7 @@ export class EducationParser {
     return (
       line.length > 2 &&
       line.length < 50 &&
-      /^[A-Z][a-z]+(?:,\s*[A-Z][a-z]*)*$/i.test(line) &&
+      /^[\p{Lu}][\p{L}\p{M}\s]+(?:,\s*[\p{Lu}][\p{L}\p{M}\s]*)*$/u.test(line) &&
       !this.looksLikeYear(line) &&
       !this.looksLikeDegree(line)
     );
@@ -318,14 +330,25 @@ export class EducationParser {
   }): void {
     const year = this.extractYearFromLine(line);
     const degree = year ? this.removeYearFromDegree(line) : line;
+    const existingDegree = education.degree || undefined;
 
     if (year) {
       education.year = year;
     }
 
-    if (degree && (this.looksLikeDegree(line) || education.degree)) {
-      education.degree = education.degree
-        ? this.appendDegreeText(education.degree, degree)
+    if (
+      this.shouldAppendStructuralDegreePart({
+        degreePart: degree,
+        existingDegree,
+        line,
+        year,
+      })
+    ) {
+      education.degree = existingDegree
+        ? this.appendDegreeText({
+            degreePart: degree,
+            existingDegree,
+          })
         : degree;
       return;
     }
@@ -344,20 +367,38 @@ export class EducationParser {
       return;
     }
 
-    if (!education.degree) {
+    if (!existingDegree) {
       education.degree = degree;
       return;
     }
-
-    if (degree) {
-      education.degree = this.appendDegreeText(education.degree, degree);
-    }
   }
 
-  private static appendDegreeText(
-    existingDegree: string,
-    degreePart: string
-  ): string {
+  private static shouldAppendStructuralDegreePart({
+    existingDegree,
+    degreePart,
+    line,
+    year,
+  }: ShouldAppendStructuralDegreePartParams): boolean {
+    if (!degreePart) {
+      return false;
+    }
+
+    if (this.looksLikeDegree(line)) {
+      return true;
+    }
+
+    return (
+      existingDegree !== undefined &&
+      year.length > 0 &&
+      !this.looksLikeLocation(line)
+    );
+  }
+
+  private static appendDegreeText({
+    existingDegree,
+    degreePart,
+  }: AppendDegreeTextParams): string {
+    // A trailing slash already joins compound degree labels, so separator stays empty.
     const separator = existingDegree.trim().endsWith('/') ? '' : ' ';
 
     return normalizeWhitespace(`${existingDegree}${separator}${degreePart}`);

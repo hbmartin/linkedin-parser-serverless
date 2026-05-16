@@ -204,13 +204,11 @@ function isWrappedStructuralEntryLine(
   const yGap = previousLine.y - line.y;
   const maxExpectedWrapGap = Math.max(previousLine.height, line.height) + 4;
   const isAligned = Math.abs(previousLine.x - line.x) <= 8;
-  const hasSimilarFontSize = Math.abs(previousLine.fontSize - line.fontSize) < 1;
+  const hasSimilarFontSize =
+    Math.abs(previousLine.fontSize - line.fontSize) < 1;
 
   return (
-    yGap > 0 &&
-    yGap <= maxExpectedWrapGap &&
-    isAligned &&
-    hasSimilarFontSize
+    yGap > 0 && yGap <= maxExpectedWrapGap && isAligned && hasSimilarFontSize
   );
 }
 

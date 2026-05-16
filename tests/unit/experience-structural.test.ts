@@ -309,6 +309,58 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('recognizes dotted address prefixes before spaces', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Research Systems Group', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2024', y: 630 }),
+      textItem({ text: 'Rd. 10', y: 610 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        location: 'Rd. 10',
+      })
+    );
+  });
+
+  test('normalizes the full joined split location', () => {
+    const sections: StructuralSection[] = [
+      structuralSection({
+        text: 'Research Systems Group',
+        type: 'organization',
+      }),
+      structuralSection({
+        text: 'Principal Engineer',
+        type: 'position',
+      }),
+      structuralSection({
+        text: '2020 - 2024',
+        type: 'duration',
+      }),
+      structuralSection({
+        text: 'New Y',
+        type: 'location',
+      }),
+      structuralSection({
+        text: 'ork, N Y',
+        type: 'location',
+      }),
+    ];
+
+    const [experience] =
+      ExperienceStructuralParser['buildWorkExperiences'](sections);
+
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        location: 'New York, NY',
+      })
+    );
+  });
+
   test('exposes warnings through the structural parser result API', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
