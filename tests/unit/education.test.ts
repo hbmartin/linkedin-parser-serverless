@@ -54,6 +54,36 @@ describe('EducationParser', () => {
     ]);
   });
 
+  test('recognizes associate and certificate degree names', () => {
+    const educations = EducationParser.parse(`
+      Education
+      Example Community College
+      Associate of Arts 2012
+      Technical Institute
+      Certificate in Data Analytics 2014
+      Faculdade Municipal
+      Certificação em Gestão 2018
+    `);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'Associate of Arts',
+        institution: 'Example Community College',
+        year: '2012',
+      }),
+      expect.objectContaining({
+        degree: 'Certificate in Data Analytics',
+        institution: 'Technical Institute',
+        year: '2014',
+      }),
+      expect.objectContaining({
+        degree: 'Certificação em Gestão',
+        institution: 'Faculdade Municipal',
+        year: '2018',
+      }),
+    ]);
+  });
+
   test('parses structural education by visual hierarchy', () => {
     const educations = EducationParser.parseStructural([
       structuralLine({ fontSize: 16, text: 'Education', y: 760 }),

@@ -213,8 +213,6 @@ export class EducationParser {
   }
 
   private static looksLikeInstitution(line: string): boolean {
-    const lower = line.toLowerCase();
-
     return (
       line.length > 5 &&
       line.length < 100 &&
@@ -235,7 +233,7 @@ export class EducationParser {
     return (
       line.length > 3 &&
       line.length < 80 &&
-      /bachelor|master|phd|mba|diploma|engineering|science|business|bacharelado|bacharel|licenciatura|mestrado|mestre|doutorado|doutor|p[oó]s[-\s]?gradua[cç][aã]o|tecn[oó]logo|tecnologia/.test(
+      /bachelor|master|phd|mba|associate|diploma|certificate|engineering|science|business|bacharelado|bacharel|licenciatura|mestrado|mestre|doutorado|doutor|p[oó]s[-\s]?gradua[cç][aã]o|tecn[oó]logo|tecnologia|certifica[cç][aã]o/.test(
         lower
       ) &&
       !/^\s*[()·-]?\s*(19|20)\d{2}/.test(line)
