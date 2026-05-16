@@ -1,5 +1,6 @@
 // E2E test to verify the library works end-to-end with unpdf
 import fs from 'fs';
+import { isDeepStrictEqual } from 'node:util';
 import { parseLinkedInPDF } from '../../dist/index.js';
 import { expectedTestResumeProfile } from '../fixtures/expected-test-resume-profile.js';
 
@@ -56,11 +57,15 @@ async function runE2ETest() {
       'Expected location found':
         result.profile.location === expectedTestResumeProfile.location,
       'Expected skills found':
-        JSON.stringify(result.profile.top_skills) ===
-        JSON.stringify(expectedTestResumeProfile.top_skills),
+        isDeepStrictEqual(
+          result.profile.top_skills,
+          expectedTestResumeProfile.top_skills
+        ),
       'Expected languages found':
-        JSON.stringify(result.profile.languages) ===
-        JSON.stringify(expectedTestResumeProfile.languages),
+        isDeepStrictEqual(
+          result.profile.languages,
+          expectedTestResumeProfile.languages
+        ),
       'Expected summary found':
         result.profile.summary === expectedTestResumeProfile.summary,
       'Expected experience count':

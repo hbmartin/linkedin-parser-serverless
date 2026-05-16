@@ -117,7 +117,7 @@ describe('LinkedIn PDF Parser Library', () => {
       expect(profile.experience[0]).toEqual(
         expectedTestResumeProfile.firstExperience
       );
-      expect(profile.experience[5]).toEqual(
+      expect(findCartaSeniorEngineerExperience(profile)).toEqual(
         expectedTestResumeProfile.cartaSeniorEngineerExperience
       );
       expect(profile.education).toHaveLength(
@@ -147,7 +147,7 @@ describe('LinkedIn PDF Parser Library', () => {
       expect(profile.experience[0]).toEqual(
         expectedTestResumeProfile.firstExperience
       );
-      expect(profile.experience[5]).toEqual(
+      expect(findCartaSeniorEngineerExperience(profile)).toEqual(
         expectedTestResumeProfile.cartaSeniorEngineerExperience
       );
       expect(profile.education).toHaveLength(
@@ -1030,3 +1030,13 @@ describe('LinkedIn PDF Parser Library', () => {
     });
   });
 });
+
+function findCartaSeniorEngineerExperience(
+  profile: LinkedInProfile
+): LinkedInProfile['experience'][number] | undefined {
+  return profile.experience.find(
+    experience =>
+      experience.company === 'Carta' &&
+      experience.title === 'Senior Software Engineer'
+  );
+}

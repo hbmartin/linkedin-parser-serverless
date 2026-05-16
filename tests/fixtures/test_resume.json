@@ -185,6 +185,7 @@
         "title": "Engineering Manager",
         "company": "AevoTech",
         "duration": "August 2015 - March 2016",
+        "location": "Greater Rio de Janeiro",
         "description": "I led two major initiatives at AevoTech: building robotics solutions for Oil & Gas clients and supporting new startups inside a tech venture builder, connecting engineering execution with portfolio strategy. • Led a team of engineers developing robotics solutions for Oil & Gas companies, overseeing design, implementation, deployment and on-site • Coordinated field operations and technical decisions to ensure the systems met safety, reliability and operational constraints in real production • In the venture builder, partnered with engineering leads and a Product Manager to evaluate potential startups for the portfolio, assessing fit with strategy and technical feasibility. • Guided early product discovery and concept validation, helping founders turn ideas into first versions with clear problem statements, scope and delivery • Helped new teams establish basic operating processes (backlog, releases, communication) and supported recruitment of their initial engineering hires."
       },
       {
@@ -205,6 +206,7 @@
         "title": "Senior Lead Software Engineer",
         "company": "Inovare",
         "duration": "April 2015 - August 2015",
+        "location": "Greater Rio de Janeiro",
         "description": "I served as a hands-on tech lead on payment and checkout systems, splitting my time between shipping code and putting structure around how work got • Built and maintained core payment and checkout flows end to end (Java and C#), focusing on correctness, reliability and a smooth experience for • Reduced production firefighting by improving logging, automated tests and error handling, making issues easier to detect, debug and fix. • Brought more structure to delivery by breaking large projects into smaller milestones, clarifying priorities and ownership, and creating simple plans the • Turned client and stakeholder requests into clear written engineering requirements and lightweight documentation, which reduced churn and rework"
       },
       {
@@ -250,6 +252,20 @@
         "description": "Focusing on advanced inspection technologies, quality assurance, and critical system recovery in the oil and gas sector. Key responsibilities included: • Developing, testing, and operating underwater inspection equipment for high- • Working on field operations logistics on platforms, ships, and testing sites, including embarks on P-52, P-25, and RSV Joe Griffin, where I conducted tests and homologated inspection tools. • Analyzing riser and pipeline data and producing technical reports for clients • Leading the design and homologation of hardware and software projects, including the AURI (Autonomous Underwater Riser Inspector), which won • Ensuring quality control and resolving issues in critical systems to maintain This role had a strong focus on quality assurance for systems and processes, particularly for embedded systems used in mission-critical applications. My work involved ensuring reliability and compliance in challenging environments where precision and robustness were essential."
       },
       {
+        "dates": {
+          "originalText": "December 2006 - April 2010",
+          "start": {
+            "iso": "2006-12",
+            "precision": "month",
+            "text": "December 2006"
+          },
+          "end": {
+            "iso": "2010-04",
+            "precision": "month",
+            "text": "April 2010"
+          },
+          "kind": "completed"
+        },
         "title": "Technical Researcher – Automation and Robotics (Contractor)",
         "company": "CEPEL",
         "duration": "December 2006 - April 2010",

@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { parseLinkedInPDF } from '../../dist/index.js';
 import { expectedTestResumeProfile } from '../fixtures/expected-test-resume-profile.js';
 
 function valuesMatch(actual, expected) {
-  return JSON.stringify(actual) === JSON.stringify(expected);
+  return isDeepStrictEqual(actual, expected);
 }
 
 async function runFullE2ETest() {
