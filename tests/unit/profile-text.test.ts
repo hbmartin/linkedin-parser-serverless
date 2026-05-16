@@ -8,6 +8,8 @@ describe('profile text heuristics', () => {
   test('matches position keywords as whole words only', () => {
     expect(looksLikePositionTitleText('Lead Engineer')).toBe(true);
     expect(looksLikePositionTitleText('Producer, SHARK WRANGLERS')).toBe(true);
+    expect(looksLikePositionTitleText('2022 Youth Fellow')).toBe(true);
+    expect(looksLikePositionTitleText('Contributing Writer')).toBe(true);
     expect(looksLikePositionTitleText('International Bank')).toBe(false);
     expect(looksLikeOrganizationNameText('International Bank')).toBe(true);
   });
@@ -19,9 +21,9 @@ describe('profile text heuristics', () => {
   test('accepts only one allowlisted trailing title parenthetical', () => {
     expect(looksLikePositionTitleText('Lead Engineer (Contractor)')).toBe(true);
     expect(looksLikePositionTitleText('Lead Engineer (R&D)')).toBe(false);
-    expect(
-      looksLikePositionTitleText('Lead Engineer (R&D) (Contractor)')
-    ).toBe(false);
+    expect(looksLikePositionTitleText('Lead Engineer (R&D) (Contractor)')).toBe(
+      false
+    );
   });
 
   test('supports accented organization words without promoting locations', () => {
@@ -43,5 +45,12 @@ describe('profile text heuristics', () => {
 
   test('recognizes Bay Area profile locations', () => {
     expect(isLikelyLocationText('San Francisco Bay Area')).toBe(true);
+  });
+
+  test('recognizes country-only and greater area profile locations', () => {
+    expect(isLikelyLocationText('United States')).toBe(true);
+    expect(isLikelyLocationText('Greater Minneapolis-St. Paul Area')).toBe(
+      true
+    );
   });
 });

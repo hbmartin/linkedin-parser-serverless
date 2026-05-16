@@ -52,6 +52,7 @@ const ORGANIZATION_WORDS = new Set([
   'corporation',
   'enterprises',
   'foundation',
+  'fund',
   'group',
   'inc',
   'industries',
@@ -60,6 +61,8 @@ const ORGANIZATION_WORDS = new Set([
   'llc',
   'ltd',
   'network',
+  'organisation',
+  'organization',
   'partners',
   'research',
   'school',
@@ -73,6 +76,7 @@ const ORGANIZATION_WORDS = new Set([
   'technology',
   'university',
   'ventures',
+  'wireless',
 ]);
 
 const POSITION_KEYWORDS = [
@@ -92,6 +96,7 @@ const POSITION_KEYWORDS = [
   'diretor',
   'engineer',
   'engenheiro',
+  'fellow',
   'founder',
   'gerente',
   'gestor',
@@ -110,6 +115,7 @@ const POSITION_KEYWORDS = [
   'tech lead',
   'vice president',
   'vp',
+  'writer',
 ];
 
 const LOWERCASE_CONNECTOR_WORDS = new Set([
@@ -130,6 +136,7 @@ const LOWERCASE_CONNECTOR_WORDS = new Set([
   'du',
   'e',
   'el',
+  'for',
   'la',
   'le',
   'of',
@@ -155,6 +162,7 @@ const SINGLE_WORD_LOCATION_TEXT = new Set([
   'brasil',
   'brazil',
   'portugal',
+  'united states',
 ]);
 
 const wholeKeywordPatternCache = new Map<string, RegExp>();
@@ -384,7 +392,7 @@ export function isLikelyLocationText(text: string): boolean {
 
   return (
     SINGLE_WORD_LOCATION_TEXT.has(lowerText) ||
-    /^greater\s+[\p{Lu}][\p{L}\s]+(?:area)?$/iu.test(normalizedText) ||
+    /^greater\s+[\p{Lu}][\p{L}\p{M}.'\-\s]+(?:area)?$/iu.test(normalizedText) ||
     /^[\p{Lu}][\p{L}\p{M}\s]+(?:Bay|Metropolitan)\s+Area$/u.test(
       normalizedText
     ) ||

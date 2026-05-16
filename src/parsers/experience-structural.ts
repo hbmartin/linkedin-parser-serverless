@@ -249,6 +249,19 @@ export class ExperienceStructuralParser {
 
         return text.length > 15 ? 'description' : 'other';
       case 'in_description':
+        if (this.isExperienceNoiseLine(text)) {
+          return 'other';
+        }
+
+        if (
+          this.looksLikeDescriptionContinuationLine(
+            text,
+            lineTexts[index - 1] ?? undefined
+          )
+        ) {
+          return 'description';
+        }
+
         if (
           this.looksLikeOrganization(
             text,
@@ -271,10 +284,6 @@ export class ExperienceStructuralParser {
 
         if (this.looksLikePosition(text)) {
           return 'position';
-        }
-
-        if (this.isExperienceNoiseLine(text)) {
-          return 'other';
         }
 
         if (
@@ -427,6 +436,10 @@ export class ExperienceStructuralParser {
       return true;
     }
 
+    if (/\$[A-Z]{1,8}\b/.test(normalizedLine)) {
+      return true;
+    }
+
     if (!normalizedPreviousLine || normalizedPreviousLine.length < 20) {
       return false;
     }
@@ -438,6 +451,25 @@ export class ExperienceStructuralParser {
     );
   }
 
+  private static looksLikeDescriptionContinuationLine(
+    line: string,
+    previousLine?: string
+  ): boolean {
+    const normalizedLine = line.trim();
+    const normalizedPreviousLine = previousLine?.trim();
+
+    if (!normalizedPreviousLine || normalizedPreviousLine.length < 20) {
+      return false;
+    }
+
+    return (
+      /^[a-z]/.test(normalizedLine) ||
+      /\b(?:and|for|from|in|of|the|their|to|with)$/i.test(
+        normalizedPreviousLine
+      )
+    );
+  }
+
   private static looksLikeLocation(line: string): boolean {
     const normalizedLine = this.normalizeLocationText(line);
 
@@ -446,7 +478,7 @@ export class ExperienceStructuralParser {
       /^[A-Z][A-Za-z\s]+,\s*[A-Z\s]{2,}$/, // City, ST
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+$/, // City, State
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+/, // City, State, Country
-      /^Greater\s+[\p{Lu}][\p{L}\p{M}\s]+(?:Area|,\s*[\p{Lu}\s]{2,})?$/u,
+      /^Greater\s+[\p{Lu}][\p{L}\p{M}.'\-\s]+(?:Area|,\s*[\p{Lu}\s]{2,})?$/u,
       /^(?:Rua|R\.|Av\.?|Avenida|Alameda|Praça|Street|St\.|Avenue|Ave\.|Road|Rd\.)(?!\w)/iu,
       /^\d{5}(?:-\d{3})?$/,
       /^(California|New York|Texas|Florida|United States|Brasil|Brazil|Rio de Janeiro|São Paulo)$/i,
