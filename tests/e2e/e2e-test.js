@@ -1,6 +1,7 @@
 // E2E test to verify the library works end-to-end with unpdf
 import fs from 'fs';
 import { parseLinkedInPDF } from '../../dist/index.js';
+import { expectedTestResumeProfile } from '../fixtures/expected-test-resume-profile.js';
 
 console.log('🚀 Running E2E Test with unpdf\n');
 
@@ -47,29 +48,29 @@ async function runE2ETest() {
       'Expected email absent': result.profile.contact.email === undefined,
       'Expected LinkedIn URL found':
         result.profile.contact.linkedin_url ===
-        'https://linkedin.com/in/arkadyzalko',
-      'Expected name found': result.profile.name === 'Arkady Zalkowitsch',
+        expectedTestResumeProfile.contact.linkedin_url,
+      'Expected name found':
+        result.profile.name === expectedTestResumeProfile.name,
       'Expected headline found':
-        result.profile.headline ===
-        'Senior Engineering Manager @ Commure | ex-Carta | MBA in Business Management',
+        result.profile.headline === expectedTestResumeProfile.headline,
       'Expected location found':
-        result.profile.location === 'Sunnyvale, California, United States',
+        result.profile.location === expectedTestResumeProfile.location,
       'Expected skills found':
         JSON.stringify(result.profile.top_skills) ===
-        JSON.stringify([
-          'Strategic Roadmaps',
-          'Electronic Engineering',
-          'Project Planning',
-        ]),
+        JSON.stringify(expectedTestResumeProfile.top_skills),
       'Expected languages found':
         JSON.stringify(result.profile.languages) ===
-        JSON.stringify([
-          { language: 'Inglês  Working', proficiency: 'Professional' },
-          { language: 'Espanhol', proficiency: 'Elementary' },
-        ]),
-      'Expected experience count': result.profile.experience.length === 14,
-      'Expected education count': result.profile.education.length === 5,
-      'Expected raw text length': result.rawText?.length === 13078,
+        JSON.stringify(expectedTestResumeProfile.languages),
+      'Expected summary found':
+        result.profile.summary === expectedTestResumeProfile.summary,
+      'Expected experience count':
+        result.profile.experience.length ===
+        expectedTestResumeProfile.experienceLength,
+      'Expected education count':
+        result.profile.education.length ===
+        expectedTestResumeProfile.educationLength,
+      'Expected raw text length':
+        result.rawText?.length === expectedTestResumeProfile.rawTextLength,
       'Processing time reasonable': endTime - startTime < 5000,
     };
 
@@ -92,7 +93,7 @@ async function runE2ETest() {
       return true;
     } else {
       console.log('⚠️ Some checks failed, but the library is functional.');
-      return passedChecks / totalChecks >= 0.8; // 80% pass rate considered success
+      return false;
     }
   } catch (error) {
     console.error('❌ E2E Test failed:', error.message);

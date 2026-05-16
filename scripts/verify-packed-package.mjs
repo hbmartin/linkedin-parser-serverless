@@ -145,6 +145,9 @@ parseLinkedInPDF(${JSON.stringify(sampleProfileText)}).then(result => {
   if (result.profile.contact.email !== 'packed.consumer@example.com') {
     throw new Error('CJS require did not parse the expected profile email');
   }
+}).catch(error => {
+  console.error(error);
+  process.exit(1);
 });
 `
   );

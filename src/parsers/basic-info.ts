@@ -21,6 +21,8 @@ import {
   getParserLineSectionHeader,
   type NormalizedParserLine,
 } from '../utils/parser-lines.js';
+import { extractStructuralSectionLines } from '../utils/structural-sections.js';
+import type { StructuralLine } from '../utils/structural-lines.js';
 
 export interface Contact {
   email?: string;
@@ -78,6 +80,26 @@ export class BasicInfoParser {
       headline: this.extractHeadline(text),
       location: this.extractLocation(text),
       summary: this.extractSummary(text),
+      contact: this.extractContact(text),
+    };
+
+    return {
+      value,
+      warnings: this.createBasicInfoWarnings(text, value),
+    };
+  }
+
+  static parseStructuralWithWarnings(
+    text: string,
+    structuralLines: StructuralLine[]
+  ): ParsedSectionResult<BasicInfo> {
+    const value: BasicInfo = {
+      name: this.extractName(text),
+      headline: this.extractHeadline(text),
+      location: this.extractLocation(text),
+      summary:
+        this.extractStructuralSummary(structuralLines) ??
+        this.extractSummary(text),
       contact: this.extractContact(text),
     };
 
@@ -245,6 +267,28 @@ export class BasicInfoParser {
     }
 
     const summary = potentialSummaryLines.join(' ').slice(0, 500);
+
+    return summary || undefined;
+  }
+
+  private static extractStructuralSummary(
+    structuralLines: StructuralLine[]
+  ): string | undefined {
+    const summaryLines = extractStructuralSectionLines({
+      section: 'summary',
+      structuralLines,
+    }).lines;
+
+    if (summaryLines.length === 0) {
+      return undefined;
+    }
+
+    const summary = normalizeWhitespace(
+      summaryLines
+        .map(line => line.text)
+        .filter(line => line.trim().length > 10)
+        .join(' ')
+    ).slice(0, 500);
 
     return summary || undefined;
   }

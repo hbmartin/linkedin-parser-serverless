@@ -11,6 +11,5 @@
 		"bin/**/*.js",
 		"*.js",
 		"*.cjs"
-	],
-	"ignoreBinaries": ["awk"]
+	]
 }

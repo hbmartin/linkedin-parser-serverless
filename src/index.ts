@@ -88,9 +88,17 @@ export async function parseLinkedInPDF(
   // Clean and parse the text
   const cleanedText = cleanPDFText(text);
   const sectionWarnings: SectionParseWarning[] = [];
+  const structuralLines = structuralData
+    ? createStructuralLines({
+        layout: structuralData.layout,
+        textItems: structuralData.textItems,
+      })
+    : undefined;
 
   // Parse all sections using specialized parsers
-  const basicInfoResult = BasicInfoParser.parseWithWarnings(cleanedText);
+  const basicInfoResult = structuralLines
+    ? BasicInfoParser.parseStructuralWithWarnings(cleanedText, structuralLines)
+    : BasicInfoParser.parseWithWarnings(cleanedText);
   const basicInfo = basicInfoResult.value;
   sectionWarnings.push(...basicInfoResult.warnings);
 
@@ -98,16 +106,12 @@ export async function parseLinkedInPDF(
   const topSkills = topSkillsResult.value;
   sectionWarnings.push(...topSkillsResult.warnings);
 
-  const languagesResult = ListParser.parseLanguagesWithWarnings(cleanedText);
+  const languagesResult = structuralLines
+    ? ListParser.parseStructuralLanguagesWithWarnings(structuralLines)
+    : ListParser.parseLanguagesWithWarnings(cleanedText);
   const languages = languagesResult.value;
   sectionWarnings.push(...languagesResult.warnings);
 
-  const structuralLines = structuralData
-    ? createStructuralLines({
-        layout: structuralData.layout,
-        textItems: structuralData.textItems,
-      })
-    : undefined;
   const structuralIdentityResult = structuralLines
     ? IdentityStructuralParser.parseWithWarnings(structuralLines)
     : undefined;

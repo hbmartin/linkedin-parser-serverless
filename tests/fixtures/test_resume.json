@@ -13,8 +13,12 @@
     ],
     "languages": [
       {
-        "language": "Inglês  Working",
-        "proficiency": "Professional"
+        "language": "Português",
+        "proficiency": "Native or Bilingual"
+      },
+      {
+        "language": "Inglês",
+        "proficiency": "Professional Working"
       },
       {
         "language": "Espanhol",
@@ -24,7 +28,7 @@
     "certifications": [],
     "volunteer_work": [],
     "projects": [],
-    "summary": "Strategic Roadmaps Electronic Engineering Engineering Manager with ~20 years in software and 10+ in Project Planning leadership. I lead teams that sit at the intersection of product, operations and integrations, recently helping to shape an ERP- style operating model for PE firms and their portfolios at Carta, Português (Native or Bilingual) connecting onboarding, offboarding, document workflows and Inglês (Professional Working) financial integrations to firm-level outcomes with unified",
+    "summary": "Engineering Manager with ~20 years in software and 10+ in leadership. I lead teams that sit at the intersection of product, operations and integrations, recently helping to shape an ERP- style operating model for PE firms and their portfolios at Carta, connecting onboarding, offboarding, document workflows and financial integrations to firm-level outcomes with unified experience.",
     "experience": [
       {
         "dates": {
@@ -357,27 +361,6 @@
       "code": "missing_profile_field",
       "field": "profile.contact.email",
       "message": "Could not extract contact email"
-    },
-    {
-      "code": "section_parse_warning",
-      "field": "item",
-      "message": "Discarded language line that did not match a language shape",
-      "rawText": "style operating model for PE firms and their portfolios at Carta,",
-      "section": "languages"
-    },
-    {
-      "code": "section_parse_warning",
-      "field": "item",
-      "message": "Discarded language line that did not match a language shape",
-      "rawText": "Português (Native or Bilingual)",
-      "section": "languages"
-    },
-    {
-      "code": "section_parse_warning",
-      "field": "item",
-      "message": "Discarded language line that did not match a language shape",
-      "rawText": "connecting onboarding, offboarding, document workflows and",
-      "section": "languages"
     },
     {
       "code": "section_parse_warning",

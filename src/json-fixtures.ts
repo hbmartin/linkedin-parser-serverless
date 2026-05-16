@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type { ParseOptions, ParseResult } from './index.js';
 
 export type JsonOutputFormat = 'pretty' | 'compact';
-export type JsonFixtureExitCode = 0 | 1;
+type JsonFixtureExitCode = 0 | 1;
 
 export interface JsonFixtureDirectoryEntry {
   kind: 'directory' | 'file' | 'other';

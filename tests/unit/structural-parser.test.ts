@@ -1,4 +1,5 @@
 import { StructuralParser } from '../../src/parsers/structural-parser.js';
+import { createStructuralLines } from '../../src/utils/structural-lines.js';
 import type { TextItem } from '../../src/types/structural.js';
 
 function item({
@@ -42,5 +43,20 @@ describe('StructuralParser', () => {
           group.every(groupItem => groupItem.x >= 150)
       )
     ).toBe(true);
+  });
+
+  test('does not join the pronoun I into the following word', () => {
+    const lines = createStructuralLines({
+      layout: {
+        type: 'single-column',
+      },
+      textItems: [
+        item({ text: 'I', x: 220, y: 700 }),
+        item({ text: 'lead', x: 230, y: 700 }),
+      ],
+    });
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0].text).toBe('I lead');
   });
 });
