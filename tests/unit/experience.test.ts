@@ -149,4 +149,64 @@ describe('ExperienceParser', () => {
       'Built customer-facing systems in 2020 before leading platform work.'
     );
   });
+
+  test('keeps title-only entries and warns about missing dates', () => {
+    const result = ExperienceParser.parseWithWarnings(`
+      Experience
+      Northstar AI
+      Principal Software Engineer
+    `);
+
+    expect(result.value).toEqual([
+      {
+        title: 'Principal Software Engineer',
+        company: 'Northstar AI',
+        duration: '',
+        location: '',
+        description: '',
+      },
+    ]);
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'dates',
+        rawText: 'Principal Software Engineer',
+      }),
+    ]);
+  });
+
+  test('covers inline and duration rejection branches', () => {
+    expect(
+      ExperienceParser['parseInlineTitleAndCompany'](
+        'Principal Engineer at 2020 - 2021'
+      )
+    ).toBeUndefined();
+    expect(
+      ExperienceParser['looksLikeDuration'](
+        'This long delivery note mentions 2020 - 2021 but is prose, not a compact duration value.'
+      )
+    ).toBe(false);
+  });
+
+  test('reports unparseable duration text separately from missing dates', () => {
+    const warnings = ExperienceParser['createExperienceWarnings'](
+      [
+        {
+          title: 'Cataloger',
+          company: 'Archive Museum',
+          duration: '1888 - 1889',
+          location: '',
+          description: '',
+        },
+      ],
+      ['Archive Museum', 'Cataloger', '1888 - 1889']
+    );
+
+    expect(warnings).toEqual([
+      expect.objectContaining({
+        field: 'dates',
+        message: 'Could not parse date range',
+        rawText: '1888 - 1889',
+      }),
+    ]);
+  });
 });

@@ -431,6 +431,38 @@ describe('EducationParser', () => {
       }),
     ]);
   });
+
+  test('creates warnings for unparseable education sections and missing institutions', () => {
+    expect(
+      EducationParser['createEducationWarnings'](
+        [],
+        ['Continuing studies without an institution']
+      )
+    ).toEqual([
+      expect.objectContaining({
+        field: 'entry',
+        section: 'education',
+      }),
+    ]);
+    expect(
+      EducationParser['createEducationWarnings'](
+        [
+          {
+            degree: 'Certificate in Cataloging',
+            institution: '',
+            location: '',
+            year: '',
+          },
+        ],
+        []
+      )
+    ).toEqual([
+      expect.objectContaining({
+        field: 'institution',
+        rawText: 'Certificate in Cataloging',
+      }),
+    ]);
+  });
 });
 
 function structuralLine({

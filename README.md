@@ -32,7 +32,7 @@ A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsi
 ### Requirements
 
 - Node.js 22.0.0 or newer
-- pnpm 11.1.2 for local development
+- pnpm 11.1.3 for local development
 - Supported runtimes: Node.js 22+, Vercel Edge, and serverless JavaScript runtimes that provide Web-standard binary types such as `ArrayBuffer`
 
 ### Library Usage

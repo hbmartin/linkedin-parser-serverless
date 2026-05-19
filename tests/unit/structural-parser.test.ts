@@ -68,6 +68,61 @@ describe('StructuralParser', () => {
     ).toBe(true);
   });
 
+  test('keeps narrow column gaps as a single-column layout', () => {
+    const leftItems = Array.from({ length: 7 }, (_, index) => ({
+      ...item({ text: `left ${index}`, x: 40, y: 700 - index * 20 }),
+      width: 0,
+    }));
+    const rightItems = Array.from({ length: 21 }, (_, index) =>
+      item({ text: `right ${index}`, x: 155, y: 700 - index * 20 })
+    );
+
+    const layout = StructuralParser['detectLayout']([
+      ...leftItems,
+      ...rightItems,
+    ]);
+
+    expect(layout).toEqual({ type: 'single-column' });
+  });
+
+  test('returns no groups or structural lines for empty inputs', () => {
+    expect(StructuralParser.groupTextByProximity([])).toEqual([]);
+    expect(
+      createStructuralLines({
+        layout: {
+          type: 'single-column',
+        },
+        textItems: [],
+      })
+    ).toEqual([]);
+  });
+
+  test('sorts structural lines with the same y position by x position', () => {
+    const lines = createStructuralLines({
+      layout: {
+        type: 'two-column',
+        sidebarBounds: {
+          left: 20,
+          right: 100,
+          top: 700,
+          bottom: 700,
+        },
+        mainBounds: {
+          left: 220,
+          right: 300,
+          top: 700,
+          bottom: 700,
+        },
+      },
+      textItems: [
+        item({ text: 'Right', x: 220, y: 700 }),
+        item({ text: 'Left', x: 20, y: 700 }),
+      ],
+    });
+
+    expect(lines.map(line => line.text)).toEqual(['Left', 'Right']);
+  });
+
   test('does not join the pronoun I into the following word', () => {
     const lines = createStructuralLines({
       layout: {
