@@ -335,6 +335,14 @@ export class ExperienceStructuralParser {
         }
 
         if (
+          (this.looksLikePosition(text) ||
+            this.looksLikeLoosePositionTitle(text, index, lineTexts)) &&
+          this.hasDurationWithinNextLines(index, lineTexts)
+        ) {
+          return 'position';
+        }
+
+        if (
           this.looksLikeSentenceEndingDescriptionContinuationLine(
             text,
             lineTexts[index - 1] ?? undefined
@@ -355,14 +363,6 @@ export class ExperienceStructuralParser {
         }
 
         if (
-          (this.looksLikePosition(text) ||
-            this.looksLikeLoosePositionTitle(text, index, lineTexts)) &&
-          this.hasDurationWithinNextLines(index, lineTexts)
-        ) {
-          return 'position';
-        }
-
-        if (
           this.looksLikeOrganization(
             text,
             line.fontSize ?? 0,
@@ -372,15 +372,6 @@ export class ExperienceStructuralParser {
           )
         ) {
           return 'organization';
-        }
-
-        if (
-          this.looksLikeSentenceEndingDescriptionContinuationLine(
-            text,
-            lineTexts[index - 1] ?? undefined
-          )
-        ) {
-          return 'description';
         }
 
         if (
@@ -539,7 +530,7 @@ export class ExperienceStructuralParser {
           /^(?:a|an|and|at|by|for|in|of|on|or|than|the|to|with)$/i.test(word) ||
           /^[-–]$/u.test(word) ||
           /^\([\p{Lu}0-9&.'+!–-]+\)$/u.test(word) ||
-          /^\([a-z0-9.-]+\.[a-z0-9.-]+\)$/u.test(word) ||
+          /^\([a-z0-9.-]+\.[a-z0-9.-]+\)$/iu.test(word) ||
           /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word)
       )
     );
@@ -556,7 +547,7 @@ export class ExperienceStructuralParser {
   private static looksLikeLowerCamelOrganization(line: string): boolean {
     return (
       /^[a-z][\p{Lu}][\p{L}\p{M}0-9&.'+-]*/u.test(line) &&
-      /\b(?:Inc|LLC|Ltd|Solutions|Systems|Technologies)\b/u.test(line)
+      /\b(?:Inc|LLC|Ltd|Solutions|Systems|Technologies)\b/iu.test(line)
     );
   }
 
@@ -1151,7 +1142,7 @@ export class ExperienceStructuralParser {
     }
 
     if (
-      /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–\-\s]+\s+\([a-z0-9.-]+\.[a-z0-9.-]+\)$/u.test(
+      /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–\-\s]+\s+\([A-Za-z0-9.-]+\.[A-Za-z0-9.-]+\)$/u.test(
         text.trim()
       )
     ) {

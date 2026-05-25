@@ -317,13 +317,17 @@ describe('ListParser', () => {
         proficiency: 'Unknown',
       },
     ]);
-    expect(ListParser['extractLanguageInfo']('Native Portuguese')).toEqual({
-      language: 'Portuguese',
-      proficiency: 'Native',
-    });
+    expect(ListParser.parseLanguages('Languages\nNative Portuguese')).toEqual([
+      {
+        language: 'Portuguese',
+        proficiency: 'Native',
+      },
+    ]);
     expect(
-      ListParser['extractLanguageInfo']('Native VeryVeryVeryLongLanguageName')
-    ).toBeNull();
+      ListParser.parseLanguages(
+        'Languages\nNative VeryVeryVeryLongLanguageName'
+      )
+    ).toEqual([]);
   });
 
   test('ignores blank structural language rows', () => {

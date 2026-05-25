@@ -22,6 +22,16 @@ describe('profile date parser', () => {
     });
   });
 
+  test('extracts parenthetical duration text from the shared duration vocabulary', () => {
+    expect(parseProfileDateRange('Jan 2020 - Mar 2021 (1 yr 3 mos)')).toEqual(
+      expect.objectContaining({
+        durationText: '1 yr 3 mos',
+        end: expect.objectContaining({ iso: '2021-03' }),
+        start: expect.objectContaining({ iso: '2020-01' }),
+      })
+    );
+  });
+
   test('parses current roles without inventing an end date', () => {
     expect(parseProfileDateRange('Jan 2020 - Present')).toEqual({
       kind: 'current',

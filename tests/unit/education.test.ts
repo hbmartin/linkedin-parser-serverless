@@ -9,6 +9,8 @@ describe('EducationParser', () => {
       Bachelor of Science 2016 in Engineering
       State College
       Master of Business (2018)
+      Technical Institute
+      Executive Program (January 2019 - 2020)
     `);
 
     expect(educations).toEqual([
@@ -21,6 +23,11 @@ describe('EducationParser', () => {
         institution: 'State College',
         degree: 'Master of Business',
         year: '2018',
+      }),
+      expect.objectContaining({
+        institution: 'Technical Institute',
+        degree: 'Executive Program',
+        year: 'January 2019 - 2020',
       }),
     ]);
   });
@@ -268,6 +275,36 @@ describe('EducationParser', () => {
     );
   });
 
+  test('joins multi-word school of institution continuations', () => {
+    const [education] = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'Example University School of',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 14,
+        text: 'Business Administration',
+        y: 716,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'MBA, Finance · (2002 - 2004)',
+        y: 696,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 660 }),
+    ]);
+
+    expect(education).toEqual(
+      expect.objectContaining({
+        degree: 'MBA, Finance',
+        institution: 'Example University School of Business Administration',
+        year: '2002 - 2004',
+      })
+    );
+  });
+
   test('does not append comma-adjacent non-academic details to degree text', () => {
     const educations = EducationParser.parseStructural([
       structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
@@ -336,6 +373,22 @@ describe('EducationParser', () => {
         year: '2017 - 2019',
       }),
     ]);
+  });
+
+  test('keeps economics institution names in text fallback parsing', () => {
+    const [education] = EducationParser.parse(`
+      Education
+      London School of Economics
+      Graduate Diploma, Economics · (2017 - 2019)
+    `);
+
+    expect(education).toEqual(
+      expect.objectContaining({
+        degree: 'Graduate Diploma, Economics',
+        institution: 'London School of Economics',
+        year: '2017 - 2019',
+      })
+    );
   });
 
   test('recognizes dotted and hyphenated structural education locations', () => {

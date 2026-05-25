@@ -179,8 +179,11 @@ describe('ExperienceStructuralParser', () => {
       textItem({ text: 'January 2016 - Present (10 years)', y: 630 }),
       textItem({ text: 'United States Marine Corps', y: 590 }),
       textItem({ text: 'Marine', y: 570, fontSize: 11.5 }),
-      textItem({ text: 'May 2001 - September 2009 (8 years 5 months)', y: 550 }),
-      textItem({ text: 'Fund Fellow Founders (fff.vc)', y: 510 }),
+      textItem({
+        text: 'May 2001 - September 2009 (8 years 5 months)',
+        y: 550,
+      }),
+      textItem({ text: 'Fund Fellow Founders (FFF.VC)', y: 510 }),
       textItem({ text: 'Angel Investor', y: 490, fontSize: 11.5 }),
       textItem({ text: 'October 2022 - Present (3 years 8 months)', y: 470 }),
     ]);
@@ -198,7 +201,7 @@ describe('ExperienceStructuralParser', () => {
         ],
       }),
       expect.objectContaining({
-        organization: 'Fund Fellow Founders (fff.vc)',
+        organization: 'Fund Fellow Founders (FFF.VC)',
         positions: [
           expect.objectContaining({
             title: 'Angel Investor',
@@ -206,6 +209,18 @@ describe('ExperienceStructuralParser', () => {
         ],
       }),
     ]);
+  });
+
+  test('recognizes lower-camel organizations with lowercase suffixes', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'xLabs llc', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - Present (6 years)', y: 630 }),
+    ]);
+
+    expect(experience.organization).toBe('xLabs llc');
+    expect(experience.positions[0]?.title).toBe('Principal Engineer');
   });
 
   test('keeps prose with role verbs in descriptions when no date follows', () => {
@@ -1061,6 +1076,39 @@ describe('ExperienceStructuralParser', () => {
         description: 'Managed support operations.',
         duration: '2022 - Present',
         title: 'Manager.',
+      }),
+    ]);
+  });
+
+  test('starts long position titles before description fallback', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Acme Labs', y: 670 }),
+      textItem({ text: 'Staff Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2021', y: 630 }),
+      textItem({
+        text: 'Led distributed platform migrations across regions.',
+        y: 610,
+      }),
+      textItem({
+        text: 'Senior Director of Product Strategy and Platform Operations',
+        y: 590,
+        fontSize: 11.5,
+      }),
+      textItem({ text: '2022 - Present', y: 570 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experience.positions).toEqual([
+      expect.objectContaining({
+        description: 'Led distributed platform migrations across regions.',
+        duration: '2020 - 2021',
+        title: 'Staff Engineer',
+      }),
+      expect.objectContaining({
+        duration: '2022 - Present',
+        title: 'Senior Director of Product Strategy and Platform Operations',
       }),
     ]);
   });

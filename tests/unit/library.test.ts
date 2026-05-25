@@ -337,6 +337,41 @@ describe('LinkedIn PDF Parser Library', () => {
       expect(result.profile.education).toEqual([]);
     });
 
+    test('groups fallback experiences by contiguous company and preserves honors-awards wiring', async () => {
+      const result = await parseLinkedInPDF(`
+        Jane Example
+        jane@example.com
+
+        Honors-Awards
+        Parser Excellence Award
+
+        Experience
+        Engineer at Acme
+        2020 - 2021
+        Senior Engineer at Acme
+        2021 - 2022
+        Manager at Beta
+        2022 - 2023
+        Advisor at Acme
+        2023 - Present
+      `);
+
+      expect(
+        result.profile.experience_groups.map(group => group.company)
+      ).toEqual(['Acme', 'Beta', 'Acme']);
+      expect(
+        result.profile.experience_groups.map(group => group.positions)
+      ).toEqual([
+        [
+          expect.objectContaining({ title: 'Engineer' }),
+          expect.objectContaining({ title: 'Senior Engineer' }),
+        ],
+        [expect.objectContaining({ title: 'Manager' })],
+        [expect.objectContaining({ title: 'Advisor' })],
+      ]);
+      expect(result.profile.honors_awards).toEqual(['Parser Excellence Award']);
+    });
+
     test('should handle complex language patterns', async () => {
       const languageText = `
         Test User

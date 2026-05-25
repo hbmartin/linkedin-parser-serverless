@@ -278,6 +278,32 @@ describe('BasicInfoParser', () => {
     ]);
   });
 
+  test('keeps adjacent contact links separate and allows colon continuations', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Test User
+      test@example.com
+
+      Contact
+      www.linkedin.com/in/example
+      portfolio.example.com
+      docs.example.com/api/
+      v1:alpha (Other)
+    `);
+
+    expect(result.value.contact.links).toEqual([
+      expect.objectContaining({
+        url: 'https://linkedin.com/in/example',
+      }),
+      expect.objectContaining({
+        url: 'https://portfolio.example.com',
+      }),
+      expect.objectContaining({
+        label: 'Other',
+        url: 'https://docs.example.com/api/v1:alpha',
+      }),
+    ]);
+  });
+
   test('extracts mobile phone contact lines with country code labels', () => {
     const result = BasicInfoParser.parseStructuralWithWarnings(
       ['Contact', '+1 720-520-5329 (Mobile)'].join('\n'),
@@ -292,6 +318,18 @@ describe('BasicInfoParser', () => {
     );
 
     expect(result.value.contact.phone).toBe('+1 720-520-5329');
+  });
+
+  test('extracts eight digit local phone numbers', () => {
+    const profile = BasicInfoParser.parse(`
+      Test User
+      Product Advisor
+
+      Contact
+      8765 4321
+    `);
+
+    expect(profile.contact.phone).toBe('8765 4321');
   });
 
   test('uses the multiline engineering manager headline fallback', () => {
