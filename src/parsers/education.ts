@@ -43,6 +43,22 @@ export class EducationParser {
     'January|February|March|April|May|June|July|August|September|October|November|December';
   private static readonly OPTIONAL_MONTH_PREFIX = `(?:(?:${EducationParser.MONTH_NAMES_PATTERN})\\s+)?`;
   private static readonly YEAR_PATTERN = '(?:19|20)\\d{2}';
+  private static readonly YEAR_RANGE_REGEXP: RegExp = new RegExp(
+    `\\(${EducationParser.OPTIONAL_MONTH_PREFIX}\\d{4}\\s*-\\s*${EducationParser.OPTIONAL_MONTH_PREFIX}\\d{4}\\)`,
+    'i'
+  );
+  private static readonly MONTH_YEAR_REGEXP: RegExp = new RegExp(
+    `\\((?:${EducationParser.MONTH_NAMES_PATTERN})\\s+\\d{4}\\)`,
+    'i'
+  );
+  private static readonly PARENTHESIZED_YEAR_RANGE_PATTERN: RegExp = new RegExp(
+    `\\s*[·-]?\\s*\\(${EducationParser.OPTIONAL_MONTH_PREFIX}${EducationParser.YEAR_PATTERN}\\s*-\\s*${EducationParser.OPTIONAL_MONTH_PREFIX}${EducationParser.YEAR_PATTERN}\\)\\s*`,
+    'gi'
+  );
+  private static readonly PARENTHESIZED_MONTH_YEAR_PATTERN: RegExp = new RegExp(
+    `\\s*[·-]?\\s*\\((?:${EducationParser.MONTH_NAMES_PATTERN})\\s+${EducationParser.YEAR_PATTERN}\\)\\s*`,
+    'gi'
+  );
   private static readonly LOCATION_PATTERN: RegExp =
     /^[\p{Lu}][\p{L}\p{M}\s.-]+(?:,\s*[\p{Lu}][\p{L}\p{M}\s.-]*)*$/u;
   private static readonly STRUCTURAL_DEGREE_BOUNDARY_PATTERN: RegExp =
@@ -270,14 +286,8 @@ export class EducationParser {
   private static extractYearFromLine(line: string): string {
     // Extract year patterns from lines that might contain both degree and year info
     const yearPatterns = [
-      new RegExp(
-        `\\(${EducationParser.OPTIONAL_MONTH_PREFIX}\\d{4}\\s*-\\s*${EducationParser.OPTIONAL_MONTH_PREFIX}\\d{4}\\)`,
-        'i'
-      ),
-      new RegExp(
-        `\\((?:${EducationParser.MONTH_NAMES_PATTERN})\\s+\\d{4}\\)`,
-        'i'
-      ),
+      EducationParser.YEAR_RANGE_REGEXP,
+      EducationParser.MONTH_YEAR_REGEXP,
       /\(\d{4}\s*-\s*\d{4}\)/, // (2017 - 2018)
       /·\s*\(\d{4}\s*-\s*\d{4}\)/, // · (2002 - 2005)
       /\b\d{4}\s*-\s*\d{4}\b/, // 2017 - 2018
@@ -296,19 +306,10 @@ export class EducationParser {
   }
 
   private static removeYearFromDegree(line: string): string {
-    const parenthesizedYearRangePattern = new RegExp(
-      `\\s*[·-]?\\s*\\(${EducationParser.OPTIONAL_MONTH_PREFIX}${EducationParser.YEAR_PATTERN}\\s*-\\s*${EducationParser.OPTIONAL_MONTH_PREFIX}${EducationParser.YEAR_PATTERN}\\)\\s*`,
-      'gi'
-    );
-    const parenthesizedMonthYearPattern = new RegExp(
-      `\\s*[·-]?\\s*\\((?:${EducationParser.MONTH_NAMES_PATTERN})\\s+${EducationParser.YEAR_PATTERN}\\)\\s*`,
-      'gi'
-    );
-
     return normalizeWhitespace(
       line
-        .replace(parenthesizedYearRangePattern, ' ')
-        .replace(parenthesizedMonthYearPattern, ' ')
+        .replace(EducationParser.PARENTHESIZED_YEAR_RANGE_PATTERN, ' ')
+        .replace(EducationParser.PARENTHESIZED_MONTH_YEAR_PATTERN, ' ')
         .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\)\s*/g, ' ')
         .replace(/\s*[·-]?\s*(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\s*/g, ' ')
         .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\)\s*/g, ' ')

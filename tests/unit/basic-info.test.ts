@@ -332,6 +332,14 @@ describe('BasicInfoParser', () => {
     expect(profile.contact.phone).toBe('8765 4321');
   });
 
+  test('rejects whitespace-padded year ranges as phone search lines', () => {
+    expect(BasicInfoParser['isPhoneSearchLine'](' 2017 - 2018 ')).toBe(false);
+    expect(BasicInfoParser['isPhoneSearchLine'](' (2017 - present) ')).toBe(
+      false
+    );
+    expect(BasicInfoParser['isPhoneSearchLine'](' 8765 4321 ')).toBe(true);
+  });
+
   test('uses the multiline engineering manager headline fallback', () => {
     const profile = BasicInfoParser.parse(`
       Test User

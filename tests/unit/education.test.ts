@@ -32,6 +32,29 @@ describe('EducationParser', () => {
     ]);
   });
 
+  test('cleans month-qualified dates from degree text', () => {
+    const educations = EducationParser.parse(`
+      Education
+      Executive Institute
+      Executive Program - (January 2019 - December 2020)
+      Language School
+      Certificate in French · (January 2022)
+    `);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'Executive Program',
+        institution: 'Executive Institute',
+        year: 'January 2019 - December 2020',
+      }),
+      expect.objectContaining({
+        degree: 'Certificate in French',
+        institution: 'Language School',
+        year: 'January 2022',
+      }),
+    ]);
+  });
+
   test('recognizes Brazilian Portuguese degree names', () => {
     const educations = EducationParser.parse(`
       Education
