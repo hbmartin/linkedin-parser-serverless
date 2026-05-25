@@ -52,6 +52,20 @@ describe('IdentityStructuralParser', () => {
     );
   });
 
+  test('normalizes LinkedIn URLs split after the profile path', () => {
+    const identity = IdentityStructuralParser.parse([
+      line({ column: 'left', text: 'Contact', y: 760 }),
+      line({ column: 'left', text: 'www.linkedin.com/in/', y: 740 }),
+      line({ column: 'left', text: 'jameszhenwang (LinkedIn)', y: 720 }),
+      line({ fontSize: 26, text: 'James Wang', y: 760 }),
+      line({ fontSize: 16, text: 'Experience', y: 700 }),
+    ]);
+
+    expect(identity.linkedinUrl).toBe(
+      'https://linkedin.com/in/jameszhenwang'
+    );
+  });
+
   test('keeps company-at headlines and non-US locations', () => {
     const identity = IdentityStructuralParser.parse([
       line({ fontSize: 26, text: "Sean O'Neil", y: 760 }),

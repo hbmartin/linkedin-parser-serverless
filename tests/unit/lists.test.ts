@@ -141,6 +141,39 @@ describe('ListParser', () => {
     });
   });
 
+  test('merges wrapped structural languages and stops at honors boundary', () => {
+    const result = ListParser.parseStructuralLanguagesWithWarnings([
+      structuralLine({ column: 'left', text: 'Languages', y: 700 }),
+      structuralLine({
+        column: 'left',
+        text: 'English (Native or Bilingual)',
+        y: 680,
+      }),
+      structuralLine({
+        column: 'left',
+        text: 'Chinese (Traditional) (Limited',
+        y: 660,
+      }),
+      structuralLine({ column: 'left', text: 'Working)', y: 640 }),
+      structuralLine({ column: 'left', text: 'Honors-Awards', y: 620 }),
+      structuralLine({ column: 'left', text: 'Dean Student Advisory', y: 600 }),
+    ]);
+
+    expect(result).toEqual({
+      value: [
+        {
+          language: 'English',
+          proficiency: 'Native or Bilingual',
+        },
+        {
+          language: 'Chinese (Traditional)',
+          proficiency: 'Limited Working',
+        },
+      ],
+      warnings: [],
+    });
+  });
+
   test('ignores blank skill rows and rejects proficiency-only languages', () => {
     const skills = ListParser.parseSkillsWithWarnings(`
       Top Skills

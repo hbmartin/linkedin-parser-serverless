@@ -217,7 +217,10 @@ export async function parseLinkedInPDF(
 
   const result: ParseResult = {
     profile,
-    warnings: [...createParseWarnings(profile), ...sectionWarnings],
+    warnings: [
+      ...createParseWarnings(profile),
+      ...filterResolvedSectionWarnings(sectionWarnings, contact),
+    ],
   };
 
   if (options.includeRawText) {
@@ -225,6 +228,23 @@ export async function parseLinkedInPDF(
   }
 
   return result;
+}
+
+function filterResolvedSectionWarnings(
+  warnings: SectionParseWarning[],
+  contact: Contact
+): SectionParseWarning[] {
+  return warnings.filter(warning => {
+    if (
+      warning.section === 'contact' &&
+      warning.field === 'contact' &&
+      (contact.email || contact.phone || contact.linkedin_url)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 function createParseWarnings(profile: LinkedInProfile): ParseWarning[] {

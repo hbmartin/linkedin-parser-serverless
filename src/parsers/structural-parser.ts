@@ -1,11 +1,14 @@
 import { getDocumentProxy, extractTextItems } from 'unpdf';
 import { TextItem, LayoutInfo } from '../types/structural.js';
+import { getTextItemStructuralColumn } from '../utils/structural-layout.js';
 
 export class StructuralParser {
-  private static readonly COLUMN_SPLIT_BOUNDARY = 150;
-  private static readonly MIN_LEFT_ITEMS_FOR_TWO_COLUMN = 7;
-  private static readonly MIN_RIGHT_ITEMS_FOR_TWO_COLUMN = 20;
-  private static readonly MIN_COLUMN_GAP = 20;
+  private static readonly MIN_LEFT_ITEMS_FOR_TWO_COLUMN = 2;
+  private static readonly MIN_RIGHT_ITEMS_FOR_TWO_COLUMN = 15;
+  private static readonly MIN_MAIN_CLUSTER_ITEMS = 5;
+  private static readonly MIN_MAIN_COLUMN_X = 180;
+  private static readonly MAIN_COLUMN_LEFT_TOLERANCE = 8;
+  private static readonly MIN_COLUMN_GAP = 18;
 
   static async extractStructuredText(
     pdfInput: ArrayBuffer | Uint8Array
@@ -24,6 +27,7 @@ export class StructuralParser {
           x: item.x,
           // PDF pages reuse the same coordinate space; offset pages before flattening.
           y: item.y - pageIndex * 10000,
+          pageIndex,
           fontSize: item.fontSize,
           fontFamily: item.fontFamily || 'unknown',
           width: item.width,
@@ -41,32 +45,85 @@ export class StructuralParser {
     };
   }
 
-  private static detectLayout(textItems: TextItem[]): LayoutInfo {
-    // Analyze X positions to detect columns
+  static detectLayout(textItems: TextItem[]): LayoutInfo {
+    if (textItems.length === 0) {
+      return {
+        type: 'single-column',
+      };
+    }
+
+    const pageLayouts = this.detectPageLayouts(textItems);
+    const twoColumnPageLayouts = pageLayouts.filter(
+      layout => layout.type === 'two-column'
+    );
+    const globalLayout = this.detectPageLayout(textItems);
+    const twoColumnLayouts =
+      twoColumnPageLayouts.length > 0
+        ? twoColumnPageLayouts
+        : globalLayout.type === 'two-column'
+          ? [globalLayout]
+          : [];
+
+    if (twoColumnLayouts.length === 0) {
+      return {
+        type: 'single-column',
+        pageLayouts,
+      };
+    }
+
+    return {
+      type: 'two-column',
+      pageLayouts,
+      sidebarBounds: this.mergeBounds(
+        twoColumnLayouts.map(layout => layout.sidebarBounds)
+      ),
+      mainBounds: this.mergeBounds(
+        twoColumnLayouts.map(layout => layout.mainBounds)
+      ),
+    };
+  }
+
+  private static detectPageLayouts(textItems: TextItem[]): LayoutInfo[] {
+    const itemsByPage = new Map<number, TextItem[]>();
+
+    for (const item of textItems) {
+      const pageIndex = item.pageIndex ?? inferPageIndex(item);
+      const pageItems = itemsByPage.get(pageIndex) ?? [];
+
+      pageItems.push(item);
+      itemsByPage.set(pageIndex, pageItems);
+    }
+
+    return Array.from(itemsByPage.entries())
+      .sort(([firstPage], [secondPage]) => firstPage - secondPage)
+      .map(([, pageItems]) => this.detectPageLayout(pageItems));
+  }
+
+  private static detectPageLayout(textItems: TextItem[]): LayoutInfo {
     const xPositions = textItems.map(item => item.x);
     const minX = Math.min(...xPositions);
     const maxX = Math.max(...xPositions);
+    const mainLeft = this.findMainColumnLeft(textItems);
 
-    // Look for two distinct clusters of X positions
-    // Based on analysis, left column is around x=20, right column around x=220
+    if (mainLeft === undefined) {
+      return {
+        type: 'single-column',
+      };
+    }
+
+    const mainBoundary = mainLeft - this.MAIN_COLUMN_LEFT_TOLERANCE;
     const leftItems = textItems.filter(
-      item => item.x < this.COLUMN_SPLIT_BOUNDARY
+      item => item.x < mainBoundary && !this.isPageNumberItem(item)
     );
-    const rightItems = textItems.filter(
-      item => item.x >= this.COLUMN_SPLIT_BOUNDARY
-    );
+    const rightItems = textItems.filter(item => item.x >= mainBoundary);
 
-    // Check if there's a significant gap indicating columns. Some exports only
-    // have contact details and top skills in the sidebar, so item count alone is
-    // not enough to reject a two-column layout.
     if (
       leftItems.length >= this.MIN_LEFT_ITEMS_FOR_TWO_COLUMN &&
-      rightItems.length > this.MIN_RIGHT_ITEMS_FOR_TWO_COLUMN
+      rightItems.length >= this.MIN_RIGHT_ITEMS_FOR_TWO_COLUMN
     ) {
       const sidebarRight = Math.max(
         ...leftItems.map(item => item.x + (item.width || 100))
       );
-      const mainLeft = Math.min(...rightItems.map(item => item.x));
 
       if (mainLeft - sidebarRight < this.MIN_COLUMN_GAP) {
         return {
@@ -96,6 +153,51 @@ export class StructuralParser {
     };
   }
 
+  private static findMainColumnLeft(textItems: TextItem[]): number | undefined {
+    const clusters = new Map<number, number[]>();
+
+    for (const item of textItems) {
+      if (item.x < this.MIN_MAIN_COLUMN_X || this.isPageNumberItem(item)) {
+        continue;
+      }
+
+      const clusterKey = Math.round(item.x / 5) * 5;
+      const clusterItems = clusters.get(clusterKey) ?? [];
+
+      clusterItems.push(item.x);
+      clusters.set(clusterKey, clusterItems);
+    }
+
+    const [bestCluster] = Array.from(clusters.values()).sort(
+      (first, second) => second.length - first.length
+    );
+
+    if (!bestCluster || bestCluster.length < this.MIN_MAIN_CLUSTER_ITEMS) {
+      return undefined;
+    }
+
+    return Math.min(...bestCluster);
+  }
+
+  private static mergeBounds(
+    bounds: Array<LayoutInfo['sidebarBounds']>
+  ): LayoutInfo['sidebarBounds'] {
+    const presentBounds = bounds.filter(
+      (bound): bound is NonNullable<typeof bound> => bound !== undefined
+    );
+
+    if (presentBounds.length === 0) {
+      return undefined;
+    }
+
+    return {
+      left: Math.min(...presentBounds.map(bound => bound.left)),
+      right: Math.max(...presentBounds.map(bound => bound.right)),
+      top: Math.min(...presentBounds.map(bound => bound.top)),
+      bottom: Math.max(...presentBounds.map(bound => bound.bottom)),
+    };
+  }
+
   static groupTextByProximity(
     textItems: TextItem[],
     maxYDistance = 5
@@ -104,13 +206,22 @@ export class StructuralParser {
     const layout = this.detectLayout(textItems);
 
     if (layout.type === 'two-column') {
-      // Process each column separately using the fixed boundary
-      const leftItems = textItems.filter(
-        item => item.x < this.COLUMN_SPLIT_BOUNDARY
-      );
-      const rightItems = textItems.filter(
-        item => item.x >= this.COLUMN_SPLIT_BOUNDARY
-      );
+      const leftItems: TextItem[] = [];
+      const rightItems: TextItem[] = [];
+
+      for (const item of textItems) {
+        const column = getTextItemStructuralColumn({
+          fallbackColumn: 'right',
+          item,
+          layout,
+        });
+
+        if (column === 'left') {
+          leftItems.push(item);
+        } else {
+          rightItems.push(item);
+        }
+      }
 
       const leftGroups = this.groupItemsByY(leftItems, maxYDistance);
       const rightGroups = this.groupItemsByY(rightItems, maxYDistance);
@@ -128,6 +239,10 @@ export class StructuralParser {
       // Single column processing
       return this.groupItemsByY(textItems, maxYDistance);
     }
+  }
+
+  private static isPageNumberItem(item: TextItem): boolean {
+    return /^(?:page|\d+|of)$/i.test(item.text.trim());
   }
 
   private static groupItemsByY(
@@ -174,4 +289,12 @@ export class StructuralParser {
         .trim();
     });
   }
+}
+
+function inferPageIndex(item: TextItem): number {
+  if (item.y >= 0) {
+    return 0;
+  }
+
+  return Math.floor(Math.abs(item.y) / 10000);
 }

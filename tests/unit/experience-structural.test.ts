@@ -67,6 +67,169 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('parses academic multi-position entries without empty organizations', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'UCLA', y: 670 }),
+      textItem({ text: '7 years 11 months', y: 650 }),
+      textItem({ text: 'Associate Professor', y: 630, fontSize: 11.5 }),
+      textItem({ text: 'July 2024 - Present (1 year 11 months)', y: 610 }),
+      textItem({ text: 'Assistant Professor', y: 580, fontSize: 11.5 }),
+      textItem({ text: 'July 2018 - July 2024 (6 years 1 month)', y: 560 }),
+      textItem({ text: 'Los Angeles CA', y: 540 }),
+      textItem({ text: 'Visual Machines Group', y: 500 }),
+      textItem({ text: 'Leader', y: 480, fontSize: 11.5 }),
+      textItem({ text: 'July 2018 - Present (7 years 11 months)', y: 460 }),
+      textItem({ text: 'Intrinsic', y: 420 }),
+      textItem({ text: 'Research Scientist', y: 400, fontSize: 11.5 }),
+      textItem({ text: 'May 2022 - November 2023 (1 year 7 months)', y: 380 }),
+      textItem({ text: 'MIT Media Lab', y: 340 }),
+      textItem({ text: 'Research Assistant', y: 320, fontSize: 11.5 }),
+      textItem({ text: 'September 2012 - May 2018 (5 years 9 months)', y: 300 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'UCLA',
+        positions: [
+          expect.objectContaining({
+            duration: 'July 2024 - Present',
+            title: 'Associate Professor',
+          }),
+          expect.objectContaining({
+            duration: 'July 2018 - July 2024',
+            location: 'Los Angeles CA',
+            title: 'Assistant Professor',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Visual Machines Group',
+        positions: [
+          expect.objectContaining({
+            duration: 'July 2018 - Present',
+            title: 'Leader',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Intrinsic',
+        positions: [
+          expect.objectContaining({
+            duration: 'May 2022 - November 2023',
+            title: 'Research Scientist',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'MIT Media Lab',
+        positions: [
+          expect.objectContaining({
+            duration: 'September 2012 - May 2018',
+            title: 'Research Assistant',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps prose with role verbs in descriptions when no date follows', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Mimosa Ventures', y: 670 }),
+      textItem({ text: 'Founder', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'September 2024 - Present (1 year 9 months)', y: 630 }),
+      textItem({ text: 'Dallas, TX', y: 610 }),
+      textItem({
+        text: "We don't lead rounds or demand board seats. When we invest, it's because",
+        y: 590,
+      }),
+      textItem({
+        text: 'we have conviction in the founder.',
+        y: 570,
+      }),
+      textItem({ text: 'DallasMeetup', y: 530 }),
+      textItem({ text: 'Executive Advisor', y: 510, fontSize: 11.5 }),
+      textItem({ text: 'July 2025 - Present (11 months)', y: 490 }),
+      textItem({
+        text: "Executive advisor for Dallas's largest industry-agnostic networking event.",
+        y: 470,
+      }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Mimosa Ventures',
+        positions: [
+          expect.objectContaining({
+            description:
+              "We don't lead rounds or demand board seats. When we invest, it's because we have conviction in the founder.",
+            title: 'Founder',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'DallasMeetup',
+        positions: [
+          expect.objectContaining({
+            description:
+              "Executive advisor for Dallas's largest industry-agnostic networking event.",
+            duration: 'July 2025 - Present',
+            title: 'Executive Advisor',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('parses board-advisor organization names with lowercase connectors', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'More than Equal', y: 670 }),
+      textItem({ text: 'Senior Advisor to the CEO', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'April 2026 - Present (2 months)', y: 630 }),
+      textItem({ text: 'London Area, United Kingdom', y: 610 }),
+      textItem({
+        text: 'More than Equal is a global high-performance motorsport programme.',
+        y: 590,
+      }),
+      textItem({ text: 'UNRSF – UN Road Safety Fund', y: 550 }),
+      textItem({
+        text: 'Member of the Board of Advisors',
+        y: 530,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'December 2025 - Present (6 months)', y: 510 }),
+      textItem({ text: 'Geneva, Switzerland', y: 490 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'More than Equal',
+        positions: [
+          expect.objectContaining({
+            duration: 'April 2026 - Present',
+            location: 'London Area, United Kingdom',
+            title: 'Senior Advisor to the CEO',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'UNRSF – UN Road Safety Fund',
+        positions: [
+          expect.objectContaining({
+            duration: 'December 2025 - Present',
+            location: 'Geneva, Switzerland',
+            title: 'Member of the Board of Advisors',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('does not promote likely person-name lines to organizations', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -1011,26 +1174,15 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
-  test('records organization total duration when no position title follows', () => {
+  test('drops organization total duration rows when no position title follows', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
       textItem({ text: 'Northstar Solutions', y: 670 }),
       textItem({ text: '2020 - 2024', y: 650 }),
     ]);
 
-    expect(result.value).toEqual([
-      {
-        organization: 'Northstar Solutions',
-        positions: [],
-        totalDuration: '2020 - 2024',
-      },
-    ]);
-    expect(result.warnings).toEqual([
-      expect.objectContaining({
-        field: 'positions',
-        rawText: 'Northstar Solutions',
-      }),
-    ]);
+    expect(result.value).toEqual([]);
+    expect(result.warnings).toEqual([]);
   });
 
   test('starts a replacement organization before any title appears', () => {
@@ -1043,10 +1195,6 @@ describe('ExperienceStructuralParser', () => {
     ]);
 
     expect(experiences).toEqual([
-      expect.objectContaining({
-        organization: 'Northstar Solutions',
-        positions: [],
-      }),
       expect.objectContaining({
         organization: 'Blue Oak Labs',
         positions: [
@@ -1301,13 +1449,7 @@ describe('ExperienceStructuralParser', () => {
       }),
     ]);
 
-    expect(experiences).toEqual([
-      {
-        organization: 'Northstar Solutions',
-        positions: [],
-        totalDuration: '2022 - 2024',
-      },
-    ]);
+    expect(experiences).toEqual([]);
     expect(
       ExperienceStructuralParser['buildWorkExperiences']([
         structuralSection({
@@ -1339,13 +1481,7 @@ describe('ExperienceStructuralParser', () => {
           type: 'duration',
         }),
       ])
-    ).toEqual([
-      {
-        organization: 'Northstar Solutions',
-        positions: [],
-        totalDuration: '2020 - 2021',
-      },
-    ]);
+    ).toEqual([]);
     expect(
       ExperienceStructuralParser['completePosition']({
         descriptionLines: [],

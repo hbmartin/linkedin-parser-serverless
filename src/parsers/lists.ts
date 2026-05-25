@@ -119,7 +119,9 @@ export class ListParser {
 
     return this.parseLanguageLines({
       hasLanguagesSection: sectionLines.hasSection,
-      lines: sectionLines.lines.map(line => line.text),
+      lines: this.mergeWrappedLanguageLines(
+        sectionLines.lines.map(line => line.text)
+      ),
     });
   }
 
@@ -187,6 +189,9 @@ export class ListParser {
   private static extractLanguageInfo(line: string): Language | null {
     // Handle specific patterns from LinkedIn PDFs
     const specificPatterns = [
+      // "Chinese (Traditional) (Limited Working)" where the language variant
+      // and proficiency are both parenthesized.
+      /^([\p{L}\s.+-]+(?:\s*\([\p{L}\s.+-]+\))?)\s*\(([^)]+)\)$/u,
       // "Português (Native or Bilingual)" or "Inglês (Professional Working)"
       /^([\p{L}\s.+-]+?)\s*\(([^)]+)\)/u,
       // "Inglês Professional Working" - without parentheses
@@ -229,6 +234,43 @@ export class ListParser {
     return null;
   }
 
+  private static mergeWrappedLanguageLines(lines: string[]): string[] {
+    const mergedLines: string[] = [];
+    let bufferedLine: string | undefined;
+
+    for (const line of lines) {
+      const normalizedLine = normalizeWhitespace(line);
+
+      if (!normalizedLine) {
+        continue;
+      }
+
+      if (bufferedLine) {
+        bufferedLine = normalizeWhitespace(`${bufferedLine} ${normalizedLine}`);
+
+        if (parenthesisBalance(bufferedLine) <= 0) {
+          mergedLines.push(bufferedLine);
+          bufferedLine = undefined;
+        }
+
+        continue;
+      }
+
+      if (parenthesisBalance(normalizedLine) > 0) {
+        bufferedLine = normalizedLine;
+        continue;
+      }
+
+      mergedLines.push(normalizedLine);
+    }
+
+    if (bufferedLine) {
+      mergedLines.push(bufferedLine);
+    }
+
+    return mergedLines;
+  }
+
   private static isLikelySkill({
     skill,
     followingLines,
@@ -262,4 +304,11 @@ function isHeaderForSection(text: string, section: ParserLineSection): boolean {
 
 function isLanguageSectionHeaderText(text: string): boolean {
   return /^languages?$/i.test(text) || isHeaderForSection(text, 'languages');
+}
+
+function parenthesisBalance(text: string): number {
+  return (
+    Array.from(text.matchAll(/\(/g)).length -
+    Array.from(text.matchAll(/\)/g)).length
+  );
 }
