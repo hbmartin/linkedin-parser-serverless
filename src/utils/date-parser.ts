@@ -40,6 +40,8 @@ const DURATION_WORDS = [
   'mos',
   'month',
   'months',
+  'jahr',
+  'jahre',
   'ano',
   'anos',
   'mes',
@@ -444,12 +446,12 @@ function extractDatePortion(text: string): DatePortion {
   // Parenthetical durations belong in durationText, not in the chrono input.
   const dateText = trimLeadingNonDateText(
     dotParts[0].replace(
-      /\(([^)]*(?:yr|year|mo|month|ano|mes|mês)[^)]*)\)/iu,
+      /\(([^)]*(?:yr|year|mo|month|jahr|ano|mes|mês)[^)]*)\)/iu,
       ''
     )
   );
   const parentheticalDuration = text.match(
-    /\(([^)]*(?:yr|year|mo|month|ano|mes|mês)[^)]*)\)/iu
+    /\(([^)]*(?:yr|year|mo|month|jahr|ano|mes|mês)[^)]*)\)/iu
   );
 
   return {

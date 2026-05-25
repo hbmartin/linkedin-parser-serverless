@@ -1,4 +1,8 @@
 import type { StructuralLine } from '../utils/structural-lines.js';
+import {
+  PROFILE_SECTION_HEADER_ENTRIES,
+  type ProfileSectionKey,
+} from '../utils/profile-section-headers.js';
 import { normalizeWhitespace, splitLines } from '../utils/text-utils.js';
 import type {
   ParsedSectionResult,
@@ -8,6 +12,7 @@ import type {
 
 export interface ExtraProfileSections {
   certifications: string[];
+  honors_awards: string[];
   volunteer_work: string[];
   projects: string[];
   publications: string[];
@@ -24,25 +29,17 @@ type SectionHeader =
       kind: 'boundary';
     };
 
-const TARGET_SECTION_HEADERS = new Map<string, ExtraSectionKey>([
-  ['certifications', 'certifications'],
-  ['licenses and certifications', 'certifications'],
-  ['licences and certifications', 'certifications'],
-  ['certificacoes', 'certifications'],
-  ['certificacoes e licencas', 'certifications'],
-  ['certificacoes e licencas', 'certifications'],
-  ['projects', 'projects'],
-  ['projetos', 'projects'],
-  ['publications', 'publications'],
-  ['volunteer experience', 'volunteer_work'],
-  ['volunteer work', 'volunteer_work'],
-  ['volunteering', 'volunteer_work'],
-  ['experiencia voluntaria', 'volunteer_work'],
-]);
+const TARGET_SECTION_HEADERS = new Map<string, ExtraSectionKey>(
+  PROFILE_SECTION_HEADER_ENTRIES.filter(
+    (entry): entry is readonly [string, ExtraSectionKey] =>
+      isExtraSectionKey(entry[1])
+  )
+);
 
 const BOUNDARY_SECTION_HEADERS = new Set([
   'contact',
   'contact info',
+  'kontakt',
   'top skills',
   'skills',
   'languages',
@@ -54,15 +51,23 @@ const BOUNDARY_SECTION_HEADERS = new Set([
   'formacao',
   'courses',
   'patents',
-  'honors awards',
-  'honors and awards',
-  'honours awards',
-  'honours and awards',
   'organizations',
   'recommendations',
   'interests',
   ...TARGET_SECTION_HEADERS.keys(),
 ]);
+
+function isExtraSectionKey(
+  section: ProfileSectionKey
+): section is ExtraSectionKey {
+  return (
+    section === 'certifications' ||
+    section === 'honors_awards' ||
+    section === 'projects' ||
+    section === 'publications' ||
+    section === 'volunteer_work'
+  );
+}
 
 export class ExtraSectionParser {
   static parseText(text: string): ExtraProfileSections {
@@ -97,6 +102,7 @@ export class ExtraSectionParser {
       const columnSections = parseSectionLines(mergedColumnLines);
 
       sections.certifications.push(...columnSections.value.certifications);
+      sections.honors_awards.push(...columnSections.value.honors_awards);
       sections.projects.push(...columnSections.value.projects);
       sections.publications.push(...columnSections.value.publications);
       sections.volunteer_work.push(...columnSections.value.volunteer_work);
@@ -119,6 +125,7 @@ export function filterMergedSectionWarnings({
 }): SectionParseWarning[] {
   const entriesByWarningSection: Partial<Record<WarningSection, string[]>> = {
     certifications: sections.certifications,
+    honors_awards: sections.honors_awards,
     projects: sections.projects,
     publications: sections.publications,
     volunteer_work: sections.volunteer_work,
@@ -257,6 +264,7 @@ function parseSectionLines(
 function createEmptySections(): ExtraProfileSections {
   return {
     certifications: [],
+    honors_awards: [],
     projects: [],
     publications: [],
     volunteer_work: [],

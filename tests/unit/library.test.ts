@@ -243,6 +243,8 @@ describe('LinkedIn PDF Parser Library', () => {
       const result = await parseLinkedInPDF(minimalText);
       expect(result.profile).toEqual({
         name: 'John Doe',
+        headline: undefined,
+        location: undefined,
         contact: {
           email: 'john.doe@example.com',
         },
@@ -252,6 +254,35 @@ describe('LinkedIn PDF Parser Library', () => {
         volunteer_work: [],
         projects: [],
         publications: [],
+        honors_awards: [],
+        summary: undefined,
+        experience_groups: [
+          {
+            company: 'Company',
+            positions: [
+              {
+                dates: {
+                  originalText: '2020-2022',
+                  start: {
+                    iso: '2020',
+                    precision: 'year',
+                    text: '2020',
+                  },
+                  end: {
+                    iso: '2022',
+                    precision: 'year',
+                    text: '2022',
+                  },
+                  kind: 'completed',
+                },
+                title: 'Developer',
+                duration: '2020-2022',
+                location: '',
+                description: '',
+              },
+            ],
+          },
+        ],
         experience: [
           {
             dates: {

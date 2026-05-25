@@ -17,6 +17,7 @@ describe('exported Zod schemas', () => {
       volunteer_work: [],
       projects: [],
       publications: [],
+      honors_awards: [],
       experience: [
         {
           title: 'Engineer',
@@ -28,6 +29,23 @@ describe('exported Zod schemas', () => {
             end: { iso: '2022', precision: 'year', text: '2022' },
             kind: 'completed',
           },
+        },
+      ],
+      experience_groups: [
+        {
+          company: 'Northstar AI',
+          positions: [
+            {
+              title: 'Engineer',
+              duration: '2020 - 2022',
+              dates: {
+                originalText: '2020 - 2022',
+                start: { iso: '2020', precision: 'year', text: '2020' },
+                end: { iso: '2022', precision: 'year', text: '2022' },
+                kind: 'completed',
+              },
+            },
+          ],
         },
       ],
       education: [],

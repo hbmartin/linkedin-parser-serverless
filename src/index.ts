@@ -11,6 +11,7 @@ import type { LayoutInfo, TextItem } from './types/structural.js';
 import type {
   Contact,
   Experience,
+  ExperienceGroup,
   LinkedInProfile,
   ParseOptions,
   ParseResult,
@@ -20,8 +21,11 @@ import type {
 
 export type {
   Contact,
+  ContactLink,
   Education,
   Experience,
+  ExperienceGroup,
+  ExperienceGroupPosition,
   Language,
   LinkedInProfile,
   MissingProfileFieldWarning,
@@ -36,8 +40,11 @@ export type {
 } from './types/profile.js';
 export {
   ContactSchema,
+  ContactLinkSchema,
   EducationSchema,
   ExperienceSchema,
+  ExperienceGroupPositionSchema,
+  ExperienceGroupSchema,
   LanguageSchema,
   LinkedInProfileSchema,
   ParseResultSchema,
@@ -136,6 +143,7 @@ export async function parseLinkedInPDF(
 
   // Use structural parser for experience if available, otherwise fallback
   let experience: Experience[];
+  let experienceGroups: ExperienceGroup[];
   if (structuralData) {
     const workExperienceResult =
       ExperienceStructuralParser.parseExperienceWithWarnings(
@@ -155,12 +163,27 @@ export async function parseLinkedInPDF(
         description: position.description,
       }))
     );
+
+    experienceGroups = workExperiences.map(workExp => ({
+      company: workExp.organization,
+      positions: workExp.positions.map(position => ({
+        ...(position.dates ? { dates: position.dates } : {}),
+        title: position.title,
+        duration: position.duration,
+        location: position.location,
+        description: position.description,
+      })),
+      ...(workExp.totalDuration
+        ? { totalDuration: workExp.totalDuration }
+        : {}),
+    }));
   } else {
     // Fallback to old parser for string inputs
     const { ExperienceParser } = await import('./parsers/experience.js');
     const experienceResult = ExperienceParser.parseWithWarnings(cleanedText);
     experience = experienceResult.value;
     sectionWarnings.push(...experienceResult.warnings);
+    experienceGroups = groupFlatExperiences(experience);
   }
 
   const structuralEducationResult = structuralLines
@@ -210,7 +233,9 @@ export async function parseLinkedInPDF(
     volunteer_work: extraSections.volunteer_work,
     projects: extraSections.projects,
     publications: extraSections.publications,
+    honors_awards: extraSections.honors_awards,
     summary: basicInfo.summary,
+    experience_groups: experienceGroups,
     experience,
     education,
   };
@@ -228,6 +253,33 @@ export async function parseLinkedInPDF(
   }
 
   return result;
+}
+
+function groupFlatExperiences(experience: Experience[]): ExperienceGroup[] {
+  const groups: ExperienceGroup[] = [];
+
+  for (const entry of experience) {
+    const currentGroup = groups.at(-1);
+    const position = {
+      ...(entry.dates ? { dates: entry.dates } : {}),
+      title: entry.title,
+      duration: entry.duration,
+      location: entry.location,
+      description: entry.description,
+    };
+
+    if (currentGroup?.company === entry.company) {
+      currentGroup.positions.push(position);
+      continue;
+    }
+
+    groups.push({
+      company: entry.company,
+      positions: [position],
+    });
+  }
+
+  return groups;
 }
 
 function filterResolvedSectionWarnings(

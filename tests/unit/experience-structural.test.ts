@@ -48,7 +48,8 @@ describe('ExperienceStructuralParser', () => {
         title: 'Principal Engineer',
         duration: 'January 2020 - March 2024',
         dates: {
-          originalText: 'January 2020 - March 2024',
+          durationText: '4 years',
+          originalText: 'January 2020 - March 2024 (4 years)',
           start: {
             iso: '2020-01',
             precision: 'month',
@@ -131,6 +132,76 @@ describe('ExperienceStructuralParser', () => {
           expect.objectContaining({
             duration: 'September 2012 - May 2018',
             title: 'Research Assistant',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('preserves company total duration and duplicate dated positions', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Berufserfahrung', y: 700, fontSize: 16 }),
+      textItem({ text: 'Wolske Wealth Management', y: 670 }),
+      textItem({ text: '6 Jahre', y: 650 }),
+      textItem({ text: 'CEO', y: 630, fontSize: 11.5 }),
+      textItem({ text: '2020 - Present (6 Jahre)', y: 610 }),
+      textItem({ text: 'Founder', y: 580, fontSize: 11.5 }),
+      textItem({ text: '2020 - Present (6 Jahre)', y: 560 }),
+    ]);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'Wolske Wealth Management',
+        totalDuration: '6 Jahre',
+        positions: [
+          expect.objectContaining({
+            duration: '2020 - Present',
+            title: 'CEO',
+            dates: expect.objectContaining({
+              durationText: '6 Jahre',
+              originalText: '2020 - Present (6 Jahre)',
+            }),
+          }),
+          expect.objectContaining({
+            duration: '2020 - Present',
+            title: 'Founder',
+          }),
+        ],
+      })
+    );
+  });
+
+  test('recognizes organizations before short domain-specific titles', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Horatius Group', y: 670 }),
+      textItem({ text: 'Managing Director', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2016 - Present (10 years)', y: 630 }),
+      textItem({ text: 'United States Marine Corps', y: 590 }),
+      textItem({ text: 'Marine', y: 570, fontSize: 11.5 }),
+      textItem({ text: 'May 2001 - September 2009 (8 years 5 months)', y: 550 }),
+      textItem({ text: 'Fund Fellow Founders (fff.vc)', y: 510 }),
+      textItem({ text: 'Angel Investor', y: 490, fontSize: 11.5 }),
+      textItem({ text: 'October 2022 - Present (3 years 8 months)', y: 470 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Horatius Group',
+      }),
+      expect.objectContaining({
+        organization: 'United States Marine Corps',
+        positions: [
+          expect.objectContaining({
+            title: 'Marine',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Fund Fellow Founders (fff.vc)',
+        positions: [
+          expect.objectContaining({
+            title: 'Angel Investor',
           }),
         ],
       }),

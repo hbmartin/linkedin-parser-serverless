@@ -1,3 +1,5 @@
+import { PROFILE_SECTION_HEADER_ENTRIES } from './profile-section-headers.js';
+
 const EXPERIENCE_SECTION_HEADER_TEXT = new Set([
   'berufserfahrung',
   'experience',
@@ -12,39 +14,11 @@ const EDUCATION_SECTION_HEADER_TEXT = new Set([
 ]);
 
 const SECTION_HEADER_TEXT = new Set([
-  'contact',
-  'contact info',
-  'top skills',
-  'skills',
-  'languages',
-  'summary',
-  ...EXPERIENCE_SECTION_HEADER_TEXT,
-  ...EDUCATION_SECTION_HEADER_TEXT,
-  'idiomas',
-  'competencias',
-  'competências',
-  'habilidades',
-  'certifications',
+  ...PROFILE_SECTION_HEADER_ENTRIES.map(([text]) => text),
   'licenses & certifications',
-  'licenses and certifications',
-  'licences and certifications',
-  'certificacoes',
-  'certificações',
-  'certificacoes e licencas',
-  'certificações e licenças',
-  'projects',
-  'projetos',
-  'publications',
-  'volunteer experience',
-  'volunteer work',
-  'volunteering',
-  'experiencia voluntaria',
-  'experiência voluntária',
   'courses',
-  'honors awards',
-  'honors and awards',
-  'honours awards',
-  'honours and awards',
+  'honors-awards',
+  'honours-awards',
   'organizations',
   'patents',
   'recommendations',
@@ -63,6 +37,7 @@ const ORGANIZATION_WORDS = new Set([
   'company',
   'consulting',
   'corp',
+  'corps',
   'corporation',
   'enterprises',
   'foundation',
@@ -73,7 +48,10 @@ const ORGANIZATION_WORDS = new Set([
   'institute',
   'labs',
   'llc',
+  'llp',
+  'lp',
   'ltd',
+  'management',
   'network',
   'organisation',
   'organization',
@@ -104,12 +82,14 @@ const POSITION_KEYWORDS = [
   'chief',
   'consultant',
   'consultor',
+  'commissioner',
   'co-founder',
   'co founder',
   'cofounder',
   'columnist',
   'coordenador',
   'coordinator',
+  'corporate finance',
   'developer',
   'desenvolvedor',
   'director',
@@ -126,9 +106,11 @@ const POSITION_KEYWORDS = [
   'gestor',
   'head of',
   'intern',
+  'investor',
   'investment team',
   'leader',
   'lead',
+  'marine',
   'manager',
   'member',
   'member of the board',
@@ -141,6 +123,11 @@ const POSITION_KEYWORDS = [
   'producer',
   'programmer',
   'project leader',
+  'quantitative research',
+  'research analyst',
+  'research assistant',
+  'research associate',
+  'research fellow',
   'researcher',
   'research scientist',
   'scientist',
@@ -149,6 +136,7 @@ const POSITION_KEYWORDS = [
   'supervisor',
   'technical lead',
   'tech lead',
+  'undergraduate research',
   'vice president',
   'vp',
   'writer',
@@ -202,6 +190,8 @@ const SINGLE_WORD_LOCATION_TEXT = new Set([
   'united states',
 ]);
 
+const PERSON_LIKE_ORGANIZATION_TEXT = new Set(['goldman sachs']);
+
 const wholeKeywordPatternCache = new Map<string, RegExp>();
 
 export function isSectionHeaderText(text: string): boolean {
@@ -241,7 +231,7 @@ export function looksLikePositionTitleText(text: string): boolean {
     lowerText.includes('working as') ||
     lowerText.includes('joined the') ||
     lowerText.includes('my role') ||
-    lowerText.includes(' to ') ||
+    (lowerText.includes(' to ') && !hasPositionKeyword) ||
     /^[a-z]/.test(normalizedText) ||
     normalizedText.includes('•') ||
     hasEllipsisText(normalizedText) ||
@@ -249,12 +239,15 @@ export function looksLikePositionTitleText(text: string): boolean {
 
   const hasAllowedParenthetical =
     !/[()]/u.test(normalizedText) ||
+    (hasPositionKeyword &&
+      hasDomainParenthetical(normalizedText) &&
+      /^[^()]+ \([\p{L}\p{M}\p{N}\s&/+.-]{2,80}\)$/u.test(normalizedText)) ||
     /^[^()]+ \((?:acquired|contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\)$/iu.test(
       normalizedText
     ) ||
     /^[^()]+ \([\p{Lu}\s]{2,30}\)$/u.test(normalizedText);
   const hasValidTitleFormat =
-    normalizedText.length > 3 &&
+    normalizedText.length >= 2 &&
     normalizedText.length < 90 &&
     hasAllowedParenthetical &&
     !normalizedText.includes('•') &&
@@ -296,6 +289,9 @@ export function looksLikeOrganizationNameText(text: string): boolean {
   }
 
   const words = organizationWords(normalizedText);
+  const isKnownPersonLikeOrganization = PERSON_LIKE_ORGANIZATION_TEXT.has(
+    normalizedText.toLowerCase()
+  );
   const hasOrganizationWord = words.some(word =>
     ORGANIZATION_WORDS.has(word.toLowerCase().replace(/[.]/g, ''))
   );
@@ -312,6 +308,7 @@ export function looksLikeOrganizationNameText(text: string): boolean {
     (hasOrganizationWord || hasConnector || hasDistinctiveBrandWord(words));
 
   return (
+    isKnownPersonLikeOrganization ||
     isAcronym ||
     isSingleBrandWord ||
     (isProperOrganizationPhrase && !looksLikePersonNameText(normalizedText))
@@ -384,6 +381,18 @@ function hasEllipsisText(text: string): boolean {
   return text.includes('...') || text.includes('…');
 }
 
+function hasDomainParenthetical(text: string): boolean {
+  const match = text.match(/\(([^()]*)\)$/u);
+  const parentheticalText = match?.[1]?.toLowerCase();
+
+  return parentheticalText
+    ? /\d/.test(parentheticalText) ||
+        /\b(?:acquired|company|deep tech|digital tech|tech)\b/u.test(
+          parentheticalText
+        )
+    : false;
+}
+
 function looksLikeDateOrDurationText(text: string): boolean {
   return (
     /\b\d{4}\s*[-–]\s*(?:\d{4}|present|current)\b/i.test(text) ||
@@ -432,6 +441,8 @@ function hasDistinctiveBrandWord(words: string[]): boolean {
 export function isLikelyLocationText(text: string): boolean {
   const normalizedText = normalizeProfileText(text);
   const lowerText = normalizedText.toLowerCase();
+  const hasOrganizationSuffix =
+    hasCommaSeparatedOrganizationSuffix(normalizedText);
 
   return (
     SINGLE_WORD_LOCATION_TEXT.has(lowerText) ||
@@ -439,7 +450,8 @@ export function isLikelyLocationText(text: string): boolean {
     /^[\p{Lu}][\p{L}\p{M}\s]+(?:Bay|Metropolitan)\s+Area$/u.test(
       normalizedText
     ) ||
-    /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}]{2}$/u.test(normalizedText) ||
+    (!hasOrganizationSuffix &&
+      /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}]{2}$/u.test(normalizedText)) ||
     looksLikeCommaSeparatedLocationText(normalizedText)
   );
 }
@@ -477,11 +489,7 @@ function includesWholeKeyword(text: string, keyword: string): boolean {
 
 function looksLikeCommaSeparatedLocationText(text: string): boolean {
   const parts = text.split(',').map(part => part.trim());
-  const hasOrganizationSuffix = parts
-    .slice(1)
-    .some(part =>
-      ORGANIZATION_WORDS.has(part.toLowerCase().replace(/[.]/g, ''))
-    );
+  const hasOrganizationSuffix = hasCommaSeparatedOrganizationSuffix(text);
 
   return (
     !hasOrganizationSuffix &&
@@ -493,6 +501,16 @@ function looksLikeCommaSeparatedLocationText(text: string): boolean {
         looksLikeLocationNamePart(part)
     )
   );
+}
+
+function hasCommaSeparatedOrganizationSuffix(text: string): boolean {
+  return text
+    .split(',')
+    .map(part => part.trim())
+    .slice(1)
+    .some(part =>
+      ORGANIZATION_WORDS.has(part.toLowerCase().replace(/[.]/g, ''))
+    );
 }
 
 function looksLikeLocationNamePart(text: string): boolean {

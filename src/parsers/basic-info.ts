@@ -1,6 +1,5 @@
 import { REGEX_PATTERNS } from '../utils/regex-patterns.js';
 import {
-  extractFirstMatch,
   extractSection,
   splitLines,
   normalizeWhitespace,
@@ -13,6 +12,8 @@ import {
   looksLikePositionTitleText,
 } from '../utils/profile-text.js';
 import type {
+  Contact as ProfileContact,
+  ContactLink,
   ParsedSectionResult,
   SectionParseWarning,
 } from '../types/profile.js';
@@ -24,12 +25,7 @@ import {
 import { extractStructuralSectionLines } from '../utils/structural-sections.js';
 import type { StructuralLine } from '../utils/structural-lines.js';
 
-export interface Contact {
-  email?: string;
-  phone?: string;
-  linkedin_url?: string;
-  location?: string;
-}
+export type Contact = ProfileContact;
 
 export interface BasicInfo {
   name?: string;
@@ -69,6 +65,12 @@ const LOWERCASE_NAME_CONNECTORS = new Set([
   'y',
 ]);
 
+interface ContactLinkDraft {
+  label?: string;
+  parts: string[];
+  rawLines: string[];
+}
+
 export class BasicInfoParser {
   static parse(text: string): BasicInfo {
     return this.parseWithWarnings(text).value;
@@ -100,7 +102,7 @@ export class BasicInfoParser {
       summary:
         this.extractStructuralSummary(structuralLines) ??
         this.extractSummary(text),
-      contact: this.extractContact(text),
+      contact: this.extractStructuralContact(text, structuralLines),
     };
 
     return {
@@ -237,7 +239,9 @@ export class BasicInfoParser {
     if (summarySection) {
       const summary = normalizeWhitespace(summarySection)
         .split('\n')
-        .filter(line => line.trim().length > 10)
+        .filter(
+          line => line.trim().length > 10 && !isPageFooterLine(line.trim())
+        )
         .join(' ');
 
       return summary || undefined;
@@ -273,19 +277,40 @@ export class BasicInfoParser {
   private static extractStructuralSummary(
     structuralLines: StructuralLine[]
   ): string | undefined {
-    const summaryLines = extractStructuralSectionLines({
-      section: 'summary',
-      structuralLines,
-    }).lines;
+    const mainLines = structuralLines.filter(
+      line => line.column === 'right' || line.column === 'single'
+    );
+    const summaryStartIndex = mainLines.findIndex(line => {
+      const header = getParserLineSectionHeader(line.text);
 
-    if (summaryLines.length === 0) {
+      return header?.kind === 'target' && header.section === 'summary';
+    });
+
+    if (summaryStartIndex === -1) {
+      return undefined;
+    }
+
+    const summaryLines = mainLines.slice(summaryStartIndex + 1);
+    const nextSectionIndex = summaryLines.findIndex(line => {
+      const header = getParserLineSectionHeader(line.text);
+
+      return header !== undefined && header.section !== 'summary';
+    });
+    const sectionLines =
+      nextSectionIndex === -1
+        ? summaryLines
+        : summaryLines.slice(0, nextSectionIndex);
+
+    if (sectionLines.length === 0) {
       return undefined;
     }
 
     const summary = normalizeWhitespace(
-      summaryLines
+      sectionLines
         .map(line => line.text)
-        .filter(line => line.trim().length > 10)
+        .filter(
+          line => line.trim().length > 10 && !isPageFooterLine(line.trim())
+        )
         .join(' ')
     );
 
@@ -293,61 +318,240 @@ export class BasicInfoParser {
   }
 
   private static extractContact(text: string): Contact {
+    const allLines = splitLines(text).map(line => normalizeWhitespace(line));
+    const textContactLines = this.extractTextContactLines(allLines);
+    const searchableLines =
+      textContactLines.length > 0
+        ? textContactLines
+        : allLines.slice(0, Math.min(50, allLines.length));
+
+    return this.extractContactFromLines({
+      fallbackText: text,
+      lines: searchableLines,
+    });
+  }
+
+  private static extractStructuralContact(
+    text: string,
+    structuralLines: StructuralLine[]
+  ): Contact {
+    const sectionLines = extractStructuralSectionLines({
+      section: 'contact',
+      structuralLines,
+    }).lines.map(line => line.text);
+
+    if (sectionLines.length === 0) {
+      return this.extractContact(text);
+    }
+
+    return this.extractContactFromLines({
+      fallbackText: text,
+      lines: sectionLines,
+    });
+  }
+
+  private static extractContactFromLines({
+    fallbackText,
+    lines,
+  }: {
+    fallbackText: string;
+    lines: string[];
+  }): Contact {
     const contact: Contact = {};
-    const email = this.extractEmail(text);
+    const contactText = lines.join('\n');
+    const email =
+      this.extractEmail(contactText) ?? this.extractEmail(fallbackText);
+    const links = this.extractContactLinks(lines);
+    const linkedInUrl =
+      links.find(link => /linkedin\.com\/in\//i.test(link.url))?.url ??
+      this.extractLinkedInUrlFromLines(lines);
+    const phone = this.extractPhoneFromLines(lines);
 
     if (email) {
       contact.email = email;
     }
 
-    const linkedInUrl = this.extractLinkedInUrl(text);
-
     if (linkedInUrl) {
       contact.linkedin_url = linkedInUrl;
     }
 
-    const phoneMatch = extractFirstMatch(text, REGEX_PATTERNS.PHONE);
-    if (phoneMatch && phoneMatch.replace(/\D/g, '').length >= 10) {
-      contact.phone = phoneMatch;
+    if (links.length > 0) {
+      contact.links = links;
+    }
+
+    if (phone) {
+      contact.phone = phone;
     }
 
     return contact;
   }
 
-  private static extractLinkedInUrl(text: string): string | undefined {
-    const lines = splitLines(text);
+  private static extractTextContactLines(lines: string[]): string[] {
+    const parserLines = createTextParserLines(lines.join('\n'));
 
-    for (let i = 0; i < lines.length; i++) {
-      const linkedinMatch = lines[i].match(
-        /(?:www\.)?linkedin\.com\/in\/([a-zA-Z0-9-]+)/i
-      );
+    return parserLines
+      .filter(line => line.section === 'contact')
+      .map(line => line.text)
+      .filter(line => line.length > 0);
+  }
 
-      if (!linkedinMatch) {
+  private static extractContactLinks(lines: string[]): ContactLink[] {
+    const links: ContactLink[] = [];
+    let draft: ContactLinkDraft | undefined;
+
+    for (const rawLine of lines) {
+      const line = normalizeWhitespace(rawLine);
+
+      if (!line || this.isContactNonLinkLine(line)) {
         continue;
       }
 
-      const usernameParts = [linkedinMatch[1]];
+      const label = this.extractContactLinkLabel(line);
+      const lineWithoutLabel = this.removeContactLinkLabel(line);
+      const startsLink = this.looksLikeContactLinkStart(lineWithoutLabel);
+      const continuesLink =
+        draft !== undefined &&
+        this.looksLikeContactLinkContinuation(lineWithoutLabel);
 
-      if (linkedinMatch[1].endsWith('-')) {
-        for (const nextLine of lines.slice(i + 1, i + 4)) {
-          const continuation = nextLine
-            .replace(/\s*\(LinkedIn\)\s*$/i, '')
-            .trim();
-
-          if (/^[a-zA-Z0-9-]+$/.test(continuation)) {
-            usernameParts.push(continuation);
-            break;
-          }
-        }
+      if (!draft && !startsLink) {
+        continue;
       }
 
-      return `https://linkedin.com/in/${usernameParts.join('')}`;
+      if (!draft) {
+        draft = {
+          label,
+          parts: lineWithoutLabel ? [lineWithoutLabel] : [],
+          rawLines: [line],
+        };
+      } else if (continuesLink || label) {
+        if (lineWithoutLabel) {
+          draft.parts.push(lineWithoutLabel);
+        }
+        draft.rawLines.push(line);
+        draft.label = draft.label ?? label;
+      } else {
+        this.pushContactLink(links, draft);
+        draft = startsLink
+          ? {
+              label,
+              parts: lineWithoutLabel ? [lineWithoutLabel] : [],
+              rawLines: [line],
+            }
+          : undefined;
+      }
+
+      if (draft && label) {
+        this.pushContactLink(links, draft);
+        draft = undefined;
+      }
     }
 
-    const fallbackMatch = text.match(REGEX_PATTERNS.LINKEDIN);
-    return fallbackMatch
-      ? `https://linkedin.com/in/${fallbackMatch[1]}`
-      : undefined;
+    if (draft) {
+      this.pushContactLink(links, draft);
+    }
+
+    return dedupeContactLinks(links);
+  }
+
+  private static pushContactLink(
+    links: ContactLink[],
+    draft: ContactLinkDraft
+  ): void {
+    const rawUrl = joinContactLinkParts(draft.parts);
+    const url = normalizeContactUrl(rawUrl);
+
+    if (!url) {
+      return;
+    }
+
+    links.push({
+      ...(draft.label ? { label: draft.label } : {}),
+      rawText: draft.rawLines.join(' '),
+      url,
+    });
+  }
+
+  private static extractLinkedInUrlFromLines(
+    lines: string[]
+  ): string | undefined {
+    return this.extractContactLinks(lines).find(link =>
+      /linkedin\.com\/in\//i.test(link.url)
+    )?.url;
+  }
+
+  private static extractPhoneFromLines(lines: string[]): string | undefined {
+    for (const line of lines) {
+      const normalizedLine = normalizeWhitespace(line);
+
+      if (!this.isPhoneSearchLine(normalizedLine)) {
+        continue;
+      }
+
+      const phoneMatch =
+        normalizedLine.match(
+          /(?:\+\d{1,3}[\s.-]*)?(?:\(?\d{2,3}\)?[\s.-]*)?\d{3,5}[\s.-]?\d{4}/
+        )?.[0] ?? normalizedLine.match(REGEX_PATTERNS.PHONE)?.[0];
+
+      if (phoneMatch && phoneMatch.replace(/\D/g, '').length >= 10) {
+        return phoneMatch;
+      }
+    }
+
+    return undefined;
+  }
+
+  private static isContactNonLinkLine(line: string): boolean {
+    return (
+      /^[A-Z0-9._%+-]+\s*@\s*[A-Z0-9.-]+\.[A-Z]{2,63}$/i.test(line) ||
+      this.isPhoneSearchLine(line)
+    );
+  }
+
+  private static extractContactLinkLabel(line: string): string | undefined {
+    const match = line.match(/\((LinkedIn|Company|Other|Blog)\)\s*$/i);
+
+    if (!match) {
+      return undefined;
+    }
+
+    return match[1];
+  }
+
+  private static removeContactLinkLabel(line: string): string {
+    return normalizeWhitespace(
+      line.replace(/\s*\((?:LinkedIn|Company|Other|Blog)\)\s*$/i, '')
+    );
+  }
+
+  private static looksLikeContactLinkStart(line: string): boolean {
+    return (
+      /(?:^|[\s/])(?:www\.)?[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+(?:[/:/?#]|$)/i.test(
+        line
+      ) || /linkedin\.com\/in\//i.test(line)
+    );
+  }
+
+  private static looksLikeContactLinkContinuation(line: string): boolean {
+    return (
+      line.length > 0 &&
+      line.length <= 120 &&
+      !isSectionHeaderText(line) &&
+      !/^[A-Z0-9._%+-]+\s*@\s*[A-Z0-9.-]+\.[A-Z]{2,63}$/i.test(line) &&
+      !this.isPhoneSearchLine(line) &&
+      /^[A-Za-z0-9@_~./?#=&%+-]+$/u.test(line)
+    );
+  }
+
+  private static isPhoneSearchLine(line: string): boolean {
+    return (
+      line.length <= 40 &&
+      !line.includes('/') &&
+      !/(?:^|\s)www\./i.test(line) &&
+      !/https?:\/\//i.test(line) &&
+      !/[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(line) &&
+      (/\b(?:mobile|phone|tel)\b/i.test(line) ||
+        /^[+\d\s().-]+$/.test(line.trim()))
+    );
   }
 
   private static extractEmail(text: string): string | undefined {
@@ -472,6 +676,68 @@ function findBasicInfoHeaderEndIndex(
   }
 
   return parserLines.length;
+}
+
+function joinContactLinkParts(parts: string[]): string {
+  return parts.reduce((combined, part) => {
+    const normalizedPart = part.trim();
+
+    if (!combined) {
+      return normalizedPart;
+    }
+
+    if (
+      combined.endsWith('-') ||
+      combined.endsWith('/') ||
+      normalizedPart.startsWith('/') ||
+      normalizedPart.startsWith('?') ||
+      normalizedPart.startsWith('#')
+    ) {
+      return `${combined}${normalizedPart}`;
+    }
+
+    return `${combined}/${normalizedPart}`;
+  }, '');
+}
+
+function normalizeContactUrl(rawUrl: string): string | undefined {
+  const compactUrl = rawUrl.replace(/\s+/g, '').replace(/^\.+|\.+$/g, '');
+
+  if (!compactUrl || !/[A-Za-z0-9]\.[A-Za-z]{2,}/.test(compactUrl)) {
+    return undefined;
+  }
+
+  const linkedInMatch = compactUrl.match(
+    /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([a-zA-Z0-9-]+)/
+  );
+
+  if (linkedInMatch) {
+    return `https://linkedin.com/in/${linkedInMatch[1]}`;
+  }
+
+  return /^https?:\/\//i.test(compactUrl)
+    ? compactUrl
+    : `https://${compactUrl}`;
+}
+
+function dedupeContactLinks(links: ContactLink[]): ContactLink[] {
+  const seenUrls = new Set<string>();
+  const dedupedLinks: ContactLink[] = [];
+
+  for (const link of links) {
+    if (seenUrls.has(link.url)) {
+      continue;
+    }
+
+    seenUrls.add(link.url);
+    dedupedLinks.push(link);
+  }
+
+  return dedupedLinks;
+}
+
+function isPageFooterLine(line: string): boolean {
+  return /^page\s+\d+\s+of\s+\d+$/i.test(line.trim());
 }
 
 function findBasicInfoWarningHeaderEndIndex(

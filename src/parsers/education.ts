@@ -48,7 +48,7 @@ export class EducationParser {
   private static readonly STRUCTURAL_DEGREE_WORD_CONNECTOR_PATTERN: RegExp =
     /\b(?:and|for|in|of)\s*$/iu;
   private static readonly STRUCTURAL_ACADEMIC_FRAGMENT_PATTERN: RegExp =
-    /\b(?:administration|analytics|arts|business|communications|data|design|economics|education|engineering|finance|law|management|marketing|mathematics|policy|product|science|sciences|software|systems|technician|technology)\b/iu;
+    /\b(?:administration|analytics|arts|baccalaureate|business|communications|data|design|economics|education|engineering|finance|law|management|marketing|mathematics|policy|product|program|science|sciences|software|studies|systems|technician|technology)\b/iu;
 
   static parse(text: string): Education[] {
     return this.parseWithWarnings(text).value;
@@ -245,7 +245,7 @@ export class EducationParser {
     return (
       line.length > 3 &&
       line.length < 80 &&
-      /bachelor|master|phd|mba|associate|diploma|certificate|engineering|science|business|bacharelado|bacharel|licenciatura|mestrado|mestre|doutorado|doutor|p[oó]s[-\s]?gradua[cç][aã]o|tecn[oó]logo|tecnologia|certifica[cç][aã]o/.test(
+      /\b(?:a\.?b\.?|b\.?a\.?|b\.?s\.?|s\.?m\.?|bachelor|master|phd|mba|associate|diploma|certificate|economics|engineering|executive program|science|business|baccalaureate|bacharelado|bacharel|licenciatura|mestrado|mestre|doutorado|doutor|p[oó]s[-\s]?gradua[cç][aã]o|tecn[oó]logo|tecnologia|certifica[cç][aã]o)\b/.test(
         lower
       ) &&
       !/^\s*[()·-]?\s*(19|20)\d{2}/.test(line)
@@ -266,6 +266,8 @@ export class EducationParser {
   private static extractYearFromLine(line: string): string {
     // Extract year patterns from lines that might contain both degree and year info
     const yearPatterns = [
+      /\((?:(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+)?\d{4}\s*-\s*(?:(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+)?\d{4}\)/i,
+      /\((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\)/i,
       /\(\d{4}\s*-\s*\d{4}\)/, // (2017 - 2018)
       /·\s*\(\d{4}\s*-\s*\d{4}\)/, // · (2002 - 2005)
       /\b\d{4}\s*-\s*\d{4}\b/, // 2017 - 2018
@@ -286,6 +288,14 @@ export class EducationParser {
   private static removeYearFromDegree(line: string): string {
     return normalizeWhitespace(
       line
+        .replace(
+          /\s*[·-]?\s*\((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:19|20)\d{2}\s*-\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:19|20)\d{2}\)\s*/gi,
+          ' '
+        )
+        .replace(
+          /\s*[·-]?\s*\((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:19|20)\d{2}\)\s*/gi,
+          ' '
+        )
         .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\)\s*/g, ' ')
         .replace(/\s*[·-]?\s*(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\s*/g, ' ')
         .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\)\s*/g, ' ')
@@ -356,6 +366,20 @@ export class EducationParser {
     const degree = year ? this.removeYearFromDegree(line) : line;
     const existingDegree = education.degree || undefined;
 
+    if (
+      !existingDegree &&
+      !year &&
+      this.looksLikeInstitutionContinuation({
+        institution: education.institution,
+        line,
+      })
+    ) {
+      education.institution = normalizeWhitespace(
+        `${education.institution ?? ''} ${line}`
+      );
+      return;
+    }
+
     if (year) {
       education.year = year;
     }
@@ -378,11 +402,20 @@ export class EducationParser {
     }
 
     if (year) {
+      if (!existingDegree && degree) {
+        education.degree = degree;
+      }
+
       return;
     }
 
     if (this.looksLikeYear(line)) {
       education.year = line;
+      return;
+    }
+
+    if (!existingDegree && this.looksLikeDegreeDetail(line)) {
+      education.degree = degree;
       return;
     }
 
@@ -423,6 +456,44 @@ export class EducationParser {
       degreePart,
       existingDegree,
     });
+  }
+
+  private static looksLikeInstitutionContinuation({
+    institution,
+    line,
+  }: {
+    institution?: string;
+    line: string;
+  }): boolean {
+    const normalizedInstitution = institution?.trim() ?? '';
+    const normalizedLine = line.trim();
+    const hasInstitutionBoundary = /[-,/&]\s*$/u.test(normalizedInstitution);
+    const hasInstitutionConnector = /\b(?:and|at|for|in|of|the)\s*$/iu.test(
+      normalizedInstitution
+    );
+    const hasSchoolOfContinuation =
+      /\b(?:school|college)\s+of(?:\s+\p{Lu}[\p{L}\p{M}]*)?$/iu.test(
+        normalizedInstitution
+      ) && /^[\p{Lu}][\p{L}\p{M}]+$/u.test(normalizedLine);
+
+    return (
+      normalizedInstitution.length > 0 &&
+      normalizedLine.length > 1 &&
+      normalizedLine.length < 50 &&
+      !this.looksLikeYear(normalizedLine) &&
+      !this.looksLikeLocation(normalizedLine) &&
+      (hasSchoolOfContinuation ||
+        (!this.looksLikeDegree(normalizedLine) &&
+          (hasInstitutionBoundary || hasInstitutionConnector)))
+    );
+  }
+
+  private static looksLikeDegreeDetail(line: string): boolean {
+    return (
+      this.looksLikeDegree(line) ||
+      /^(?:A\.?B\.?|B\.?A\.?|B\.?S\.?|S\.?M\.?)(?:\b|,)/iu.test(line) ||
+      this.looksLikeShortAcademicFragment(line)
+    );
   }
 
   private static looksLikeStructuralDegreeContinuation({

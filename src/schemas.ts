@@ -1,8 +1,15 @@
 import { z } from 'zod';
 
+export const ContactLinkSchema = z.object({
+  label: z.string().optional(),
+  rawText: z.string(),
+  url: z.string(),
+});
+
 export const ContactSchema = z.object({
   email: z.string().optional(),
   linkedin_url: z.string().optional(),
+  links: z.array(ContactLinkSchema).optional(),
   location: z.string().optional(),
   phone: z.string().optional(),
 });
@@ -48,6 +55,16 @@ export const ExperienceSchema = z.object({
   title: z.string(),
 });
 
+export const ExperienceGroupPositionSchema = ExperienceSchema.omit({
+  company: true,
+});
+
+export const ExperienceGroupSchema = z.object({
+  company: z.string(),
+  positions: z.array(ExperienceGroupPositionSchema),
+  totalDuration: z.string().optional(),
+});
+
 export const EducationSchema = z.object({
   dates: ParsedDateRangeSchema.optional(),
   degree: z.string(),
@@ -62,7 +79,9 @@ export const LinkedInProfileSchema = z.object({
   contact: ContactSchema,
   education: z.array(EducationSchema),
   experience: z.array(ExperienceSchema),
+  experience_groups: z.array(ExperienceGroupSchema),
   headline: z.string().optional(),
+  honors_awards: z.array(z.string()),
   languages: z.array(LanguageSchema),
   location: z.string().optional(),
   name: z.string().optional(),
@@ -95,6 +114,7 @@ const SectionParseWarningSchema = z.object({
     'volunteer_work',
     'projects',
     'publications',
+    'honors_awards',
     'experience',
     'education',
   ]),

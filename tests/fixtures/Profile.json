@@ -5,7 +5,14 @@
     "location": "Los Angeles, California, United States",
     "contact": {
       "email": "harold.martin@gmail.com",
-      "linkedin_url": "https://linkedin.com/in/harold-martin-98526971"
+      "linkedin_url": "https://linkedin.com/in/harold-martin-98526971",
+      "links": [
+        {
+          "label": "LinkedIn",
+          "rawText": "www.linkedin.com/in/harold- martin-98526971 (LinkedIn)",
+          "url": "https://linkedin.com/in/harold-martin-98526971"
+        }
+      ]
     },
     "top_skills": [
       "Python",
@@ -21,10 +28,266 @@
     "volunteer_work": [],
     "projects": [],
     "publications": [],
+    "honors_awards": [],
+    "experience_groups": [
+      {
+        "company": "SVRN",
+        "positions": [
+          {
+            "dates": {
+              "durationText": "7 months",
+              "originalText": "November 2025 - Present (7 months)",
+              "start": {
+                "iso": "2025-11",
+                "precision": "month",
+                "text": "November 2025"
+              },
+              "kind": "current"
+            },
+            "title": "Chief Technology Officer",
+            "duration": "November 2025 - Present",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "company": "Self-employed",
+        "positions": [
+          {
+            "dates": {
+              "durationText": "2 years",
+              "originalText": "January 2024 - December 2025 (2 years)",
+              "start": {
+                "iso": "2024-01",
+                "precision": "month",
+                "text": "January 2024"
+              },
+              "end": {
+                "iso": "2025-12",
+                "precision": "month",
+                "text": "December 2025"
+              },
+              "kind": "completed"
+            },
+            "title": "Mobile and AI Consultant",
+            "duration": "January 2024 - December 2025",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "company": "Jump",
+        "positions": [
+          {
+            "dates": {
+              "durationText": "1 year",
+              "originalText": "December 2022 - November 2023 (1 year)",
+              "start": {
+                "iso": "2022-12",
+                "precision": "month",
+                "text": "December 2022"
+              },
+              "end": {
+                "iso": "2023-11",
+                "precision": "month",
+                "text": "November 2023"
+              },
+              "kind": "completed"
+            },
+            "title": "Mobile Lead",
+            "duration": "December 2022 - November 2023",
+            "location": "Los Angeles, California, United States",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "company": "AllTrails",
+        "positions": [
+          {
+            "dates": {
+              "durationText": "1 year 2 months",
+              "originalText": "November 2021 - December 2022 (1 year 2 months)",
+              "start": {
+                "iso": "2021-11",
+                "precision": "month",
+                "text": "November 2021"
+              },
+              "end": {
+                "iso": "2022-12",
+                "precision": "month",
+                "text": "December 2022"
+              },
+              "kind": "completed"
+            },
+            "title": "Senior Android Engineer",
+            "duration": "November 2021 - December 2022",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "company": "Tinder, Inc.",
+        "positions": [
+          {
+            "dates": {
+              "durationText": "4 years 5 months",
+              "originalText": "July 2017 - November 2021 (4 years 5 months)",
+              "start": {
+                "iso": "2017-07",
+                "precision": "month",
+                "text": "July 2017"
+              },
+              "end": {
+                "iso": "2021-11",
+                "precision": "month",
+                "text": "November 2021"
+              },
+              "kind": "completed"
+            },
+            "title": "Senior Android Engineer",
+            "duration": "July 2017 - November 2021",
+            "location": "Greater Los Angeles Area",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "company": "WikiRealty",
+        "positions": [
+          {
+            "dates": {
+              "durationText": "1 year 1 month",
+              "originalText": "January 2015 - January 2016 (1 year 1 month)",
+              "start": {
+                "iso": "2015-01",
+                "precision": "month",
+                "text": "January 2015"
+              },
+              "end": {
+                "iso": "2016-01",
+                "precision": "month",
+                "text": "January 2016"
+              },
+              "kind": "completed"
+            },
+            "title": "Lead Engineer",
+            "duration": "January 2015 - January 2016",
+            "location": "Santa Monica, CA",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "company": "Whisper",
+        "positions": [
+          {
+            "dates": {
+              "durationText": "9 months",
+              "originalText": "May 2014 - January 2015 (9 months)",
+              "start": {
+                "iso": "2014-05",
+                "precision": "month",
+                "text": "May 2014"
+              },
+              "end": {
+                "iso": "2015-01",
+                "precision": "month",
+                "text": "January 2015"
+              },
+              "kind": "completed"
+            },
+            "title": "Technical Manager",
+            "duration": "May 2014 - January 2015",
+            "location": "Venice, CA",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "company": "OpenX",
+        "positions": [
+          {
+            "dates": {
+              "durationText": "2 years",
+              "originalText": "June 2012 - May 2014 (2 years)",
+              "start": {
+                "iso": "2012-06",
+                "precision": "month",
+                "text": "June 2012"
+              },
+              "end": {
+                "iso": "2014-05",
+                "precision": "month",
+                "text": "May 2014"
+              },
+              "kind": "completed"
+            },
+            "title": "Software Engineer",
+            "duration": "June 2012 - May 2014",
+            "location": "Pasadena, CA",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "company": "California Institute of Technology",
+        "positions": [
+          {
+            "dates": {
+              "durationText": "4 months",
+              "originalText": "June 2011 - September 2011 (4 months)",
+              "start": {
+                "iso": "2011-06",
+                "precision": "month",
+                "text": "June 2011"
+              },
+              "end": {
+                "iso": "2011-09",
+                "precision": "month",
+                "text": "September 2011"
+              },
+              "kind": "completed"
+            },
+            "title": "Undergraduate Researcher",
+            "duration": "June 2011 - September 2011",
+            "location": "Pasadena, CA",
+            "description": "Designed an ARM microprocessor based self-configuring controller for mobile experiments. Selected computing architecture, constructed electronics, and programmed a/d interfaces. Performed literature review of available algorithms, optimized and implemented for chosen platform. Created friendly device interface for real time monitoring and reconfiguring. Analyzed performance results."
+          }
+        ]
+      },
+      {
+        "company": "Intel Corporation",
+        "positions": [
+          {
+            "dates": {
+              "durationText": "4 months",
+              "originalText": "June 2007 - September 2007 (4 months)",
+              "start": {
+                "iso": "2007-06",
+                "precision": "month",
+                "text": "June 2007"
+              },
+              "end": {
+                "iso": "2007-09",
+                "precision": "month",
+                "text": "September 2007"
+              },
+              "kind": "completed"
+            },
+            "title": "Platform Engineer Intern",
+            "duration": "June 2007 - September 2007",
+            "location": "Dupont, WA",
+            "description": ""
+          }
+        ]
+      }
+    ],
     "experience": [
       {
         "dates": {
-          "originalText": "November 2025 - Present",
+          "durationText": "7 months",
+          "originalText": "November 2025 - Present (7 months)",
           "start": {
             "iso": "2025-11",
             "precision": "month",
@@ -39,7 +302,8 @@
       },
       {
         "dates": {
-          "originalText": "January 2024 - December 2025",
+          "durationText": "2 years",
+          "originalText": "January 2024 - December 2025 (2 years)",
           "start": {
             "iso": "2024-01",
             "precision": "month",
@@ -59,7 +323,8 @@
       },
       {
         "dates": {
-          "originalText": "December 2022 - November 2023",
+          "durationText": "1 year",
+          "originalText": "December 2022 - November 2023 (1 year)",
           "start": {
             "iso": "2022-12",
             "precision": "month",
@@ -80,7 +345,8 @@
       },
       {
         "dates": {
-          "originalText": "November 2021 - December 2022",
+          "durationText": "1 year 2 months",
+          "originalText": "November 2021 - December 2022 (1 year 2 months)",
           "start": {
             "iso": "2021-11",
             "precision": "month",
@@ -100,7 +366,8 @@
       },
       {
         "dates": {
-          "originalText": "July 2017 - November 2021",
+          "durationText": "4 years 5 months",
+          "originalText": "July 2017 - November 2021 (4 years 5 months)",
           "start": {
             "iso": "2017-07",
             "precision": "month",
@@ -121,7 +388,8 @@
       },
       {
         "dates": {
-          "originalText": "January 2015 - January 2016",
+          "durationText": "1 year 1 month",
+          "originalText": "January 2015 - January 2016 (1 year 1 month)",
           "start": {
             "iso": "2015-01",
             "precision": "month",
@@ -142,7 +410,8 @@
       },
       {
         "dates": {
-          "originalText": "May 2014 - January 2015",
+          "durationText": "9 months",
+          "originalText": "May 2014 - January 2015 (9 months)",
           "start": {
             "iso": "2014-05",
             "precision": "month",
@@ -163,7 +432,8 @@
       },
       {
         "dates": {
-          "originalText": "June 2012 - May 2014",
+          "durationText": "2 years",
+          "originalText": "June 2012 - May 2014 (2 years)",
           "start": {
             "iso": "2012-06",
             "precision": "month",
@@ -184,7 +454,8 @@
       },
       {
         "dates": {
-          "originalText": "June 2011 - September 2011",
+          "durationText": "4 months",
+          "originalText": "June 2011 - September 2011 (4 months)",
           "start": {
             "iso": "2011-06",
             "precision": "month",
@@ -205,7 +476,8 @@
       },
       {
         "dates": {
-          "originalText": "June 2007 - September 2007",
+          "durationText": "4 months",
+          "originalText": "June 2007 - September 2007 (4 months)",
           "start": {
             "iso": "2007-06",
             "precision": "month",
