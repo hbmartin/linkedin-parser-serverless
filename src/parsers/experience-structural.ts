@@ -52,6 +52,8 @@ export class ExperienceStructuralParser {
       'inc',
       'labs',
       'llc',
+      'llp',
+      'lp',
       'ltd',
       'partners',
       'solutions',
@@ -103,17 +105,9 @@ export class ExperienceStructuralParser {
             textItems: textItems.filter(item => item.x >= 150),
           })
         : initialStructuralLines;
-    let relevantLines = structuralLines.filter(line => {
-      if (line.column === 'right') {
-        return true;
-      }
-
-      if (line.column !== 'single') {
-        return false;
-      }
-
-      return true;
-    });
+    let relevantLines = structuralLines.filter(
+      line => line.column === 'right' || line.column === 'single'
+    );
 
     if (experienceStartY !== undefined && experienceEndY !== undefined) {
       relevantLines = relevantLines.filter(
@@ -277,6 +271,10 @@ export class ExperienceStructuralParser {
           lineTexts
         );
       case 'seeking_dates':
+        if (this.looksLikeOrganizationBeforePosition(text, index, lineTexts)) {
+          return 'organization';
+        }
+
         if (this.looksLikeDuration(text)) {
           return 'duration';
         }
@@ -311,6 +309,10 @@ export class ExperienceStructuralParser {
           return 'other';
         }
 
+        if (this.looksLikeOrganizationBeforePosition(text, index, lineTexts)) {
+          return 'organization';
+        }
+
         if (
           this.looksLikeOrganization(
             text,
@@ -318,7 +320,8 @@ export class ExperienceStructuralParser {
             index,
             lineTexts,
             { allowPersonLikeName: true }
-          )
+          ) &&
+          this.hasPositionBeforeNextDuration(index, lineTexts)
         ) {
           return 'organization';
         }
@@ -341,10 +344,43 @@ export class ExperienceStructuralParser {
         }
 
         if (
-          this.looksLikePosition(text) &&
+          this.looksLikeDescriptionLine(
+            text,
+            lineTexts[index - 1] ?? undefined
+          ) &&
+          (!this.hasDurationWithinNextLines(index, lineTexts) ||
+            text.length > this.MIN_DESCRIPTION_LINE_LENGTH)
+        ) {
+          return 'description';
+        }
+
+        if (
+          (this.looksLikePosition(text) ||
+            this.looksLikeLoosePositionTitle(text, index, lineTexts)) &&
           this.hasDurationWithinNextLines(index, lineTexts)
         ) {
           return 'position';
+        }
+
+        if (
+          this.looksLikeOrganization(
+            text,
+            line.fontSize ?? 0,
+            index,
+            lineTexts,
+            { allowPersonLikeName: true }
+          )
+        ) {
+          return 'organization';
+        }
+
+        if (
+          this.looksLikeSentenceEndingDescriptionContinuationLine(
+            text,
+            lineTexts[index - 1] ?? undefined
+          )
+        ) {
+          return 'description';
         }
 
         if (
@@ -421,7 +457,14 @@ export class ExperienceStructuralParser {
     options: { allowPersonLikeName: boolean } = { allowPersonLikeName: false }
   ): boolean {
     const normalizedLine = line.trim();
+    const isKnownLowercaseOrganization = /^(?:self-employed)$/i.test(
+      normalizedLine
+    );
+    const isLowerCamelOrganization =
+      this.looksLikeLowerCamelOrganization(normalizedLine);
     const hasVisualOrganizationCue =
+      isKnownLowercaseOrganization ||
+      isLowerCamelOrganization ||
       /\bthan\b/i.test(normalizedLine) ||
       /[&–]/u.test(normalizedLine) ||
       /\b[A-Z]{2,}\b/.test(normalizedLine);
@@ -431,7 +474,9 @@ export class ExperienceStructuralParser {
       /^[-*•]/u.test(normalizedLine) ||
       (/[.?]$/.test(normalizedLine) &&
         !/\b(?:co|corp|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
-      /^[a-z]/.test(normalizedLine) ||
+      (/^[a-z]/.test(normalizedLine) &&
+        !isKnownLowercaseOrganization &&
+        !isLowerCamelOrganization) ||
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikeLocation(normalizedLine) ||
       this.looksLikePosition(normalizedLine) ||
@@ -454,6 +499,8 @@ export class ExperienceStructuralParser {
 
     const hasOrganizationShape =
       looksLikeOrganizationNameText(normalizedLine) ||
+      isKnownLowercaseOrganization ||
+      isLowerCamelOrganization ||
       ((options.allowPersonLikeName || hasVisualOrganizationCue) &&
         this.looksLikeVisualOrganizationHeaderText(normalizedLine));
 
@@ -492,6 +539,7 @@ export class ExperienceStructuralParser {
           /^(?:a|an|and|at|by|for|in|of|on|or|than|the|to|with)$/i.test(word) ||
           /^[-–]$/u.test(word) ||
           /^\([\p{Lu}0-9&.'+!–-]+\)$/u.test(word) ||
+          /^\([a-z0-9.-]+\.[a-z0-9.-]+\)$/u.test(word) ||
           /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word)
       )
     );
@@ -505,15 +553,58 @@ export class ExperienceStructuralParser {
     );
   }
 
-  private static looksLikeLoosePositionTitle(
+  private static looksLikeLowerCamelOrganization(line: string): boolean {
+    return (
+      /^[a-z][\p{Lu}][\p{L}\p{M}0-9&.'+-]*/u.test(line) &&
+      /\b(?:Inc|LLC|Ltd|Solutions|Systems|Technologies)\b/u.test(line)
+    );
+  }
+
+  private static looksLikeOrganizationBeforePosition(
     line: string,
     index: number,
     allLines: string[]
   ): boolean {
     const normalizedLine = line.trim();
 
+    if (
+      normalizedLine.length < 2 ||
+      normalizedLine.length > 90 ||
+      (/^[a-z]/.test(normalizedLine) &&
+        !this.looksLikeLowerCamelOrganization(normalizedLine)) ||
+      /[.!?]$/.test(normalizedLine) ||
+      normalizedLine.includes('@') ||
+      /^[-*•]/u.test(normalizedLine) ||
+      isSectionHeaderText(normalizedLine) ||
+      this.looksLikeDuration(normalizedLine) ||
+      this.looksLikeLocation(normalizedLine)
+    ) {
+      return false;
+    }
+
     return (
-      this.hasDurationWithinNextLines(index, allLines) &&
+      this.hasPositionBeforeNextDuration(index, allLines) ||
+      this.hasTotalDurationThenPosition(index, allLines)
+    );
+  }
+
+  private static looksLikeLoosePositionTitle(
+    line: string,
+    index: number,
+    allLines: string[]
+  ): boolean {
+    const normalizedLine = line.trim();
+    const nextLines = allLines.slice(index + 1, index + 4);
+    const durationIndex = nextLines.findIndex(nextLine =>
+      this.looksLikeDuration(nextLine)
+    );
+
+    if (durationIndex === -1) {
+      return false;
+    }
+
+    return (
+      !this.hasPositionBeforeNextDuration(index, allLines) &&
       normalizedLine.length >= 3 &&
       normalizedLine.length < 90 &&
       normalizedLine.split(/\s+/).length <= 10 &&
@@ -526,6 +617,50 @@ export class ExperienceStructuralParser {
       !isSectionHeaderText(normalizedLine) &&
       !looksLikeOrganizationNameText(normalizedLine)
     );
+  }
+
+  private static hasPositionBeforeNextDuration(
+    index: number,
+    allLines: string[],
+    maxLookahead = 3
+  ): boolean {
+    const nextLines = allLines.slice(index + 1, index + 1 + maxLookahead);
+    const durationIndex = nextLines.findIndex(nextLine =>
+      this.looksLikeDuration(nextLine)
+    );
+
+    if (durationIndex === -1) {
+      return false;
+    }
+
+    return nextLines
+      .slice(0, durationIndex)
+      .some(nextLine => this.looksLikePosition(nextLine));
+  }
+
+  private static hasTotalDurationThenPosition(
+    index: number,
+    allLines: string[],
+    maxLookahead = 4
+  ): boolean {
+    const nextLines = allLines.slice(index + 1, index + 1 + maxLookahead);
+
+    if (!nextLines[0] || !this.looksLikeTotalDuration(nextLines[0])) {
+      return false;
+    }
+
+    const linesAfterTotalDuration = nextLines.slice(1);
+    const durationIndex = linesAfterTotalDuration.findIndex(nextLine =>
+      this.looksLikeDuration(nextLine)
+    );
+
+    if (durationIndex === -1) {
+      return false;
+    }
+
+    return linesAfterTotalDuration
+      .slice(0, durationIndex)
+      .some(nextLine => this.looksLikePosition(nextLine));
   }
 
   private static hasDurationWithinNextLines(
@@ -547,11 +682,14 @@ export class ExperienceStructuralParser {
     const durationIndex = nextLines.findIndex(nextLine =>
       this.looksLikeDuration(nextLine)
     );
-    const linesBeforeDuration =
-      durationIndex === -1 ? nextLines : nextLines.slice(0, durationIndex);
+
+    if (durationIndex === -1) {
+      return false;
+    }
+
+    const linesBeforeDuration = nextLines.slice(0, durationIndex);
 
     return (
-      durationIndex !== -1 &&
       !linesBeforeDuration.some(nextLine => this.looksLikePosition(nextLine)) &&
       this.looksLikePendingTitleContinuationLine(line)
     );
@@ -564,6 +702,10 @@ export class ExperienceStructuralParser {
         line.trim()
       )
     );
+  }
+
+  private static looksLikeTotalDuration(line: string): boolean {
+    return this.looksLikeDuration(line) && !looksLikeDateRangeText(line);
   }
 
   private static isExperienceNoiseLine(line: string): boolean {
@@ -817,6 +959,19 @@ export class ExperienceStructuralParser {
 
         case 'position':
           {
+            if (
+              currentPosition?.title &&
+              !currentPosition.duration &&
+              descriptionLines.length === 0 &&
+              this.areEquivalentPositionTitles(
+                currentPosition.title,
+                section.text
+              )
+            ) {
+              currentPosition.title = section.text;
+              break;
+            }
+
             const completedPosition = this.completePosition({
               position: currentPosition,
               descriptionLines,
@@ -840,6 +995,7 @@ export class ExperienceStructuralParser {
 
         case 'duration':
           const cleanDuration = this.extractCleanDuration(section.text);
+          const dates = parseProfileDateRange(section.text);
           if (currentPosition) {
             if (this.hasPendingTitleContinuation(descriptionLines)) {
               currentPosition.title =
@@ -850,6 +1006,7 @@ export class ExperienceStructuralParser {
               descriptionLines = [];
             }
             currentPosition.duration = cleanDuration;
+            currentPosition.dates = dates;
           } else if (
             currentWorkExperience &&
             !currentWorkExperience.totalDuration
@@ -930,9 +1087,11 @@ export class ExperienceStructuralParser {
       return undefined;
     }
 
-    const dates = position.duration
-      ? parseProfileDateRange(position.duration)
-      : undefined;
+    const dates =
+      position.dates ??
+      (position.duration
+        ? parseProfileDateRange(position.duration)
+        : undefined);
 
     return {
       ...(dates ? { dates } : {}),
@@ -949,6 +1108,17 @@ export class ExperienceStructuralParser {
     return (
       lines.length > 0 &&
       lines.every(line => this.looksLikePendingTitleContinuationLine(line))
+    );
+  }
+
+  private static areEquivalentPositionTitles(
+    currentTitle: string,
+    nextTitle: string
+  ): boolean {
+    return (
+      currentTitle.localeCompare(nextTitle, undefined, {
+        sensitivity: 'base',
+      }) === 0
     );
   }
 
@@ -972,6 +1142,26 @@ export class ExperienceStructuralParser {
   private static extractCleanOrganizationName(
     text: string
   ): string | undefined {
+    if (/^self-employed$/i.test(text.trim())) {
+      return text.trim();
+    }
+
+    if (/\bMarine Corps\b/u.test(text.trim())) {
+      return text.trim();
+    }
+
+    if (
+      /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–\-\s]+\s+\([a-z0-9.-]+\.[a-z0-9.-]+\)$/u.test(
+        text.trim()
+      )
+    ) {
+      return text.trim();
+    }
+
+    if (this.looksLikeLowerCamelOrganization(text.trim())) {
+      return text.trim();
+    }
+
     const cleanOrganizationName = cleanOrganizationNameText(text);
 
     if (cleanOrganizationName) {

@@ -1,21 +1,13 @@
 import type { StructuralLine } from './structural-lines.js';
+import {
+  PROFILE_SECTION_HEADER_ENTRIES,
+  type ProfileSectionKey,
+} from './profile-section-headers.js';
 import { normalizeWhitespace, splitLines } from './text-utils.js';
 
 type ParserLineSource = 'text' | 'structural';
 
-export type ParserLineSection =
-  | 'identity'
-  | 'contact'
-  | 'summary'
-  | 'top_skills'
-  | 'languages'
-  | 'certifications'
-  | 'volunteer_work'
-  | 'projects'
-  | 'publications'
-  | 'experience'
-  | 'education'
-  | 'other';
+export type ParserLineSection = 'identity' | ProfileSectionKey | 'other';
 
 export interface NormalizedParserLine {
   text: string;
@@ -46,48 +38,13 @@ interface SectionHeader {
   section?: ParserLineSection;
 }
 
-const TARGET_SECTION_HEADERS = new Map<string, ParserLineSection>([
-  ['contact', 'contact'],
-  ['contact info', 'contact'],
-  ['summary', 'summary'],
-  ['top skills', 'top_skills'],
-  ['skills', 'top_skills'],
-  ['competencias', 'top_skills'],
-  ['competências', 'top_skills'],
-  ['habilidades', 'top_skills'],
-  ['languages', 'languages'],
-  ['idiomas', 'languages'],
-  ['berufserfahrung', 'experience'],
-  ['experience', 'experience'],
-  ['experiencia', 'experience'],
-  ['experiência', 'experience'],
-  ['education', 'education'],
-  ['formacao', 'education'],
-  ['formação', 'education'],
-  ['certifications', 'certifications'],
-  ['licenses and certifications', 'certifications'],
-  ['licences and certifications', 'certifications'],
-  ['certificacoes', 'certifications'],
-  ['certificações', 'certifications'],
-  ['certificacoes e licencas', 'certifications'],
-  ['certificações e licenças', 'certifications'],
-  ['projects', 'projects'],
-  ['projetos', 'projects'],
-  ['publications', 'publications'],
-  ['volunteer experience', 'volunteer_work'],
-  ['volunteer work', 'volunteer_work'],
-  ['volunteering', 'volunteer_work'],
-  ['experiencia voluntaria', 'volunteer_work'],
-  ['experiência voluntária', 'volunteer_work'],
-]);
+const TARGET_SECTION_HEADERS = new Map<string, ParserLineSection>(
+  PROFILE_SECTION_HEADER_ENTRIES
+);
 
 const BOUNDARY_SECTION_HEADERS = new Set([
   'courses',
   'patents',
-  'honors awards',
-  'honors and awards',
-  'honours awards',
-  'honours and awards',
   'organizations',
   'recommendations',
   'interests',

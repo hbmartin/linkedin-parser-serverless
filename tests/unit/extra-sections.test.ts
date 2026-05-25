@@ -49,6 +49,7 @@ describe('ExtraSectionParser', () => {
 
     expect(sections).toEqual({
       certifications: ['Cloud Architect Professional'],
+      honors_awards: [],
       projects: ['Internal Search Migration'],
       publications: ['Scaling Engineering Teams'],
       volunteer_work: ['Community Mentor'],
@@ -73,6 +74,19 @@ describe('ExtraSectionParser', () => {
     expect(sections.projects).toEqual(['Revenue Forecasting Tool']);
     expect(sections.publications).toEqual(['Distributed Systems Notes']);
     expect(sections.volunteer_work).toEqual(['Open Source Mentor']);
+  });
+
+  test('extracts honors-awards as a supported extra section', () => {
+    const sections = ExtraSectionParser.parseStructural([
+      line({ column: 'left', text: 'Honors-Awards', y: 760 }),
+      line({ column: 'left', text: 'Defender of the Declaration Award', y: 740 }),
+      line({ column: 'left', text: 'Winner', y: 728 }),
+      line({ column: 'left', text: 'Experience', y: 700 }),
+    ]);
+
+    expect(sections.honors_awards).toEqual([
+      'Defender of the Declaration Award Winner',
+    ]);
   });
 
   test('merges wrapped structural extra section entries', () => {
@@ -156,6 +170,7 @@ describe('ExtraSectionParser', () => {
     const filteredWarnings = filterMergedSectionWarnings({
       sections: {
         certifications: ['Cloud Architect Professional'],
+        honors_awards: [],
         projects: [],
         publications: [],
         volunteer_work: [],
@@ -189,6 +204,7 @@ describe('ExtraSectionParser', () => {
     const filteredWarnings = filterMergedSectionWarnings({
       sections: {
         certifications: [],
+        honors_awards: [],
         projects: [],
         publications: [],
         volunteer_work: [],

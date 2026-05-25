@@ -226,6 +226,74 @@ describe('BasicInfoParser', () => {
     );
   });
 
+  test('extracts structural contact links while ignoring URL path digits as phones', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      [
+        'Contact',
+        'www.linkedin.com/in/example',
+        '(LinkedIn)',
+        'siteresources.worldbank.org/',
+        'INTPSD/',
+        'Resources/336195-1092412588749/',
+        'Algeria--ICA~3.pdf (Other)',
+      ].join('\n'),
+      [
+        structuralLine({ column: 'left', text: 'Contact', y: 760 }),
+        structuralLine({
+          column: 'left',
+          text: 'www.linkedin.com/in/example',
+          y: 740,
+        }),
+        structuralLine({ column: 'left', text: '(LinkedIn)', y: 728 }),
+        structuralLine({
+          column: 'left',
+          text: 'siteresources.worldbank.org/',
+          y: 708,
+        }),
+        structuralLine({ column: 'left', text: 'INTPSD/', y: 696 }),
+        structuralLine({
+          column: 'left',
+          text: 'Resources/336195-1092412588749/',
+          y: 684,
+        }),
+        structuralLine({
+          column: 'left',
+          text: 'Algeria--ICA~3.pdf (Other)',
+          y: 672,
+        }),
+        structuralLine({ column: 'left', text: 'Top Skills', y: 640 }),
+      ]
+    );
+
+    expect(result.value.contact.phone).toBeUndefined();
+    expect(result.value.contact.links).toEqual([
+      expect.objectContaining({
+        label: 'LinkedIn',
+        url: 'https://linkedin.com/in/example',
+      }),
+      expect.objectContaining({
+        label: 'Other',
+        url: 'https://siteresources.worldbank.org/INTPSD/Resources/336195-1092412588749/Algeria--ICA~3.pdf',
+      }),
+    ]);
+  });
+
+  test('extracts mobile phone contact lines with country code labels', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      ['Contact', '+1 720-520-5329 (Mobile)'].join('\n'),
+      [
+        structuralLine({ column: 'left', text: 'Contact', y: 760 }),
+        structuralLine({
+          column: 'left',
+          text: '+1 720-520-5329 (Mobile)',
+          y: 740,
+        }),
+      ]
+    );
+
+    expect(result.value.contact.phone).toBe('+1 720-520-5329');
+  });
+
   test('uses the multiline engineering manager headline fallback', () => {
     const profile = BasicInfoParser.parse(`
       Test User

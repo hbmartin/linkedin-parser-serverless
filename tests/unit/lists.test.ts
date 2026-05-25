@@ -2,6 +2,49 @@ import { ListParser } from '../../src/parsers/lists.js';
 import type { StructuralLine } from '../../src/utils/structural-lines.js';
 
 describe('ListParser', () => {
+  test('returns empty skills and no warnings when top skills section is absent', () => {
+    expect(
+      ListParser.parseSkillsWithWarnings(`
+        Summary
+        Builds product systems for operators.
+      `)
+    ).toEqual({
+      value: [],
+      warnings: [],
+    });
+  });
+
+  test('warns when a detected top skills section has no valid skills', () => {
+    const result = ListParser.parseSkillsWithWarnings(`
+      Top Skills
+      12345
+      Page 2
+
+      Languages
+      English
+    `);
+
+    expect(result.value).toEqual([]);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: 'item',
+          rawText: '12345',
+          section: 'top_skills',
+        }),
+        expect.objectContaining({
+          field: 'item',
+          rawText: 'Page 2',
+          section: 'top_skills',
+        }),
+        expect.objectContaining({
+          field: 'section',
+          section: 'top_skills',
+        }),
+      ])
+    );
+  });
+
   test('does not treat generic experience lines as top skills', () => {
     const skills = ListParser.parseSkills(`
       Test User
@@ -141,6 +184,22 @@ describe('ListParser', () => {
     });
   });
 
+  test('returns no structural languages when language section is absent', () => {
+    expect(
+      ListParser.parseStructuralLanguagesWithWarnings([
+        structuralLine({ column: 'left', text: 'Summary', y: 700 }),
+        structuralLine({
+          column: 'left',
+          text: 'Builds product systems for operators.',
+          y: 680,
+        }),
+      ])
+    ).toEqual({
+      value: [],
+      warnings: [],
+    });
+  });
+
   test('merges wrapped structural languages and stops at honors boundary', () => {
     const result = ListParser.parseStructuralLanguagesWithWarnings([
       structuralLine({ column: 'left', text: 'Languages', y: 700 }),
@@ -168,6 +227,47 @@ describe('ListParser', () => {
         {
           language: 'Chinese (Traditional)',
           proficiency: 'Limited Working',
+        },
+      ],
+      warnings: [],
+    });
+  });
+
+  test('merges parenthesized structural language continuations across three lines', () => {
+    const result = ListParser.parseStructuralLanguagesWithWarnings([
+      structuralLine({ column: 'left', text: 'Languages', y: 700 }),
+      structuralLine({
+        column: 'left',
+        text: 'Chinese (Traditional)',
+        y: 680,
+      }),
+      structuralLine({ column: 'left', text: '(Limited', y: 660 }),
+      structuralLine({ column: 'left', text: 'Working)', y: 640 }),
+      structuralLine({ column: 'left', text: 'Experience', y: 620 }),
+    ]);
+
+    expect(result).toEqual({
+      value: [
+        {
+          language: 'Chinese (Traditional)',
+          proficiency: 'Limited Working',
+        },
+      ],
+      warnings: [],
+    });
+  });
+
+  test('salvages unclosed structural language proficiency at section end', () => {
+    const result = ListParser.parseStructuralLanguagesWithWarnings([
+      structuralLine({ column: 'left', text: 'Languages', y: 700 }),
+      structuralLine({ column: 'left', text: 'Portuguese (Limited', y: 680 }),
+    ]);
+
+    expect(result).toEqual({
+      value: [
+        {
+          language: 'Portuguese',
+          proficiency: 'Limited',
         },
       ],
       warnings: [],
@@ -211,9 +311,38 @@ describe('ListParser', () => {
       value: ['TypeScript'],
       warnings: [],
     });
+    expect(ListParser.parseLanguages('Languages\nItalian')).toEqual([
+      {
+        language: 'Italian',
+        proficiency: 'Unknown',
+      },
+    ]);
+    expect(ListParser['extractLanguageInfo']('Native Portuguese')).toEqual({
+      language: 'Portuguese',
+      proficiency: 'Native',
+    });
     expect(
       ListParser['extractLanguageInfo']('Native VeryVeryVeryLongLanguageName')
     ).toBeNull();
+  });
+
+  test('ignores blank structural language rows', () => {
+    const result = ListParser.parseStructuralLanguagesWithWarnings([
+      structuralLine({ column: 'left', text: 'Languages', y: 700 }),
+      structuralLine({ column: 'left', text: 'English', y: 680 }),
+      structuralLine({ column: 'left', text: '  ', y: 660 }),
+      structuralLine({ column: 'left', text: 'Experience', y: 640 }),
+    ]);
+
+    expect(result).toEqual({
+      value: [
+        {
+          language: 'English',
+          proficiency: 'Unknown',
+        },
+      ],
+      warnings: [],
+    });
   });
 });
 

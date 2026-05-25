@@ -75,6 +75,9 @@ linkedin-pdf-parser write-json ./fixtures
 
 # Verify PDFs still generate the expected JSON baselines
 linkedin-pdf-parser verify-json ./fixtures
+
+# Print a diff for any changed JSON baselines
+linkedin-pdf-parser verify-json ./fixtures --diff
 ```
 
 ### Real-world Examples
@@ -94,6 +97,7 @@ linkedin-pdf-parser resume.pdf | jq '.profile.experience[].company'
 
 ### CLI Options
 - `--compact` - Compact JSON output (no formatting)
+- `--diff` - Print generated-vs-existing JSON diffs in `verify-json` mode
 - `--force` - Overwrite existing JSON files in `write-json` mode
 - `--raw-text` - Include raw extracted text in output
 - `--help, -h` - Show help message

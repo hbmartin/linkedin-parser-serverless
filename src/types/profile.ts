@@ -3,6 +3,13 @@ export interface Contact {
   phone?: string;
   linkedin_url?: string;
   location?: string;
+  links?: ContactLink[];
+}
+
+export interface ContactLink {
+  label?: string;
+  rawText: string;
+  url: string;
 }
 
 export interface Language {
@@ -47,6 +54,14 @@ export interface Experience {
   description?: string;
 }
 
+export type ExperienceGroupPosition = Omit<Experience, 'company'>;
+
+export interface ExperienceGroup {
+  company: string;
+  positions: ExperienceGroupPosition[];
+  totalDuration?: string;
+}
+
 export interface Education {
   degree: string;
   institution: string;
@@ -67,7 +82,9 @@ export interface LinkedInProfile {
   volunteer_work: string[];
   projects: string[];
   publications: string[];
+  honors_awards: string[];
   summary?: string;
+  experience_groups: ExperienceGroup[];
   experience: Experience[];
   education: Education[];
 }
@@ -92,6 +109,7 @@ export type WarningSection =
   | 'volunteer_work'
   | 'projects'
   | 'publications'
+  | 'honors_awards'
   | 'experience'
   | 'education';
 

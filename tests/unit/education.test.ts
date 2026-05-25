@@ -209,6 +209,65 @@ describe('EducationParser', () => {
     );
   });
 
+  test('preserves degree text when structural date ranges share the same line', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({ fontSize: 14, text: 'Harvard University', y: 730 }),
+      structuralLine({
+        fontSize: 10,
+        text: 'BA, Government · (1998 - 2002)',
+        y: 710,
+      }),
+      structuralLine({ fontSize: 14, text: 'École Polytechnique', y: 680 }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Intermediate Certificate of French Language Français B1/B2 · (January 2022)',
+        y: 660,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 620 }),
+    ]);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'BA, Government',
+        institution: 'Harvard University',
+        year: '1998 - 2002',
+      }),
+      expect.objectContaining({
+        degree: 'Intermediate Certificate of French Language Français B1/B2',
+        institution: 'École Polytechnique',
+        year: 'January 2022',
+      }),
+    ]);
+  });
+
+  test('joins wrapped institution names before assigning degree details', () => {
+    const [education] = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'City University of New York-Baruch College - Zicklin School of',
+        y: 730,
+      }),
+      structuralLine({ fontSize: 14, text: 'Business', y: 716 }),
+      structuralLine({
+        fontSize: 10,
+        text: 'MBA, Finance · (2002 - 2004)',
+        y: 696,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 660 }),
+    ]);
+
+    expect(education).toEqual(
+      expect.objectContaining({
+        degree: 'MBA, Finance',
+        institution:
+          'City University of New York-Baruch College - Zicklin School of Business',
+        year: '2002 - 2004',
+      })
+    );
+  });
+
   test('does not append comma-adjacent non-academic details to degree text', () => {
     const educations = EducationParser.parseStructural([
       structuralLine({ fontSize: 16, text: 'Education', y: 760 }),

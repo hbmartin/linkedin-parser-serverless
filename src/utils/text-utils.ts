@@ -23,11 +23,3 @@ export function splitLines(text: string): string[] {
 export function normalizeWhitespace(text: string): string {
   return text.replace(REGEX_PATTERNS.MULTIPLE_SPACES, ' ').trim();
 }
-
-export function extractFirstMatch(
-  text: string,
-  pattern: RegExp
-): string | null {
-  const match = text.match(pattern);
-  return match ? match[0] : null;
-}
