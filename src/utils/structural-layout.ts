@@ -17,7 +17,7 @@ export function getTextItemStructuralColumn({
     item.pageIndex === undefined
       ? undefined
       : layout.pageLayouts?.[item.pageIndex];
-  const activeLayout = pageLayout?.type === 'two-column' ? pageLayout : layout;
+  const activeLayout = pageLayout ?? layout;
 
   if (
     activeLayout.type !== 'two-column' ||

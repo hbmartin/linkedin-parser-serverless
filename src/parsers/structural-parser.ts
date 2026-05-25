@@ -94,9 +94,15 @@ export class StructuralParser {
       itemsByPage.set(pageIndex, pageItems);
     }
 
-    return Array.from(itemsByPage.entries())
-      .sort(([firstPage], [secondPage]) => firstPage - secondPage)
-      .map(([, pageItems]) => this.detectPageLayout(pageItems));
+    const pageLayouts: LayoutInfo[] = [];
+
+    for (const [pageIndex, pageItems] of Array.from(itemsByPage.entries()).sort(
+      ([firstPage], [secondPage]) => firstPage - secondPage
+    )) {
+      pageLayouts[pageIndex] = this.detectPageLayout(pageItems);
+    }
+
+    return pageLayouts;
   }
 
   private static detectPageLayout(textItems: TextItem[]): LayoutInfo {
@@ -296,5 +302,5 @@ function inferPageIndex(item: TextItem): number {
     return 0;
   }
 
-  return Math.floor(Math.abs(item.y) / 10000);
+  return Math.ceil(Math.abs(item.y) / 10000);
 }
