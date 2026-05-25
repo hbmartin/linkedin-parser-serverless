@@ -1,12 +1,15 @@
 import type { LayoutInfo, TextItem } from '../types/structural.js';
+import {
+  getTextItemStructuralColumn,
+  type StructuralColumn,
+} from './structural-layout.js';
 import { normalizeWhitespace } from './text-utils.js';
-
-type StructuralColumn = 'left' | 'right' | 'single';
 
 export interface StructuralLine {
   text: string;
   x: number;
   y: number;
+  pageIndex?: number;
   fontSize: number;
   width: number;
   height: number;
@@ -47,20 +50,11 @@ function getStructuralColumn(
   item: TextItem,
   layout: LayoutInfo
 ): StructuralColumn {
-  if (
-    layout.type !== 'two-column' ||
-    !layout.sidebarBounds ||
-    !layout.mainBounds
-  ) {
-    return 'single';
-  }
-
-  const centerX = item.x + item.width / 2;
-
-  return centerX <= layout.sidebarBounds.right ||
-    item.x < layout.mainBounds.left
-    ? 'left'
-    : 'right';
+  return getTextItemStructuralColumn({
+    fallbackColumn: 'single',
+    item,
+    layout,
+  });
 }
 
 function groupItemsByY(
@@ -122,11 +116,15 @@ function createStructuralLine(
   const yValues = sortedGroup.map(item => item.y);
   const fontSizes = sortedGroup.map(item => item.fontSize);
   const heights = sortedGroup.map(item => item.height);
+  const pageIndexes = sortedGroup
+    .map(item => item.pageIndex)
+    .filter((pageIndex): pageIndex is number => pageIndex !== undefined);
 
   return {
     text,
     x: Math.min(...xValues),
     y: yValues.reduce((sum, y) => sum + y, 0) / yValues.length,
+    ...(pageIndexes.length > 0 ? { pageIndex: Math.min(...pageIndexes) } : {}),
     fontSize:
       fontSizes.reduce((sum, fontSize) => sum + fontSize, 0) / fontSizes.length,
     width: Math.max(

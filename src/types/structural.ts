@@ -4,6 +4,7 @@ export interface TextItem {
   text: string;
   x: number;
   y: number;
+  pageIndex?: number;
   fontSize: number;
   fontFamily: string;
   width: number;
@@ -12,6 +13,7 @@ export interface TextItem {
 
 export interface LayoutInfo {
   type: 'two-column' | 'single-column';
+  pageLayouts?: LayoutInfo[];
   sidebarBounds?: {
     left: number;
     right: number;

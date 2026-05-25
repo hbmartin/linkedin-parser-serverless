@@ -1,4 +1,5 @@
 const EXPERIENCE_SECTION_HEADER_TEXT = new Set([
+  'berufserfahrung',
   'experience',
   'experiencia',
   'experiência',
@@ -26,8 +27,11 @@ const SECTION_HEADER_TEXT = new Set([
   'certifications',
   'licenses & certifications',
   'licenses and certifications',
+  'licences and certifications',
   'certificacoes',
   'certificações',
+  'certificacoes e licencas',
+  'certificações e licenças',
   'projects',
   'projetos',
   'publications',
@@ -36,6 +40,15 @@ const SECTION_HEADER_TEXT = new Set([
   'volunteering',
   'experiencia voluntaria',
   'experiência voluntária',
+  'courses',
+  'honors awards',
+  'honors and awards',
+  'honours awards',
+  'honours and awards',
+  'organizations',
+  'patents',
+  'recommendations',
+  'interests',
 ]);
 
 const ORGANIZATION_WORDS = new Set([
@@ -85,10 +98,16 @@ const POSITION_KEYWORDS = [
   'analyst',
   'architect',
   'assessor',
+  'assistant',
+  'associate',
+  'ceo',
   'chief',
   'consultant',
   'consultor',
   'co-founder',
+  'co founder',
+  'cofounder',
+  'columnist',
   'coordenador',
   'coordinator',
   'developer',
@@ -98,22 +117,34 @@ const POSITION_KEYWORDS = [
   'engineer',
   'engenheiro',
   'executive',
+  'executive advisor',
   'fellow',
+  'fixed income investments',
   'founder',
+  'founding team',
   'gerente',
   'gestor',
   'head of',
   'intern',
+  'investment team',
+  'leader',
   'lead',
   'manager',
+  'member',
+  'member of the board',
   'mentor',
   'officer',
   'partner',
   'president',
   'principal',
+  'professor',
   'producer',
   'programmer',
+  'project leader',
   'researcher',
+  'research scientist',
+  'scientist',
+  'svp',
   'specialist',
   'supervisor',
   'technical lead',
@@ -145,6 +176,7 @@ const LOWERCASE_CONNECTOR_WORDS = new Set([
   'la',
   'le',
   'of',
+  'than',
   'the',
   'van',
   'von',
@@ -217,9 +249,10 @@ export function looksLikePositionTitleText(text: string): boolean {
 
   const hasAllowedParenthetical =
     !/[()]/u.test(normalizedText) ||
-    /^[^()]+ \((?:contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\)$/iu.test(
+    /^[^()]+ \((?:acquired|contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\)$/iu.test(
       normalizedText
-    );
+    ) ||
+    /^[^()]+ \([\p{Lu}\s]{2,30}\)$/u.test(normalizedText);
   const hasValidTitleFormat =
     normalizedText.length > 3 &&
     normalizedText.length < 90 &&

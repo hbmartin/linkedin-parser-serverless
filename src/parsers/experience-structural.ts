@@ -27,6 +27,10 @@ import {
   createGroupedTextItemParserLines,
   type NormalizedParserLine,
 } from '../utils/parser-lines.js';
+import {
+  createStructuralLines,
+  type StructuralLine,
+} from '../utils/structural-lines.js';
 import { StructuralParser } from './structural-parser.js';
 
 type ExperienceLineState =
@@ -74,32 +78,39 @@ export class ExperienceStructuralParser {
     experienceStartY?: number,
     experienceEndY?: number
   ): ParsedSectionResult<WorkExperience[]> {
-    // Filter items within experience section and focus on main content area (right column)
-    let relevantItems = textItems.filter(item => item.x >= 150); // Right column only
+    const layout = StructuralParser.detectLayout(textItems);
+    const sourceTextItems =
+      layout.type === 'single-column' &&
+      textItems.some(item => item.x >= 150) &&
+      textItems.some(item => item.x < 150)
+        ? textItems.filter(item => item.x >= 150)
+        : textItems;
+    const structuralLines = createStructuralLines({
+      layout,
+      textItems: sourceTextItems,
+    });
+    const hasMainColumnCandidate = structuralLines.some(line => line.x >= 150);
+    let relevantLines = structuralLines.filter(
+      line =>
+        line.column === 'right' ||
+        (line.column === 'single' && (!hasMainColumnCandidate || line.x >= 150))
+    );
 
     if (experienceStartY !== undefined && experienceEndY !== undefined) {
-      relevantItems = relevantItems.filter(
-        item => item.y < experienceStartY && item.y > experienceEndY
+      relevantLines = relevantLines.filter(
+        line => line.y < experienceStartY && line.y > experienceEndY
       );
     }
 
-    // Group text by proximity with smaller Y distance for better line separation
-    const allGroups = StructuralParser.groupTextByProximity(relevantItems, 3);
-    const allLines = StructuralParser.combineGroupedText(allGroups);
-    const { lines, groups } = this.extractExperienceLines(allLines, allGroups);
+    const lines = this.extractExperienceStructuralLines(relevantLines);
     const parserLines = createGroupedTextItemParserLines(
-      lines.map((line, index) => {
-        const group = groups[index];
-        const x = Math.min(...group.map(item => item.x));
-        const y = group.reduce((sum, item) => sum + item.y, 0) / group.length;
-        const fontSize =
-          group.reduce((sum, item) => sum + item.fontSize, 0) / group.length;
-
+      lines.map(line => {
         return {
-          fontSize,
-          text: line,
-          x,
-          y,
+          column: line.column,
+          fontSize: line.fontSize,
+          text: line.text,
+          x: line.x,
+          y: line.y,
         };
       })
     );
@@ -116,30 +127,26 @@ export class ExperienceStructuralParser {
     };
   }
 
-  private static extractExperienceLines(
-    lines: string[],
-    groups: TextItem[][]
-  ): { lines: string[]; groups: TextItem[][] } {
+  private static extractExperienceStructuralLines(
+    lines: StructuralLine[]
+  ): StructuralLine[] {
     const experienceStartIndex = lines.findIndex(line =>
-      isExperienceSectionHeaderText(line)
+      isExperienceSectionHeaderText(line.text)
     );
 
     if (experienceStartIndex === -1) {
-      return { lines, groups };
+      return lines;
     }
 
     const educationStartOffset = lines
       .slice(experienceStartIndex + 1)
-      .findIndex(line => isEducationSectionHeaderText(line));
+      .findIndex(line => isEducationSectionHeaderText(line.text));
     const experienceEndIndex =
       educationStartOffset === -1
         ? lines.length
         : experienceStartIndex + 1 + educationStartOffset;
 
-    return {
-      lines: lines.slice(experienceStartIndex + 1, experienceEndIndex),
-      groups: groups.slice(experienceStartIndex + 1, experienceEndIndex),
-    };
+    return lines.slice(experienceStartIndex + 1, experienceEndIndex);
   }
 
   private static classifyLines(
@@ -199,7 +206,11 @@ export class ExperienceStructuralParser {
     const lowerLine = text.toLowerCase();
 
     // Skip section headers
-    if (lowerLine === 'experience' || lowerLine === 'experiência') {
+    if (
+      lowerLine === 'experience' ||
+      lowerLine === 'experiência' ||
+      this.isExperienceNoiseLine(text)
+    ) {
       return 'other';
     }
 
@@ -221,7 +232,10 @@ export class ExperienceStructuralParser {
           return 'duration';
         }
 
-        if (this.looksLikePosition(text)) {
+        if (
+          this.looksLikePosition(text) ||
+          this.looksLikeLoosePositionTitle(text, index, lineTexts)
+        ) {
           return 'position';
         }
 
@@ -250,6 +264,10 @@ export class ExperienceStructuralParser {
 
         if (this.looksLikeLocation(text)) {
           return 'location';
+        }
+
+        if (this.looksLikeWrappedTitleContinuation(text, index, lineTexts)) {
+          return 'description';
         }
 
         if (
@@ -303,7 +321,10 @@ export class ExperienceStructuralParser {
           return 'description';
         }
 
-        if (this.looksLikePosition(text)) {
+        if (
+          this.looksLikePosition(text) &&
+          this.hasDurationWithinNextLines(index, lineTexts)
+        ) {
           return 'position';
         }
 
@@ -381,15 +402,24 @@ export class ExperienceStructuralParser {
     options: { allowPersonLikeName: boolean } = { allowPersonLikeName: false }
   ): boolean {
     const normalizedLine = line.trim();
+    const hasVisualOrganizationCue =
+      /\bthan\b/i.test(normalizedLine) ||
+      /[&–]/u.test(normalizedLine) ||
+      /\b[A-Z]{2,}\b/.test(normalizedLine);
 
     if (
       normalizedLine.length > 80 ||
+      /^[-*•]/u.test(normalizedLine) ||
+      (/[.?]$/.test(normalizedLine) &&
+        !/\b(?:co|corp|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
       /^[a-z]/.test(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikeLocation(normalizedLine) ||
       this.looksLikePosition(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
-      (!options.allowPersonLikeName && looksLikePersonNameText(normalizedLine))
+      (!options.allowPersonLikeName &&
+        !hasVisualOrganizationCue &&
+        looksLikePersonNameText(normalizedLine))
     ) {
       return false;
     }
@@ -405,7 +435,7 @@ export class ExperienceStructuralParser {
 
     const hasOrganizationShape =
       looksLikeOrganizationNameText(normalizedLine) ||
-      (options.allowPersonLikeName &&
+      ((options.allowPersonLikeName || hasVisualOrganizationCue) &&
         this.looksLikeVisualOrganizationHeaderText(normalizedLine));
 
     return (
@@ -437,8 +467,14 @@ export class ExperienceStructuralParser {
 
     return (
       words.length > 0 &&
-      words.length <= 5 &&
-      words.every(word => /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!-]*$/u.test(word))
+      words.length <= 8 &&
+      words.every(
+        word =>
+          /^(?:and|for|of|the|than)$/i.test(word) ||
+          /^[-–]$/u.test(word) ||
+          /^\([\p{Lu}0-9&.'+!–-]+\)$/u.test(word) ||
+          /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word)
+      )
     );
   }
 
@@ -450,8 +486,57 @@ export class ExperienceStructuralParser {
     );
   }
 
+  private static looksLikeLoosePositionTitle(
+    line: string,
+    index: number,
+    allLines: string[]
+  ): boolean {
+    const normalizedLine = line.trim();
+
+    return (
+      this.hasDurationWithinNextLines(index, allLines) &&
+      normalizedLine.length >= 3 &&
+      normalizedLine.length < 90 &&
+      normalizedLine.split(/\s+/).length <= 10 &&
+      /^[\p{Lu}0-9]/u.test(normalizedLine) &&
+      !/[.!?]$/.test(normalizedLine) &&
+      !normalizedLine.includes('@') &&
+      !/https?:\/\//i.test(normalizedLine) &&
+      !this.looksLikeDuration(normalizedLine) &&
+      !this.looksLikeLocation(normalizedLine) &&
+      !isSectionHeaderText(normalizedLine) &&
+      !looksLikeOrganizationNameText(normalizedLine)
+    );
+  }
+
+  private static hasDurationWithinNextLines(
+    index: number,
+    allLines: string[],
+    maxLookahead = 3
+  ): boolean {
+    return allLines
+      .slice(index + 1, index + 1 + maxLookahead)
+      .some(nextLine => this.looksLikeDuration(nextLine));
+  }
+
+  private static looksLikeWrappedTitleContinuation(
+    line: string,
+    index: number,
+    allLines: string[]
+  ): boolean {
+    return (
+      this.hasDurationWithinNextLines(index, allLines, 1) &&
+      this.looksLikePendingTitleContinuationLine(line)
+    );
+  }
+
   private static looksLikeDuration(line: string): boolean {
-    return looksLikeDateRangeText(line);
+    return (
+      looksLikeDateRangeText(line) ||
+      /^\d+\s+(?:years?|months?|anos?|meses?|jahr|jahre)(?:\s+\d+\s+(?:years?|months?|anos?|meses?|jahr|jahre))?$/i.test(
+        line.trim()
+      )
+    );
   }
 
   private static isExperienceNoiseLine(line: string): boolean {
@@ -579,10 +664,12 @@ export class ExperienceStructuralParser {
     // Common location patterns
     const locationPatterns = [
       /^[A-Z][A-Za-z\s]+,\s*[A-Z\s]{2,}$/, // City, ST
+      /^(?!The\b)[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*\s+[A-Z]{2}$/, // City ST
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+$/, // City, State
       /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*[\p{Lu}\s]{2,}$/u,
       /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*(?:[\p{Lu}]\.){2,}$/u,
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+,\s*[A-Z][A-Za-z\s]+/, // City, State, Country
+      /^Vatican City State \(Holy See\)$/u,
       /^Greater\s+[\p{Lu}][\p{L}\p{M}.'\-\s]+(?:Area|,\s*[\p{Lu}\s]{2,})?$/u,
       /^(?:Rua|R\.|Av\.?|Avenida|Alameda|Praça|Street|St\.|Avenue|Ave\.|Road|Rd\.)(?!\w)/iu,
       /^\d{5}(?:-\d{3})?$/,
@@ -727,6 +814,14 @@ export class ExperienceStructuralParser {
         case 'duration':
           const cleanDuration = this.extractCleanDuration(section.text);
           if (currentPosition) {
+            if (this.hasPendingTitleContinuation(descriptionLines)) {
+              currentPosition.title =
+                `${currentPosition.title} ${descriptionLines.join(' ')}`.replace(
+                  /\s+/g,
+                  ' '
+                );
+              descriptionLines = [];
+            }
             currentPosition.duration = cleanDuration;
           } else if (
             currentWorkExperience &&
@@ -782,13 +877,18 @@ export class ExperienceStructuralParser {
       position,
       descriptionLines,
     });
+    const positions = completedPosition
+      ? [...(workExperience.positions ?? []), completedPosition]
+      : (workExperience.positions ?? []);
+
+    if (positions.length === 0) {
+      return undefined;
+    }
 
     return {
       organization: workExperience.organization,
       totalDuration: workExperience.totalDuration,
-      positions: completedPosition
-        ? [...(workExperience.positions ?? []), completedPosition]
-        : (workExperience.positions ?? []),
+      positions,
     };
   }
 
@@ -816,6 +916,30 @@ export class ExperienceStructuralParser {
         : {}),
       description: descriptionLines.join(' ').trim(),
     };
+  }
+
+  private static hasPendingTitleContinuation(lines: string[]): boolean {
+    return (
+      lines.length > 0 &&
+      lines.every(line => this.looksLikePendingTitleContinuationLine(line))
+    );
+  }
+
+  private static looksLikePendingTitleContinuationLine(line: string): boolean {
+    const normalizedLine = line.trim();
+
+    return (
+      normalizedLine.length > 1 &&
+      normalizedLine.length <= 40 &&
+      normalizedLine.split(/\s+/).length <= 4 &&
+      /^[\p{Lu}0-9]/u.test(normalizedLine) &&
+      !/[.!?]$/.test(normalizedLine) &&
+      !/^[-*•]/u.test(normalizedLine) &&
+      !looksLikePositionTitleText(normalizedLine) &&
+      !this.looksLikeDuration(normalizedLine) &&
+      !this.looksLikeLocation(normalizedLine) &&
+      !isSectionHeaderText(normalizedLine)
+    );
   }
 
   private static extractCleanOrganizationName(

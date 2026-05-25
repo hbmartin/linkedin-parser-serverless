@@ -57,6 +57,7 @@ const TARGET_SECTION_HEADERS = new Map<string, ParserLineSection>([
   ['habilidades', 'top_skills'],
   ['languages', 'languages'],
   ['idiomas', 'languages'],
+  ['berufserfahrung', 'experience'],
   ['experience', 'experience'],
   ['experiencia', 'experience'],
   ['experiência', 'experience'],
@@ -83,7 +84,10 @@ const TARGET_SECTION_HEADERS = new Map<string, ParserLineSection>([
 const BOUNDARY_SECTION_HEADERS = new Set([
   'courses',
   'patents',
+  'honors awards',
   'honors and awards',
+  'honours awards',
+  'honours and awards',
   'organizations',
   'recommendations',
   'interests',
@@ -105,11 +109,13 @@ export function createGroupedTextItemParserLines(
     x: number;
     y: number;
     fontSize: number;
+    column?: StructuralLine['column'];
   }[]
 ): NormalizedParserLine[] {
   return enrichParserLines(
     groups.map((line, index) => ({
       fontSize: line.fontSize,
+      column: line.column,
       index,
       source: 'structural',
       text: normalizeWhitespace(line.text),
