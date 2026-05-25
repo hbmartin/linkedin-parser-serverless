@@ -288,8 +288,6 @@ export class EducationParser {
     const yearPatterns = [
       EducationParser.YEAR_RANGE_REGEXP,
       EducationParser.MONTH_YEAR_REGEXP,
-      /\(\d{4}\s*-\s*\d{4}\)/, // (2017 - 2018)
-      /·\s*\(\d{4}\s*-\s*\d{4}\)/, // · (2002 - 2005)
       /\b\d{4}\s*-\s*\d{4}\b/, // 2017 - 2018
       /\(\d{4}\)/, // (2016)
       /\b\d{4}\b/, // 2016
@@ -310,7 +308,6 @@ export class EducationParser {
       line
         .replace(EducationParser.PARENTHESIZED_YEAR_RANGE_PATTERN, ' ')
         .replace(EducationParser.PARENTHESIZED_MONTH_YEAR_PATTERN, ' ')
-        .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\)\s*/g, ' ')
         .replace(/\s*[·-]?\s*(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\s*/g, ' ')
         .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\)\s*/g, ' ')
         .replace(/\s*[·-]?\s*\b(?:19|20)\d{2}\b\s*/g, ' ')

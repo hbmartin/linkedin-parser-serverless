@@ -338,6 +338,9 @@ describe('BasicInfoParser', () => {
       false
     );
     expect(BasicInfoParser['isPhoneSearchLine'](' 8765 4321 ')).toBe(true);
+    expect(
+      BasicInfoParser['isPhoneSearchLine']('                8765 4321                 ')
+    ).toBe(true);
   });
 
   test('uses the multiline engineering manager headline fallback', () => {
