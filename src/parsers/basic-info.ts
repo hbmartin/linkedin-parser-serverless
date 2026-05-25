@@ -554,7 +554,7 @@ export class BasicInfoParser {
       !/https?:\/\//i.test(line) &&
       !/[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(line) &&
       !/^\(?\s*(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|present)\s*\)?$/i.test(
-        line
+        line.trim()
       ) &&
       (/\b(?:mobile|phone|tel)\b/i.test(line) ||
         /^[+\d\s().-]+$/.test(line.trim()))

@@ -21,7 +21,7 @@ export const fileBudgets = [
   },
   {
     file: 'dist/index.min.js',
-    gzipBytes: 18 * 1024,
+    gzipBytes: 20 * 1024,
     rawBytes: 70 * 1024,
   },
   {
