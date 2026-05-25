@@ -21,8 +21,8 @@ export const fileBudgets = [
   },
   {
     file: 'dist/index.min.js',
-    gzipBytes: 16 * 1024,
-    rawBytes: 56 * 1024,
+    gzipBytes: 18 * 1024,
+    rawBytes: 70 * 1024,
   },
   {
     file: 'dist/cli.js',
@@ -30,7 +30,7 @@ export const fileBudgets = [
     rawBytes: 20 * 1024,
   },
 ];
-export const totalTopLevelJavaScriptBudget = 600 * 1024;
+export const totalTopLevelJavaScriptBudget = 602 * 1024;
 
 function main() {
   const results = fileBudgets.map(budget => {

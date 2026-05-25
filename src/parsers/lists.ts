@@ -238,7 +238,8 @@ export class ListParser {
     const mergedLines: string[] = [];
     let bufferedLine: string | undefined;
 
-    for (const line of lines) {
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index];
       const normalizedLine = normalizeWhitespace(line);
 
       if (!normalizedLine) {
@@ -253,6 +254,23 @@ export class ListParser {
           bufferedLine = undefined;
         }
 
+        continue;
+      }
+
+      const nextLine = normalizeWhitespace(lines[index + 1] ?? '');
+      if (
+        looksLikeParenthesizedLanguageContinuation(nextLine) &&
+        looksLikeLanguageBaseWithoutProficiency(normalizedLine)
+      ) {
+        const mergedLine = normalizeWhitespace(`${normalizedLine} ${nextLine}`);
+
+        if (parenthesisBalance(mergedLine) <= 0) {
+          mergedLines.push(mergedLine);
+        } else {
+          bufferedLine = mergedLine;
+        }
+
+        index += 1;
         continue;
       }
 
@@ -310,5 +328,16 @@ function parenthesisBalance(text: string): number {
   return (
     Array.from(text.matchAll(/\(/g)).length -
     Array.from(text.matchAll(/\)/g)).length
+  );
+}
+
+function looksLikeParenthesizedLanguageContinuation(text: string): boolean {
+  return /^\([^)]+(?:\)|$)$/u.test(text);
+}
+
+function looksLikeLanguageBaseWithoutProficiency(text: string): boolean {
+  return (
+    !REGEX_PATTERNS.LANGUAGE_PROFICIENCY.test(text) &&
+    /^[\p{L}\s.+-]+(?:\s*\([\p{L}\s.+-]+\))?$/u.test(text)
   );
 }

@@ -174,6 +174,29 @@ describe('ListParser', () => {
     });
   });
 
+  test('merges balanced parenthesized structural language continuations', () => {
+    const result = ListParser.parseStructuralLanguagesWithWarnings([
+      structuralLine({ column: 'left', text: 'Languages', y: 700 }),
+      structuralLine({
+        column: 'left',
+        text: 'Chinese (Traditional)',
+        y: 680,
+      }),
+      structuralLine({ column: 'left', text: '(Limited Working)', y: 660 }),
+      structuralLine({ column: 'left', text: 'Experience', y: 640 }),
+    ]);
+
+    expect(result).toEqual({
+      value: [
+        {
+          language: 'Chinese (Traditional)',
+          proficiency: 'Limited Working',
+        },
+      ],
+      warnings: [],
+    });
+  });
+
   test('ignores blank skill rows and rejects proficiency-only languages', () => {
     const skills = ListParser.parseSkillsWithWarnings(`
       Top Skills

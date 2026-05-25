@@ -79,22 +79,41 @@ export class ExperienceStructuralParser {
     experienceEndY?: number
   ): ParsedSectionResult<WorkExperience[]> {
     const layout = StructuralParser.detectLayout(textItems);
-    const sourceTextItems =
-      layout.type === 'single-column' &&
-      textItems.some(item => item.x >= 150) &&
-      textItems.some(item => item.x < 150)
-        ? textItems.filter(item => item.x >= 150)
-        : textItems;
-    const structuralLines = createStructuralLines({
+    const initialStructuralLines = createStructuralLines({
       layout,
-      textItems: sourceTextItems,
+      textItems,
     });
-    const hasMainColumnCandidate = structuralLines.some(line => line.x >= 150);
-    let relevantLines = structuralLines.filter(
-      line =>
-        line.column === 'right' ||
-        (line.column === 'single' && (!hasMainColumnCandidate || line.x >= 150))
+    const hasSingleColumnMainCandidate = initialStructuralLines.some(
+      line => line.column === 'single' && line.x >= 150
     );
+    const hasLeftSingleColumnExperienceHeader = initialStructuralLines.some(
+      line =>
+        line.column === 'single' &&
+        line.x < 150 &&
+        isExperienceSectionHeaderText(line.text)
+    );
+    // Use the raw cutoff only when single-column detection has no left-side
+    // Experience section to preserve.
+    const structuralLines =
+      layout.type === 'single-column' &&
+      hasSingleColumnMainCandidate &&
+      !hasLeftSingleColumnExperienceHeader
+        ? createStructuralLines({
+            layout,
+            textItems: textItems.filter(item => item.x >= 150),
+          })
+        : initialStructuralLines;
+    let relevantLines = structuralLines.filter(line => {
+      if (line.column === 'right') {
+        return true;
+      }
+
+      if (line.column !== 'single') {
+        return false;
+      }
+
+      return true;
+    });
 
     if (experienceStartY !== undefined && experienceEndY !== undefined) {
       relevantLines = relevantLines.filter(
@@ -470,7 +489,7 @@ export class ExperienceStructuralParser {
       words.length <= 8 &&
       words.every(
         word =>
-          /^(?:and|for|of|the|than)$/i.test(word) ||
+          /^(?:a|an|and|at|by|for|in|of|on|or|than|the|to|with)$/i.test(word) ||
           /^[-–]$/u.test(word) ||
           /^\([\p{Lu}0-9&.'+!–-]+\)$/u.test(word) ||
           /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word)
@@ -524,8 +543,16 @@ export class ExperienceStructuralParser {
     index: number,
     allLines: string[]
   ): boolean {
+    const nextLines = allLines.slice(index + 1, index + 4);
+    const durationIndex = nextLines.findIndex(nextLine =>
+      this.looksLikeDuration(nextLine)
+    );
+    const linesBeforeDuration =
+      durationIndex === -1 ? nextLines : nextLines.slice(0, durationIndex);
+
     return (
-      this.hasDurationWithinNextLines(index, allLines, 1) &&
+      durationIndex !== -1 &&
+      !linesBeforeDuration.some(nextLine => this.looksLikePosition(nextLine)) &&
       this.looksLikePendingTitleContinuationLine(line)
     );
   }

@@ -85,7 +85,10 @@ describe('ExperienceStructuralParser', () => {
       textItem({ text: 'May 2022 - November 2023 (1 year 7 months)', y: 380 }),
       textItem({ text: 'MIT Media Lab', y: 340 }),
       textItem({ text: 'Research Assistant', y: 320, fontSize: 11.5 }),
-      textItem({ text: 'September 2012 - May 2018 (5 years 9 months)', y: 300 }),
+      textItem({
+        text: 'September 2012 - May 2018 (5 years 9 months)',
+        y: 300,
+      }),
     ]);
 
     expect(result.warnings).toEqual([]);
@@ -228,6 +231,49 @@ describe('ExperienceStructuralParser', () => {
         ],
       }),
     ]);
+  });
+
+  test('keeps valid single-column experience lines left of the raw x fallback', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Decorative right rail', x: 220, y: 720 }),
+      textItem({ text: 'Experience', x: 90, y: 700, fontSize: 16 }),
+      textItem({ text: 'Women in AI', x: 90, y: 670 }),
+      textItem({ text: 'Advisor', x: 90, y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - Present (6 years)', x: 90, y: 630 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Women in AI',
+        positions: [
+          expect.objectContaining({
+            duration: 'January 2020 - Present',
+            title: 'Advisor',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps short wrapped title continuations when a duration follows nearby', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Northstar Solutions', y: 670 }),
+      textItem({ text: 'Principal Architect', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'AI', y: 630, fontSize: 11.5 }),
+      textItem({ text: 'Remote', y: 610 }),
+      textItem({ text: 'January 2020 - Present (6 years)', y: 590 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value[0]?.positions[0]).toEqual(
+      expect.objectContaining({
+        duration: 'January 2020 - Present',
+        location: 'Remote',
+        title: 'Principal Architect AI',
+      })
+    );
   });
 
   test('does not promote likely person-name lines to organizations', () => {

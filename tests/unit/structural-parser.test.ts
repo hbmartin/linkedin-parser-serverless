@@ -3,11 +3,15 @@ import { createStructuralLines } from '../../src/utils/structural-lines.js';
 import type { TextItem } from '../../src/types/structural.js';
 
 function item({
+  pageIndex,
   text,
+  width,
   x,
   y,
 }: {
+  pageIndex?: number;
   text: string;
+  width?: number;
   x: number;
   y: number;
 }): TextItem {
@@ -15,11 +19,34 @@ function item({
     text,
     x,
     y,
+    ...(pageIndex === undefined ? {} : { pageIndex }),
     fontSize: 10,
     fontFamily: 'Helvetica',
-    width: text.length * 5,
+    width: width ?? text.length * 5,
     height: 10,
   };
+}
+
+function twoColumnPageItems(pageIndex: number): TextItem[] {
+  const pageYOffset = pageIndex * -10000;
+  const leftItems = Array.from({ length: 2 }, (_, index) =>
+    item({
+      pageIndex,
+      text: `left ${pageIndex}-${index}`,
+      x: 30,
+      y: pageYOffset + 700 - index * 20,
+    })
+  );
+  const rightItems = Array.from({ length: 15 }, (_, index) =>
+    item({
+      pageIndex,
+      text: `right ${pageIndex}-${index}`,
+      x: 220,
+      y: pageYOffset + 700 - index * 20,
+    })
+  );
+
+  return [...leftItems, ...rightItems];
 }
 
 describe('StructuralParser', () => {
@@ -82,9 +109,7 @@ describe('StructuralParser', () => {
       ...rightItems,
     ]);
 
-    expect(layout).toEqual(
-      expect.objectContaining({ type: 'single-column' })
-    );
+    expect(layout).toEqual(expect.objectContaining({ type: 'single-column' }));
   });
 
   test('keeps extended sidebar labels out of the main column', () => {
@@ -115,6 +140,43 @@ describe('StructuralParser', () => {
     expect(lines.find(line => line.text === 'Summary')).toEqual(
       expect.objectContaining({ column: 'right' })
     );
+  });
+
+  test('keeps page layouts aligned with sparse page indexes', () => {
+    const singleColumnPageItem = item({
+      pageIndex: 2,
+      text: 'Single page content',
+      x: 30,
+      y: -19300,
+    });
+    const textItems = [...twoColumnPageItems(0), singleColumnPageItem];
+    const layout = StructuralParser.detectLayout(textItems);
+    const lines = createStructuralLines({
+      layout,
+      textItems: [singleColumnPageItem],
+    });
+
+    expect(layout.type).toBe('two-column');
+    expect(layout.pageLayouts?.[0]?.type).toBe('two-column');
+    expect(layout.pageLayouts?.[1]).toBeUndefined();
+    expect(layout.pageLayouts?.[2]?.type).toBe('single-column');
+    expect(lines).toEqual([
+      expect.objectContaining({
+        column: 'single',
+        text: 'Single page content',
+      }),
+    ]);
+  });
+
+  test('infers one-based flattened page offsets from negative y values', () => {
+    const pageOneItems = twoColumnPageItems(1).map(
+      ({ pageIndex: _pageIndex, ...pageItem }) => pageItem
+    );
+    const layout = StructuralParser.detectLayout(pageOneItems);
+
+    expect(layout.type).toBe('two-column');
+    expect(layout.pageLayouts?.[0]).toBeUndefined();
+    expect(layout.pageLayouts?.[1]?.type).toBe('two-column');
   });
 
   test('returns no groups or structural lines for empty inputs', () => {
