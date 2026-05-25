@@ -411,6 +411,7 @@ export class BasicInfoParser {
       const startsLink = this.looksLikeContactLinkStart(lineWithoutLabel);
       const continuesLink =
         draft !== undefined &&
+        !startsLink &&
         this.looksLikeContactLinkContinuation(lineWithoutLabel);
 
       if (!draft && !startsLink) {
@@ -418,18 +419,21 @@ export class BasicInfoParser {
       }
 
       if (!draft) {
+        // Start a draft for a link that may be split across adjacent PDF lines.
         draft = {
           label,
           parts: lineWithoutLabel ? [lineWithoutLabel] : [],
           rawLines: [line],
         };
-      } else if (continuesLink || label) {
+      } else if (!startsLink && (continuesLink || label)) {
+        // Non-link-start lines may continue a draft; a trailing label closes it.
         if (lineWithoutLabel) {
           draft.parts.push(lineWithoutLabel);
         }
         draft.rawLines.push(line);
         draft.label = draft.label ?? label;
       } else {
+        // A fresh link-looking line closes the previous draft before starting.
         this.pushContactLink(links, draft);
         draft = startsLink
           ? {
@@ -492,7 +496,7 @@ export class BasicInfoParser {
           /(?:\+\d{1,3}[\s.-]*)?(?:\(?\d{2,3}\)?[\s.-]*)?\d{3,5}[\s.-]?\d{4}/
         )?.[0] ?? normalizedLine.match(REGEX_PATTERNS.PHONE)?.[0];
 
-      if (phoneMatch && phoneMatch.replace(/\D/g, '').length >= 10) {
+      if (phoneMatch && phoneMatch.replace(/\D/g, '').length >= 8) {
         return phoneMatch;
       }
     }
@@ -538,7 +542,7 @@ export class BasicInfoParser {
       !isSectionHeaderText(line) &&
       !/^[A-Z0-9._%+-]+\s*@\s*[A-Z0-9.-]+\.[A-Z]{2,63}$/i.test(line) &&
       !this.isPhoneSearchLine(line) &&
-      /^[A-Za-z0-9@_~./?#=&%+-]+$/u.test(line)
+      /^[A-Za-z0-9@_~./?:#=&%+-]+$/u.test(line)
     );
   }
 
@@ -549,6 +553,9 @@ export class BasicInfoParser {
       !/(?:^|\s)www\./i.test(line) &&
       !/https?:\/\//i.test(line) &&
       !/[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(line) &&
+      !/^\(?\s*(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|present)\s*\)?$/i.test(
+        line
+      ) &&
       (/\b(?:mobile|phone|tel)\b/i.test(line) ||
         /^[+\d\s().-]+$/.test(line.trim()))
     );

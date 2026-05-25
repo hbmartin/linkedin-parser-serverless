@@ -30,25 +30,13 @@ type SectionHeader =
     };
 
 const TARGET_SECTION_HEADERS = new Map<string, ExtraSectionKey>(
-  PROFILE_SECTION_HEADER_ENTRIES.filter(
-    (entry): entry is readonly [string, ExtraSectionKey] =>
-      isExtraSectionKey(entry[1])
-  )
+  createTargetSectionHeaderEntries()
 );
 
-const BOUNDARY_SECTION_HEADERS = new Set([
-  'contact',
-  'contact info',
-  'kontakt',
-  'top skills',
-  'skills',
-  'languages',
-  'idiomas',
-  'summary',
-  'experience',
-  'experiencia',
-  'education',
-  'formacao',
+const BOUNDARY_SECTION_HEADERS = new Set<string>([
+  ...PROFILE_SECTION_HEADER_ENTRIES.map(([text]) =>
+    normalizeSectionHeader(text)
+  ),
   'courses',
   'patents',
   'organizations',
@@ -56,6 +44,20 @@ const BOUNDARY_SECTION_HEADERS = new Set([
   'interests',
   ...TARGET_SECTION_HEADERS.keys(),
 ]);
+
+function createTargetSectionHeaderEntries(): Array<
+  readonly [string, ExtraSectionKey]
+> {
+  const entries: Array<readonly [string, ExtraSectionKey]> = [];
+
+  for (const [text, section] of PROFILE_SECTION_HEADER_ENTRIES) {
+    if (isExtraSectionKey(section)) {
+      entries.push([normalizeSectionHeader(text), section]);
+    }
+  }
+
+  return entries;
+}
 
 function isExtraSectionKey(
   section: ProfileSectionKey

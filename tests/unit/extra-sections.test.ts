@@ -79,7 +79,11 @@ describe('ExtraSectionParser', () => {
   test('extracts honors-awards as a supported extra section', () => {
     const sections = ExtraSectionParser.parseStructural([
       line({ column: 'left', text: 'Honors-Awards', y: 760 }),
-      line({ column: 'left', text: 'Defender of the Declaration Award', y: 740 }),
+      line({
+        column: 'left',
+        text: 'Defender of the Declaration Award',
+        y: 740,
+      }),
       line({ column: 'left', text: 'Winner', y: 728 }),
       line({ column: 'left', text: 'Experience', y: 700 }),
     ]);
@@ -115,6 +119,18 @@ describe('ExtraSectionParser', () => {
       'MITx 14.310Fx: Data Analysis in Social Science',
       'Certificate of Completion - 23 hours of Android development training',
     ]);
+  });
+
+  test('stops extra section capture at normalized registry boundaries', () => {
+    const sections = ExtraSectionParser.parseText(`
+      Certificações e Licenças
+      Cloud Architect Professional
+
+      Competências
+      TypeScript
+    `);
+
+    expect(sections.certifications).toEqual(['Cloud Architect Professional']);
   });
 
   test('returns warnings for detected empty extra sections', () => {

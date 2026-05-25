@@ -39,6 +39,10 @@ interface StructuralDegreeContinuationParams {
 }
 
 export class EducationParser {
+  private static readonly MONTH_NAMES_PATTERN =
+    'January|February|March|April|May|June|July|August|September|October|November|December';
+  private static readonly OPTIONAL_MONTH_PREFIX = `(?:(?:${EducationParser.MONTH_NAMES_PATTERN})\\s+)?`;
+  private static readonly YEAR_PATTERN = '(?:19|20)\\d{2}';
   private static readonly LOCATION_PATTERN: RegExp =
     /^[\p{Lu}][\p{L}\p{M}\s.-]+(?:,\s*[\p{Lu}][\p{L}\p{M}\s.-]*)*$/u;
   private static readonly STRUCTURAL_DEGREE_BOUNDARY_PATTERN: RegExp =
@@ -245,7 +249,7 @@ export class EducationParser {
     return (
       line.length > 3 &&
       line.length < 80 &&
-      /\b(?:a\.?b\.?|b\.?a\.?|b\.?s\.?|s\.?m\.?|bachelor|master|phd|mba|associate|diploma|certificate|economics|engineering|executive program|science|business|baccalaureate|bacharelado|bacharel|licenciatura|mestrado|mestre|doutorado|doutor|p[oó]s[-\s]?gradua[cç][aã]o|tecn[oó]logo|tecnologia|certifica[cç][aã]o)\b/.test(
+      /\b(?:a\.?b\.?|b\.?a\.?|b\.?s\.?|s\.?m\.?|bachelor|master|phd|mba|associate|diploma|certificate|engineering|executive program|science|business|baccalaureate|bacharelado|bacharel|licenciatura|mestrado|mestre|doutorado|doutor|p[oó]s[-\s]?gradua[cç][aã]o|tecn[oó]logo|tecnologia|certifica[cç][aã]o)\b/.test(
         lower
       ) &&
       !/^\s*[()·-]?\s*(19|20)\d{2}/.test(line)
@@ -266,8 +270,14 @@ export class EducationParser {
   private static extractYearFromLine(line: string): string {
     // Extract year patterns from lines that might contain both degree and year info
     const yearPatterns = [
-      /\((?:(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+)?\d{4}\s*-\s*(?:(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+)?\d{4}\)/i,
-      /\((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\)/i,
+      new RegExp(
+        `\\(${EducationParser.OPTIONAL_MONTH_PREFIX}\\d{4}\\s*-\\s*${EducationParser.OPTIONAL_MONTH_PREFIX}\\d{4}\\)`,
+        'i'
+      ),
+      new RegExp(
+        `\\((?:${EducationParser.MONTH_NAMES_PATTERN})\\s+\\d{4}\\)`,
+        'i'
+      ),
       /\(\d{4}\s*-\s*\d{4}\)/, // (2017 - 2018)
       /·\s*\(\d{4}\s*-\s*\d{4}\)/, // · (2002 - 2005)
       /\b\d{4}\s*-\s*\d{4}\b/, // 2017 - 2018
@@ -286,16 +296,19 @@ export class EducationParser {
   }
 
   private static removeYearFromDegree(line: string): string {
+    const parenthesizedYearRangePattern = new RegExp(
+      `\\s*[·-]?\\s*\\(${EducationParser.OPTIONAL_MONTH_PREFIX}${EducationParser.YEAR_PATTERN}\\s*-\\s*${EducationParser.OPTIONAL_MONTH_PREFIX}${EducationParser.YEAR_PATTERN}\\)\\s*`,
+      'gi'
+    );
+    const parenthesizedMonthYearPattern = new RegExp(
+      `\\s*[·-]?\\s*\\((?:${EducationParser.MONTH_NAMES_PATTERN})\\s+${EducationParser.YEAR_PATTERN}\\)\\s*`,
+      'gi'
+    );
+
     return normalizeWhitespace(
       line
-        .replace(
-          /\s*[·-]?\s*\((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:19|20)\d{2}\s*-\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:19|20)\d{2}\)\s*/gi,
-          ' '
-        )
-        .replace(
-          /\s*[·-]?\s*\((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:19|20)\d{2}\)\s*/gi,
-          ' '
-        )
+        .replace(parenthesizedYearRangePattern, ' ')
+        .replace(parenthesizedMonthYearPattern, ' ')
         .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\)\s*/g, ' ')
         .replace(/\s*[·-]?\s*(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\s*/g, ' ')
         .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\)\s*/g, ' ')
@@ -474,7 +487,10 @@ export class EducationParser {
     const hasSchoolOfContinuation =
       /\b(?:school|college)\s+of(?:\s+\p{Lu}[\p{L}\p{M}]*)?$/iu.test(
         normalizedInstitution
-      ) && /^[\p{Lu}][\p{L}\p{M}]+$/u.test(normalizedLine);
+      ) &&
+      /^[\p{Lu}][\p{L}\p{M}]*(?:\s+[\p{Lu}][\p{L}\p{M}]*)*$/u.test(
+        normalizedLine
+      );
 
     return (
       normalizedInstitution.length > 0 &&

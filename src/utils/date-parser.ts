@@ -443,23 +443,21 @@ function extractDatePortion(text: string): DatePortion {
     .slice(1)
     .map(part => cleanDateText(part.replace(/[()]/g, '')))
     .find(part => containsDurationWord(part));
+  const parentheticalDurationMatch = Array.from(
+    dotParts[0].matchAll(/\(([^)]*)\)/gu)
+  ).find(match => containsDurationWord(match[1]));
+  const parentheticalDuration = parentheticalDurationMatch
+    ? cleanDateText(parentheticalDurationMatch[1])
+    : undefined;
   // Parenthetical durations belong in durationText, not in the chrono input.
   const dateText = trimLeadingNonDateText(
-    dotParts[0].replace(
-      /\(([^)]*(?:yr|year|mo|month|jahr|ano|mes|mês)[^)]*)\)/iu,
-      ''
-    )
-  );
-  const parentheticalDuration = text.match(
-    /\(([^)]*(?:yr|year|mo|month|jahr|ano|mes|mês)[^)]*)\)/iu
+    parentheticalDurationMatch
+      ? dotParts[0].replace(parentheticalDurationMatch[0], '')
+      : dotParts[0]
   );
 
   return {
-    durationText:
-      durationText ??
-      (parentheticalDuration
-        ? cleanDateText(parentheticalDuration[1])
-        : undefined),
+    durationText: durationText ?? parentheticalDuration,
     text: cleanDateText(dateText),
   };
 }
