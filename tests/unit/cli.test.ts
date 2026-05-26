@@ -30,9 +30,7 @@ describe('CLI runner', () => {
     expect(result).toEqual({
       exitCode: 0,
       stderr: '',
-      stdout: expect.stringContaining(
-        'linkedin-pdf-parser write-json <folder>'
-      ),
+      stdout: expect.stringContaining('--json-paths'),
     });
   });
 
@@ -61,6 +59,20 @@ describe('CLI runner', () => {
       stderr: expect.stringContaining(
         'Error: Only one folder path may be provided for verify-json'
       ),
+      stdout: '',
+    });
+    await expect(
+      runCli({ args: ['verify-json', '/baselines', '--json-path'] })
+    ).resolves.toEqual({
+      exitCode: 1,
+      stderr: expect.stringContaining('Error: Unknown option: --json-path'),
+      stdout: '',
+    });
+    await expect(
+      runCli({ args: ['write-json', '/baselines', '--json-paths'] })
+    ).resolves.toEqual({
+      exitCode: 1,
+      stderr: expect.stringContaining('Error: Unknown option: --json-paths'),
       stdout: '',
     });
   });
@@ -437,7 +449,7 @@ describe('CLI runner', () => {
     expect(memoryCli.parseOptions).toEqual([{ includeRawText: true }]);
   });
 
-  test('prints a full diff when verify-json finds a mismatch', async () => {
+  test('prints a context diff when verify-json finds a mismatch', async () => {
     const expectedResult: ParseResult = {
       ...defaultParseResult,
       profile: {
@@ -470,8 +482,47 @@ describe('CLI runner', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('--- expected');
     expect(result.stderr).toContain('+++ generated');
-    expect(result.stderr).toContain('-     "name": "Hermes Trismegistus"');
-    expect(result.stderr).toContain('+     "name": "Orion Helios"');
+    expect(result.stderr).toContain('@@ -');
+    expect(result.stderr).toContain('-    "name": "Hermes Trismegistus"');
+    expect(result.stderr).toContain('+    "name": "Orion Helios"');
+    expect(result.stderr).not.toContain('"diagnostics": {');
+  });
+
+  test('prints JSON keypath output when verify-json requests it', async () => {
+    const expectedResult: ParseResult = {
+      ...defaultParseResult,
+      profile: {
+        ...defaultParseResult.profile,
+        name: 'Hermes Trismegistus',
+      },
+    };
+    const memoryCli = createMemoryCliDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      textFiles: new Map([
+        ['/baselines/Profile.json', JSON.stringify(expectedResult)],
+      ]),
+    });
+
+    const result = await runCli({
+      args: ['verify-json', '/baselines', '--json-paths'],
+      dependencies: memoryCli.dependencies,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).not.toContain('--- expected');
+    expect(result.stderr).toContain(
+      '~ profile.name: "Hermes Trismegistus" -> "Orion Helios"'
+    );
   });
 
   test('reports invalid JSON, parse failures, and missing pairs', async () => {

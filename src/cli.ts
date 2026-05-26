@@ -7,6 +7,7 @@ import {
   hasFileExtension,
   verifyJsonFixtures,
   writeJsonFixtures,
+  type JsonDiffOutputFormat,
   type JsonFixtureDependencies,
   type JsonFixtureDirectoryEntry,
   type JsonOutputFormat,
@@ -43,6 +44,7 @@ interface WriteJsonCommand {
 
 interface VerifyJsonCommand {
   kind: 'verify-json';
+  diffOutputFormat: JsonDiffOutputFormat;
   folderPath: string;
   includeRawText: boolean;
 }
@@ -71,7 +73,7 @@ const usageText = `
 Usage:
   linkedin-pdf-parser <pdf-file-path> [options]
   linkedin-pdf-parser write-json <folder> [--raw-text] [--compact] [--force]
-  linkedin-pdf-parser verify-json <folder> [--raw-text]
+  linkedin-pdf-parser verify-json <folder> [--raw-text] [--json-paths]
 
 Arguments:
   <pdf-file-path>     Path to the LinkedIn PDF file to parse
@@ -82,6 +84,7 @@ Options:
   --pretty           Pretty-print JSON output (default: true)
   --compact          Compact JSON output (no formatting)
   --force            Overwrite existing JSON files in write-json mode
+  --json-paths       Print semantic JSON keypath changes in verify-json mode
   --help, -h         Show this help message
 
 Examples:
@@ -90,6 +93,7 @@ Examples:
   linkedin-pdf-parser resume.pdf --compact
   linkedin-pdf-parser write-json ./fixtures --force
   linkedin-pdf-parser verify-json ./fixtures
+  linkedin-pdf-parser verify-json ./fixtures --json-paths
 
 Output:
   Outputs structured JSON to stdout with parsed LinkedIn profile data
@@ -199,6 +203,16 @@ function parseCliCommand(args: string[]): CliCommand {
 }
 
 function parseWriteJsonCommand(args: string[]): CliCommand {
+  const unsupportedFlag = getUnsupportedFlagCommand(args, [
+    '--compact',
+    '--force',
+    '--raw-text',
+  ]);
+
+  if (unsupportedFlag) {
+    return unsupportedFlag;
+  }
+
   const folderPath = getSinglePositionalArg(args, 'write-json');
 
   if (folderPath.kind === 'invalid') {
@@ -215,6 +229,15 @@ function parseWriteJsonCommand(args: string[]): CliCommand {
 }
 
 function parseVerifyJsonCommand(args: string[]): CliCommand {
+  const unsupportedFlag = getUnsupportedFlagCommand(args, [
+    '--json-paths',
+    '--raw-text',
+  ]);
+
+  if (unsupportedFlag) {
+    return unsupportedFlag;
+  }
+
   const folderPath = getSinglePositionalArg(args, 'verify-json');
 
   if (folderPath.kind === 'invalid') {
@@ -223,8 +246,27 @@ function parseVerifyJsonCommand(args: string[]): CliCommand {
 
   return {
     kind: 'verify-json',
+    diffOutputFormat: args.includes('--json-paths') ? 'json-paths' : 'context',
     folderPath: folderPath.value,
     includeRawText: args.includes('--raw-text'),
+  };
+}
+
+function getUnsupportedFlagCommand(
+  args: string[],
+  supportedFlags: string[]
+): InvalidCommand | undefined {
+  const unsupportedFlag = args.find(
+    arg => arg.startsWith('--') && !supportedFlags.includes(arg)
+  );
+
+  if (!unsupportedFlag) {
+    return undefined;
+  }
+
+  return {
+    kind: 'invalid',
+    message: `Unknown option: ${unsupportedFlag}`,
   };
 }
 
@@ -308,6 +350,7 @@ async function runVerifyJsonCommand(
 ): Promise<CliResult> {
   return verifyJsonFixtures({
     dependencies,
+    diffOutputFormat: command.diffOutputFormat,
     folderPath: command.folderPath,
     includeRawText: command.includeRawText,
   });

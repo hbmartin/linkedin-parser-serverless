@@ -76,6 +76,10 @@ function createIdentitySection(
 
 function createContactSection(contact: Contact): SectionDraft | undefined {
   const linkedinUrl = cleanValue(contact.linkedin_url);
+  const normalizedLinkedInUrl =
+    linkedinUrl === undefined
+      ? undefined
+      : normalizeContactUrlForDedupe(linkedinUrl);
   const linkLines =
     contact.links?.map(link => {
       if (!link) {
@@ -85,7 +89,12 @@ function createContactSection(contact: Contact): SectionDraft | undefined {
       const label = cleanValue(link.label);
       const url = cleanValue(link.url);
 
-      if (!url || url === linkedinUrl) {
+      // Treat an empty url or a url matching linkedinUrl as absent, dropping malformed rows and duplicate LinkedIn lines.
+      if (
+        !url ||
+        (normalizedLinkedInUrl !== undefined &&
+          normalizeContactUrlForDedupe(url) === normalizedLinkedInUrl)
+      ) {
         return undefined;
       }
 
@@ -108,6 +117,15 @@ function createContactSection(contact: Contact): SectionDraft | undefined {
     lines,
     title: 'Contact',
   };
+}
+
+function normalizeContactUrlForDedupe(url: string): string {
+  return url
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\/(?:www\.)?/u, '')
+    .replace(/^www\./u, '')
+    .replace(/\/+$/u, '');
 }
 
 function createSingleValueSection(

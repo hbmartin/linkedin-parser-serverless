@@ -78,6 +78,33 @@ describe('JSON fixture batch operations', () => {
     expect(memoryFixtures.writtenTextFiles).toEqual([]);
   });
 
+  test('reports parse failures while writing JSON fixtures', async () => {
+    const memoryFixtures = createMemoryJsonFixtureDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        ['/baselines', [{ kind: 'file', name: 'Profile.pdf' }]],
+      ]),
+      parsePdf: async () => {
+        throw new Error('write parse failed');
+      },
+    });
+
+    const result = await writeJsonFixtures({
+      dependencies: memoryFixtures.dependencies,
+      folderPath: '/baselines',
+      includeRawText: false,
+      outputFormat: 'pretty',
+      overwriteExisting: false,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      '/baselines/Profile.pdf: write parse failed'
+    );
+    expect(memoryFixtures.writtenTextFiles).toEqual([]);
+  });
+
   test('overwrites existing JSON files with compact output and raw text parsing when forced', async () => {
     const memoryFixtures = createMemoryJsonFixtureDependencies({
       binaryFiles: new Map([['/baselines/Profile.PDF', new Uint8Array([1])]]),
@@ -221,7 +248,7 @@ describe('JSON fixture batch operations', () => {
     });
   });
 
-  test('prints a full diff when generated JSON differs from the fixture', async () => {
+  test('prints a compact context diff when generated JSON differs from the fixture', async () => {
     const expectedResult: ParseResult = {
       ...defaultParseResult,
       profile: {
@@ -255,8 +282,228 @@ describe('JSON fixture batch operations', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('--- expected');
     expect(result.stderr).toContain('+++ generated');
-    expect(result.stderr).toContain('-     "name": "Hermes Trismegistus"');
-    expect(result.stderr).toContain('+     "name": "Orion Helios"');
+    expect(result.stderr).toContain('@@ -');
+    expect(result.stderr).toContain('-    "name": "Hermes Trismegistus"');
+    expect(result.stderr).toContain('+    "name": "Orion Helios"');
+    expect(result.stderr).not.toContain('"diagnostics": {');
+    expect(result.stderr).not.toContain('"company": "Fixture Co"');
+  });
+
+  test('keeps context diffs focused around JSON insertions without positional cascade noise', async () => {
+    const generatedResult: ParseResult = {
+      ...defaultParseResult,
+      profile: {
+        ...defaultParseResult.profile,
+        top_skills: ['TypeScript'],
+      },
+    };
+    const memoryFixtures = createMemoryJsonFixtureDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      parsePdf: async () => generatedResult,
+      textFiles: new Map([
+        ['/baselines/Profile.json', JSON.stringify(defaultParseResult)],
+      ]),
+    });
+
+    const result = await verifyJsonFixtures({
+      dependencies: memoryFixtures.dependencies,
+      folderPath: '/baselines',
+      includeRawText: false,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('@@ -');
+    expect(result.stderr).toContain('+      "TypeScript"');
+    expect(result.stderr).not.toContain('-    "volunteer_work": []');
+    expect(result.stderr).not.toContain('+    "volunteer_work": []');
+  });
+
+  test('prints separate context hunks for distant generated JSON changes', async () => {
+    const expectedResult: ParseResult = {
+      ...defaultParseResult,
+      diagnostics: {
+        ...defaultParseResult.diagnostics,
+        confidence: 0.5,
+      },
+      profile: {
+        ...defaultParseResult.profile,
+        name: 'Hermes Trismegistus',
+      },
+    };
+    const memoryFixtures = createMemoryJsonFixtureDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      textFiles: new Map([
+        ['/baselines/Profile.json', JSON.stringify(expectedResult)],
+      ]),
+    });
+
+    const result = await verifyJsonFixtures({
+      dependencies: memoryFixtures.dependencies,
+      folderPath: '/baselines',
+      includeRawText: false,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.match(/^@@/gm)).toHaveLength(2);
+    expect(result.stderr).toContain('-    "confidence": 0.5,');
+    expect(result.stderr).toContain('+    "confidence": 0.7,');
+    expect(result.stderr).toContain('-    "name": "Hermes Trismegistus"');
+    expect(result.stderr).toContain('+    "name": "Orion Helios"');
+  });
+
+  test('prints JSON keypath changes when requested', async () => {
+    const expectedResult = {
+      ...defaultParseResult,
+      legacy: {
+        emptyArray: [],
+        tags: ['old'],
+      },
+      profile: {
+        ...defaultParseResult.profile,
+        contact: {
+          ...defaultParseResult.profile.contact,
+          email: 'old@example.com',
+          'weird.key': 'old value',
+        },
+        name: 'Hermes Trismegistus',
+        top_skills: ['TypeScript', 'Node.js'],
+      },
+    };
+    const generatedResult = {
+      ...defaultParseResult,
+      modern: {
+        emptyObject: {},
+        tags: ['new'],
+      },
+      profile: {
+        ...defaultParseResult.profile,
+        contact: {
+          ...defaultParseResult.profile.contact,
+          email: 'new@example.com',
+          'weird.key': 'new value',
+        },
+        top_skills: ['TypeScript', 'Node.js', 'Zod'],
+      },
+    };
+    const memoryFixtures = createMemoryJsonFixtureDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      parsePdf: async () => generatedResult,
+      textFiles: new Map([
+        ['/baselines/Profile.json', JSON.stringify(expectedResult)],
+      ]),
+    });
+
+    const result = await verifyJsonFixtures({
+      dependencies: memoryFixtures.dependencies,
+      diffOutputFormat: 'json-paths',
+      folderPath: '/baselines',
+      includeRawText: false,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).not.toContain('--- expected');
+    expect(result.stderr).toContain(
+      '~ profile.contact.email: "old@example.com" -> "new@example.com"'
+    );
+    expect(result.stderr).toContain(
+      '~ profile.contact["weird.key"]: "old value" -> "new value"'
+    );
+    expect(result.stderr).toContain(
+      '~ profile.name: "Hermes Trismegistus" -> "Orion Helios"'
+    );
+    expect(result.stderr).toContain('+ profile.top_skills[2]: "Zod"');
+    expect(result.stderr).toContain('- legacy.emptyArray: []');
+    expect(result.stderr).toContain('- legacy.tags[0]: "old"');
+    expect(result.stderr).toContain('+ modern.emptyObject: {}');
+    expect(result.stderr).toContain('+ modern.tags[0]: "new"');
+  });
+
+  test('prints root JSON keypath changes for unequal root value kinds', async () => {
+    const memoryFixtures = createMemoryJsonFixtureDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      textFiles: new Map([['/baselines/Profile.json', '"legacy"']]),
+    });
+
+    const result = await verifyJsonFixtures({
+      dependencies: memoryFixtures.dependencies,
+      diffOutputFormat: 'json-paths',
+      folderPath: '/baselines',
+      includeRawText: false,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('~ $: "legacy" -> {');
+  });
+
+  test('prints context diffs for unequal root value kinds', async () => {
+    const generatedPrimitive = JSON.parse('"generated"');
+    const memoryFixtures = createMemoryJsonFixtureDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      parsePdf: async () => generatedPrimitive,
+      textFiles: new Map([
+        ['/baselines/Profile.json', JSON.stringify(defaultParseResult)],
+      ]),
+    });
+
+    const result = await verifyJsonFixtures({
+      dependencies: memoryFixtures.dependencies,
+      folderPath: '/baselines',
+      includeRawText: false,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('-{');
+    expect(result.stderr).toContain('+"generated"');
   });
 
   test('reports invalid JSON, parse failures, and missing fixture pairs', async () => {
@@ -417,8 +664,8 @@ describe('JSON fixture batch operations', () => {
     });
 
     expect(formatErrorMessage('plain failure')).toBe('plain failure');
-    expect(result.stderr).toContain('-       "code": "missing_profile_field",');
-    expect(result.stderr).toContain('+   "warnings": []');
+    expect(result.stderr).toContain('-      "code": "missing_profile_field",');
+    expect(result.stderr).toContain('+  "warnings": []');
   });
 });
 

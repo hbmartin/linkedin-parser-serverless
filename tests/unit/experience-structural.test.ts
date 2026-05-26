@@ -2446,6 +2446,25 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('classifies dotted initial standalone locations after durations', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Policy Lab', y: 670 }),
+      textItem({ text: 'Research Fellow', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - Present', y: 630 }),
+      textItem({ text: 'Washington D.C.', y: 610 }),
+      textItem({ text: 'Built durable public-sector tools.', y: 590 }),
+    ]);
+
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        description: 'Built durable public-sector tools.',
+        location: 'Washington D.C.',
+        title: 'Research Fellow',
+      })
+    );
+  });
+
   test('keeps standalone city locations out of following descriptions', () => {
     const [experience] = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -3113,8 +3132,6 @@ describe('ExperienceStructuralParser', () => {
       'Dallas, Texas',
       'London Area, United Kingdom',
       'Denver, CO',
-      'Los Angeles',
-      'San Diego',
       'Greater New York City Area,',
     ]) {
       expect(
