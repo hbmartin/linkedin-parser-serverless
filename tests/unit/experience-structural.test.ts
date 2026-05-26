@@ -2678,14 +2678,21 @@ describe('ExperienceStructuralParser', () => {
   });
 
   test('normalizes trailing country codes on greater-area locations', () => {
-    for (const countryCode of ['US', 'U.S.', 'USA', 'U.S.A.']) {
+    for (const countrySuffix of [
+      ' US',
+      ', US',
+      ' U.S.',
+      ', U.S.A.',
+      ' U S',
+      ' US.',
+    ]) {
       const [experience] = ExperienceStructuralParser.parseExperience([
         textItem({ text: 'Experience', y: 700, fontSize: 16 }),
         textItem({ text: 'Example Co', y: 670 }),
         textItem({ text: 'Director', y: 650, fontSize: 11.5 }),
         textItem({ text: 'January 2020 - Present', y: 630 }),
         textItem({
-          text: `Greater Los Angeles Area ${countryCode}`,
+          text: `Greater Los Angeles Area${countrySuffix}`,
           y: 610,
         }),
       ]);

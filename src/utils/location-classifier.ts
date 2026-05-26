@@ -554,12 +554,34 @@ function hasContextualRegionCode({
     return false;
   }
 
-  const hasCommaSeparator = normalizedText.includes(',');
   const hasUnambiguousRegionCode = codeWords.some(
     word => !ambiguousRegionCodes.has(word)
   );
 
-  return hasCommaSeparator || (hasKnownPlace && hasUnambiguousRegionCode);
+  if (hasKnownPlace && hasUnambiguousRegionCode) {
+    return true;
+  }
+
+  const commaSegments = normalizedText
+    .split(',')
+    .map(segment => segment.trim())
+    .filter(segment => segment.length > 0);
+
+  if (commaSegments.length < 2) {
+    return false;
+  }
+
+  return commaSegments.some(segment => {
+    const lookupSegment = normalizeLookupText(segment);
+    const segmentWords = lookupWordsFor(lookupSegment);
+    const hasKnownPlaceSegment =
+      hasKnownPlace && containsKnownPhrase(lookupSegment, knownPlaceNames);
+    const hasUnambiguousRegionCodeSegment = regionCodeCandidates(
+      segmentWords
+    ).some(word => codeWords.includes(word) && !ambiguousRegionCodes.has(word));
+
+    return hasKnownPlaceSegment || hasUnambiguousRegionCodeSegment;
+  });
 }
 
 function regionCodeCandidates(words: readonly string[]): string[] {
