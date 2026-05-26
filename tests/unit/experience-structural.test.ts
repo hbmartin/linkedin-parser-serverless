@@ -2489,6 +2489,102 @@ describe('ExperienceStructuralParser', () => {
     expect(experience.positions[0].location).toBeUndefined();
   });
 
+  test('prefers organization boundaries over place-word names before title and duration', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'self-employed', y: 670 }),
+      textItem({ text: 'Investor', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2005 - August 2011', y: 630 }),
+      textItem({
+        text: 'Public investing a special situation portfolio.',
+        y: 610,
+      }),
+      textItem({ text: 'Los Angeles Animal Services', y: 590 }),
+      textItem({ text: 'Commissioner', y: 570, fontSize: 11.5 }),
+      textItem({ text: 'September 2003 - August 2005', y: 550 }),
+      textItem({ text: 'Appointed by the mayor.', y: 530 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'self-employed',
+        positions: [
+          expect.objectContaining({
+            description: 'Public investing a special situation portfolio.',
+            location: undefined,
+            title: 'Investor',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Los Angeles Animal Services',
+        positions: [
+          expect.objectContaining({
+            description: 'Appointed by the mayor.',
+            duration: 'September 2003 - August 2005',
+            title: 'Commissioner',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps adjacent location and place-word organization separate', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Cantor Fitzgerald', y: 670 }),
+      textItem({ text: 'SVP Foreign Exchange Trader', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'August 1994 - August 1999', y: 630 }),
+      textItem({ text: 'London, England', y: 610 }),
+      textItem({ text: 'Tokyo Forex', y: 590 }),
+      textItem({ text: 'SVP', y: 570, fontSize: 11.5 }),
+      textItem({ text: 'August 1992 - August 1994', y: 550 }),
+      textItem({ text: 'Tokyo, Japan', y: 530 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Cantor Fitzgerald',
+        positions: [
+          expect.objectContaining({
+            duration: 'August 1994 - August 1999',
+            location: 'London, England',
+            title: 'SVP Foreign Exchange Trader',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Tokyo Forex',
+        positions: [
+          expect.objectContaining({
+            duration: 'August 1992 - August 1994',
+            location: 'Tokyo, Japan',
+            title: 'SVP',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('classifies city and full-state standalone locations after durations', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Parametric', y: 670 }),
+      textItem({ text: 'Senior Investment Analyst', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'September 2016 - May 2019', y: 630 }),
+      textItem({ text: 'Minneapolis, Minnesota', y: 610 }),
+      textItem({ text: 'Built overlay solutions.', y: 590 }),
+    ]);
+
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        description: 'Built overlay solutions.',
+        location: 'Minneapolis, Minnesota',
+        title: 'Senior Investment Analyst',
+      })
+    );
+  });
+
   test('keeps standalone city locations out of following descriptions', () => {
     const [experience] = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),

@@ -59,18 +59,25 @@ const knownPlaceNames: ReadonlySet<string> = new Set([
   'atlanta',
   'austin',
   'berlin',
+  'baltimore',
   'boston',
+  'charlottesville',
   'chicago',
   'dallas',
   'denver',
+  'dubai',
   'geneva',
+  'greenwich',
   'harjumaa',
   'the hague',
   'houston',
+  'incheon',
+  'kauai',
   'london',
   'los angeles',
   'miami',
   'minneapolis st paul',
+  'minneapolis',
   'munich',
   'münchen',
   'new york',
@@ -78,14 +85,19 @@ const knownPlaceNames: ReadonlySet<string> = new Set([
   'palo alto',
   'paris',
   'rio de janeiro',
+  'reno',
   'san diego',
   'san francisco',
   'sao paulo',
   'seattle',
+  'seoul',
   'singapore',
+  'smithfield',
   'st louis',
+  'stamford',
   'sydney',
   'tallinn',
+  'tel aviv',
   'tokyo',
   'toronto',
   'washington',
@@ -104,6 +116,7 @@ const countryAndRegionNames: ReadonlySet<string> = new Set([
   'deutschland',
   'india',
   'ireland',
+  'israel',
   'italy',
   'japan',
   'korea',
@@ -116,33 +129,35 @@ const countryAndRegionNames: ReadonlySet<string> = new Set([
   'switzerland',
   'united kingdom',
   'united states',
+  'united arab emirates',
+  'vereinigte arabische emirate',
   'vatican city state holy see',
   'wales',
 ]);
 
-const countryCodeNames: ReadonlySet<string> = new Set([
-  'can',
-  'uk',
-  'us',
-  'usa',
-]);
-
 const adminRegionNames: ReadonlySet<string> = new Set([
-  'california',
   'bayern',
+  'california',
+  'connecticut',
   'colorado',
   'florida',
   'georgia',
   'harjumaa',
+  'hawaii',
   'illinois',
+  'maryland',
   'massachusetts',
   'michigan',
+  'minnesota',
+  'nevada',
   'new york',
   'ohio',
   'ontario',
   'pennsylvania',
   'quebec',
+  'rhode island',
   'texas',
+  'virginia',
 ]);
 
 const regionCodes: ReadonlySet<string> = new Set([
@@ -334,9 +349,7 @@ export function classifyLocationText({
   const exactPlace = knownPlaceNames.has(lookupText);
   const hasKnownPlace =
     exactPlace || containsKnownPhrase(lookupText, knownPlaceNames);
-  const exactCountryCode = countryCodeNames.has(lookupText);
   const hasCountryOrRegion =
-    exactCountryCode ||
     countryAndRegionNames.has(lookupText) ||
     containsKnownPhrase(lookupText, countryAndRegionNames);
   const hasAdminRegion =
@@ -364,10 +377,7 @@ export function classifyLocationText({
   }
 
   if (hasCountryOrRegion) {
-    add(
-      'country-or-region',
-      countryAndRegionNames.has(lookupText) || exactCountryCode ? 4 : 3
-    );
+    add('country-or-region', countryAndRegionNames.has(lookupText) ? 4 : 3);
   }
 
   if (hasAdminRegion) {

@@ -364,6 +364,16 @@ describe('source coverage helpers', () => {
   });
 
   test('keeps generic geo-token phrases in descriptions without stronger location evidence', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Example Co',
+        'Principal Engineer',
+        'January 2020 - Present',
+        'Platform Region',
+        'Built durable client tools.',
+      ].join('\n')
+    );
     const report = createSourceCoverageReport({
       layoutText: [
         'Experience',
@@ -386,6 +396,14 @@ describe('source coverage helpers', () => {
       pdfFileName: 'generic-geo-token-description.pdf',
     });
 
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'description',
+          text: 'Platform Region',
+        }),
+      ])
+    );
     expect(report.fieldMismatchOutputMatchCount).toBe(0);
     expect(report.untracedOutputValueCount).toBe(0);
     expect(report.unmatchedSourceSegments).toEqual(
@@ -418,6 +436,56 @@ describe('source coverage helpers', () => {
         ],
       }),
       pdfFileName: 'title-bearing-area-description.pdf',
+    });
+
+    expect(report.fieldMismatchOutputMatchCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+  });
+
+  test('does not treat unsynced region codes as standalone locations', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Example Co',
+        'Principal Engineer',
+        'January 2020 - Present',
+        'Hartford, CT',
+        'Built durable client tools.',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'description',
+          text: 'Hartford, CT',
+        }),
+      ])
+    );
+  });
+
+  test('classifies full-state city locations as metadata source fields', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Experience',
+        'Parametric',
+        'Senior Investment Analyst',
+        'September 2016 - May 2019',
+        'Minneapolis, Minnesota',
+        'Built overlay solutions.',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        experience: [
+          {
+            company: 'Parametric',
+            title: 'Senior Investment Analyst',
+            duration: 'September 2016 - May 2019',
+            location: 'Minneapolis, Minnesota',
+            description: 'Built overlay solutions.',
+          },
+        ],
+      }),
+      pdfFileName: 'full-state-location.pdf',
     });
 
     expect(report.fieldMismatchOutputMatchCount).toBe(0);

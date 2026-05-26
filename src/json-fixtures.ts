@@ -6,6 +6,7 @@ export type JsonOutputFormat = 'pretty' | 'compact';
 export type JsonDiffOutputFormat = 'context' | 'json-paths';
 type JsonFixtureExitCode = 0 | 1;
 const JSON_DIFF_CONTEXT_LINE_COUNT = 3;
+const JSON_DIFF_LCS_MAX_CELLS = 250_000;
 
 export interface JsonFixtureDirectoryEntry {
   kind: 'directory' | 'file' | 'other';
@@ -119,6 +120,9 @@ type JsonValueChange =
   | AddedJsonValueChange
   | ChangedJsonValueChange
   | RemovedJsonValueChange;
+
+type JsonPresenceChange = AddedJsonValueChange | RemovedJsonValueChange;
+type JsonPresenceChangeKind = JsonPresenceChange['kind'];
 
 type JsonPathSegment =
   | {
@@ -499,6 +503,10 @@ function createContextDiffEntries(
   expectedLines: string[],
   generatedLines: string[]
 ): ContextDiffEntry[] {
+  if (!canBuildLongestCommonSubsequenceTable(expectedLines, generatedLines)) {
+    return createLinearContextDiffEntries(expectedLines, generatedLines);
+  }
+
   const lcsTable = createLongestCommonSubsequenceTable(
     expectedLines,
     generatedLines
@@ -563,6 +571,68 @@ function createContextDiffEntries(
       line: generatedLines[generatedIndex],
     });
     generatedIndex += 1;
+  }
+
+  return entries;
+}
+
+function canBuildLongestCommonSubsequenceTable(
+  expectedLines: string[],
+  generatedLines: string[]
+): boolean {
+  return (
+    (expectedLines.length + 1) * (generatedLines.length + 1) <=
+    JSON_DIFF_LCS_MAX_CELLS
+  );
+}
+
+function createLinearContextDiffEntries(
+  expectedLines: string[],
+  generatedLines: string[]
+): ContextDiffEntry[] {
+  const entries: ContextDiffEntry[] = [];
+  const sharedLength = Math.min(expectedLines.length, generatedLines.length);
+
+  for (let index = 0; index < sharedLength; index += 1) {
+    const expectedLine = expectedLines[index];
+    const generatedLine = generatedLines[index];
+
+    if (expectedLine === generatedLine) {
+      entries.push({
+        generatedLineNumber: index + 1,
+        kind: 'context',
+        line: expectedLine,
+        expectedLineNumber: index + 1,
+      });
+      continue;
+    }
+
+    entries.push({
+      kind: 'expected',
+      line: expectedLine,
+      expectedLineNumber: index + 1,
+    });
+    entries.push({
+      generatedLineNumber: index + 1,
+      kind: 'generated',
+      line: generatedLine,
+    });
+  }
+
+  for (let index = sharedLength; index < expectedLines.length; index += 1) {
+    entries.push({
+      kind: 'expected',
+      line: expectedLines[index],
+      expectedLineNumber: index + 1,
+    });
+  }
+
+  for (let index = sharedLength; index < generatedLines.length; index += 1) {
+    entries.push({
+      generatedLineNumber: index + 1,
+      kind: 'generated',
+      line: generatedLines[index],
+    });
   }
 
   return entries;
@@ -790,46 +860,27 @@ function collectAddedJsonValueChanges(
   value: unknown,
   pathSegments: JsonPathSegment[]
 ): JsonValueChange[] {
-  if (isUnknownArray(value) && value.length > 0) {
-    return value.flatMap((childValue, index) =>
-      collectAddedJsonValueChanges(
-        childValue,
-        appendArrayIndexPathSegment(pathSegments, index)
-      )
-    );
-  }
-
-  if (isJsonRecord(value)) {
-    const keys = Object.keys(value);
-
-    if (keys.length > 0) {
-      return keys.flatMap(key =>
-        collectAddedJsonValueChanges(
-          value[key],
-          appendObjectKeyPathSegment(pathSegments, key)
-        )
-      );
-    }
-  }
-
-  return [
-    {
-      kind: 'added',
-      path: pathSegments,
-      value,
-    },
-  ];
+  return collectJsonPresenceChanges(value, pathSegments, 'added');
 }
 
 function collectRemovedJsonValueChanges(
   value: unknown,
   pathSegments: JsonPathSegment[]
 ): JsonValueChange[] {
+  return collectJsonPresenceChanges(value, pathSegments, 'removed');
+}
+
+function collectJsonPresenceChanges(
+  value: unknown,
+  pathSegments: JsonPathSegment[],
+  kind: JsonPresenceChangeKind
+): JsonPresenceChange[] {
   if (isUnknownArray(value) && value.length > 0) {
     return value.flatMap((childValue, index) =>
-      collectRemovedJsonValueChanges(
+      collectJsonPresenceChanges(
         childValue,
-        appendArrayIndexPathSegment(pathSegments, index)
+        appendArrayIndexPathSegment(pathSegments, index),
+        kind
       )
     );
   }
@@ -839,9 +890,10 @@ function collectRemovedJsonValueChanges(
 
     if (keys.length > 0) {
       return keys.flatMap(key =>
-        collectRemovedJsonValueChanges(
+        collectJsonPresenceChanges(
           value[key],
-          appendObjectKeyPathSegment(pathSegments, key)
+          appendObjectKeyPathSegment(pathSegments, key),
+          kind
         )
       );
     }
@@ -849,7 +901,7 @@ function collectRemovedJsonValueChanges(
 
   return [
     {
-      kind: 'removed',
+      kind,
       path: pathSegments,
       value,
     },

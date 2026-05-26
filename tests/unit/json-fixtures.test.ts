@@ -328,6 +328,57 @@ describe('JSON fixture batch operations', () => {
     expect(result.stderr).not.toContain('+    "volunteer_work": []');
   });
 
+  test('falls back to a bounded linear context diff for large JSON mismatches', async () => {
+    const expectedSkills = Array.from(
+      { length: 600 },
+      (_, index) => `skill-${index}`
+    );
+    const expectedResult: ParseResult = {
+      ...defaultParseResult,
+      profile: {
+        ...defaultParseResult.profile,
+        top_skills: expectedSkills,
+      },
+    };
+    const generatedResult: ParseResult = {
+      ...defaultParseResult,
+      profile: {
+        ...defaultParseResult.profile,
+        top_skills: ['inserted', ...expectedSkills],
+      },
+    };
+    const memoryFixtures = createMemoryJsonFixtureDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      parsePdf: async () => generatedResult,
+      textFiles: new Map([
+        ['/baselines/Profile.json', JSON.stringify(expectedResult)],
+      ]),
+    });
+
+    const result = await verifyJsonFixtures({
+      dependencies: memoryFixtures.dependencies,
+      folderPath: '/baselines',
+      includeRawText: false,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('--- expected');
+    expect(result.stderr).toContain('+++ generated');
+    expect(result.stderr).toContain('-      "skill-0",');
+    expect(result.stderr).toContain('+      "inserted",');
+    expect(result.stderr).toContain('+      "skill-599"');
+  });
+
   test('prints separate context hunks for distant generated JSON changes', async () => {
     const expectedResult: ParseResult = {
       ...defaultParseResult,

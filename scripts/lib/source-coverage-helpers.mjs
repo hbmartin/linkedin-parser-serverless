@@ -74,16 +74,16 @@ const languageProficiencyTokens = new Set([
 ]);
 const sourceMetadataFieldRoles = new Set(['duration', 'location']);
 const standaloneLocationPlaceNames = setFromList(
-  'atlanta|austin|berlin|boston|chicago|dallas|denver|geneva|harjumaa|the hague|houston|london|los angeles|miami|minneapolis st paul|munich|münchen|new york|new york city|palo alto|paris|rio de janeiro|san diego|san francisco|sao paulo|seattle|singapore|st louis|sydney|tallinn|tokyo|toronto|washington'
+  'atlanta|austin|baltimore|berlin|boston|charlottesville|chicago|dallas|denver|dubai|geneva|greenwich|harjumaa|the hague|houston|incheon|kauai|london|los angeles|miami|minneapolis st paul|minneapolis|munich|münchen|new york|new york city|palo alto|paris|reno|rio de janeiro|san diego|san francisco|sao paulo|seattle|seoul|singapore|smithfield|st louis|stamford|sydney|tallinn|tel aviv|tokyo|toronto|washington'
 );
 const standaloneLocationCountryRegions = setFromList(
-  'australia|brasil|brazil|canada|china|deutschland|england|estonia|france|germany|india|ireland|italy|japan|korea|mexico|netherlands|portugal|scotland|singapore|spain|switzerland|united kingdom|united states|vatican city state holy see|wales'
+  'australia|brasil|brazil|canada|china|deutschland|england|estonia|france|germany|india|ireland|israel|italy|japan|korea|mexico|netherlands|portugal|scotland|singapore|spain|switzerland|united arab emirates|united kingdom|united states|vereinigte arabische emirate|vatican city state holy see|wales'
 );
 const standaloneLocationAdminRegions = setFromList(
-  'bayern|california|colorado|florida|georgia|harjumaa|illinois|massachusetts|michigan|new york|ohio|ontario|pennsylvania|quebec|texas'
+  'bayern|california|colorado|connecticut|florida|georgia|harjumaa|hawaii|illinois|maryland|massachusetts|michigan|minnesota|nevada|new york|ohio|ontario|pennsylvania|quebec|rhode island|texas|virginia'
 );
 const standaloneLocationRegionCodes = setFromList(
-  'ak|al|ar|az|ca|can|co|ct|dc|de|fl|ga|hi|ia|id|il|in|ks|ky|la|ma|md|me|mi|mn|mo|ms|mt|nc|nd|ne|nh|nj|nm|nv|ny|oh|ok|on|or|pa|qc|ri|sc|sd|tn|tx|uk|us|usa|ut|va|vt|wa|wi|wv|wy'
+  'ak|al|ar|az|ca|can|co|dc|de|fl|ga|hi|ia|id|il|in|ks|ky|la|ma|md|me|mi|mn|mo|ms|mt|nc|nd|ne|nh|nj|nm|nv|ny|oh|ok|on|or|pa|qc|ri|sc|sd|tn|tx|uk|us|usa|ut|va|vt|wa|wi|wv|wy'
 );
 const standaloneLocationGenericQualifiers = setFromList(
   'area|bay|county|metropolitan|metro|province|region|state'

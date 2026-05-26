@@ -782,7 +782,7 @@ export class ExperienceStructuralParser {
         !isKnownLowercaseOrganization &&
         !isLowerCamelOrganization) ||
       this.looksLikeDuration(normalizedLine) ||
-      this.looksLikeLocation(normalizedLine) ||
+      (!hasJobDetailsAfter && this.looksLikeLocation(normalizedLine)) ||
       this.looksLikePosition(normalizedLine) ||
       this.looksLikeMediaDescriptionLine(normalizedLine) ||
       this.looksLikeSentenceLikeDescriptionText(normalizedLine) ||
@@ -962,6 +962,9 @@ export class ExperienceStructuralParser {
     const normalizedLine = line.trim();
     const isLongAcademicOrganization =
       this.looksLikeLongAcademicOrganizationHeaderText(normalizedLine);
+    const hasFollowingPosition =
+      this.hasImmediateTitleAndDurationAfterOrganization(index, allLines) ||
+      this.hasTotalDurationThenPosition(index, allLines);
 
     if (
       normalizedLine.length < 2 ||
@@ -973,17 +976,14 @@ export class ExperienceStructuralParser {
       /^[-+*•]/u.test(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
-      this.looksLikeLocation(normalizedLine) ||
+      (this.looksLikeLocation(normalizedLine) && !hasFollowingPosition) ||
       this.looksLikeMediaDescriptionLine(normalizedLine) ||
       this.looksLikeSentenceLikeDescriptionText(normalizedLine)
     ) {
       return false;
     }
 
-    return (
-      this.hasImmediateTitleAndDurationAfterOrganization(index, allLines) ||
-      this.hasTotalDurationThenPosition(index, allLines)
-    );
+    return hasFollowingPosition;
   }
 
   private static looksLikeLoosePositionTitle(

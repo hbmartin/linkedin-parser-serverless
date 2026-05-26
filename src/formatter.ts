@@ -123,8 +123,7 @@ function normalizeContactUrlForDedupe(url: string): string {
   return url
     .trim()
     .toLowerCase()
-    .replace(/^https?:\/\/(?:www\.)?/u, '')
-    .replace(/^www\./u, '')
+    .replace(/^(?:https?:\/\/)?(?:www\.)?/u, '')
     .replace(/\/+$/u, '');
 }
 

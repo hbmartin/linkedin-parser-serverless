@@ -69,10 +69,24 @@ describe('CLI runner', () => {
       stdout: '',
     });
     await expect(
+      runCli({ args: ['verify-json', '/baselines', '-x'] })
+    ).resolves.toEqual({
+      exitCode: 1,
+      stderr: expect.stringContaining('Error: Unknown option: -x'),
+      stdout: '',
+    });
+    await expect(
       runCli({ args: ['write-json', '/baselines', '--json-paths'] })
     ).resolves.toEqual({
       exitCode: 1,
       stderr: expect.stringContaining('Error: Unknown option: --json-paths'),
+      stdout: '',
+    });
+    await expect(
+      runCli({ args: ['write-json', '/baselines', '-x'] })
+    ).resolves.toEqual({
+      exitCode: 1,
+      stderr: expect.stringContaining('Error: Unknown option: -x'),
       stdout: '',
     });
   });

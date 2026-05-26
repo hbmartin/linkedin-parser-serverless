@@ -47,4 +47,31 @@ describe('location classifier', () => {
       }).isLocation
     ).toBe(false);
   });
+
+  test('recognizes sample city-region and translated country locations', () => {
+    for (const location of [
+      'Minneapolis, Minnesota',
+      'Smithfield, Rhode Island',
+      'Charlottesville, Virginia',
+      'Dubai, Vereinigte Arabische Emirate',
+      'Reno, Nevada Area',
+      'Kauai, Hawaii',
+    ]) {
+      expect(
+        classifyLocationText({
+          context: { structuralContext: 'after-duration' },
+          text: location,
+        }).isLocation
+      ).toBe(true);
+    }
+  });
+
+  test('does not treat standalone country codes as location lines', () => {
+    expect(
+      classifyLocationText({
+        context: { structuralContext: 'after-duration' },
+        text: 'US',
+      }).isLocation
+    ).toBe(false);
+  });
 });
