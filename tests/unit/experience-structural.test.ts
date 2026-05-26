@@ -2446,6 +2446,57 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('keeps standalone city locations out of following descriptions', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Foundation Law Group LLP', y: 670 }),
+      textItem({ text: 'Partner', y: 650, fontSize: 11.5 }),
+      textItem({
+        text: 'August 2017 - Present (8 years 10 months)',
+        y: 630,
+      }),
+      textItem({ text: 'Los Angeles', y: 610 }),
+      textItem({
+        text: 'Foundation Law Group is a group of Big Firm attorneys.',
+        y: 590,
+      }),
+    ]);
+
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        description: 'Foundation Law Group is a group of Big Firm attorneys.',
+        location: 'Los Angeles',
+        title: 'Partner',
+      })
+    );
+  });
+
+  test('normalizes trailing commas on greater-area locations', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Cantor Fitzgerald LLC', y: 670 }),
+      textItem({
+        text: 'Managing Director Institutional Equity Sales',
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'September 2001 - October 2016 (15 years 2 months)',
+        y: 630,
+      }),
+      textItem({ text: 'Greater New York City Area,', y: 610 }),
+      textItem({ text: '--Increased order flow and revenue.', y: 590 }),
+    ]);
+
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        description: '--Increased order flow and revenue.',
+        location: 'Greater New York City Area',
+        title: 'Managing Director Institutional Equity Sales',
+      })
+    );
+  });
+
   test('parses page-break descriptions, fellow roles, and greater area locations', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -3048,6 +3099,9 @@ describe('ExperienceStructuralParser', () => {
       'Dallas, Texas',
       'London Area, United Kingdom',
       'Denver, CO',
+      'Los Angeles',
+      'San Diego',
+      'Greater New York City Area,',
     ]) {
       expect(
         ExperienceStructuralParser['looksLikeLocation'](trueLocation)

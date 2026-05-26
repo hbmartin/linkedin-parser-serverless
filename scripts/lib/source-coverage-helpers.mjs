@@ -72,6 +72,9 @@ const languageProficiencyTokens = new Set([
   'professional',
   'working',
 ]);
+const sourceMetadataFieldRoles = new Set(['duration', 'location']);
+const knownStandaloneLocationPattern =
+  /\b(?:atlanta|austin|berlin|boston|chicago|dallas|denver|houston|london|los angeles|miami|new york|palo alto|paris|san diego|san francisco|seattle|singapore|st\.? louis|sydney|tokyo|toronto|washington)\b/u;
 
 export function normalizeText(value) {
   return value
@@ -153,7 +156,7 @@ export function createSourceSegmentsFromLayoutText(layoutText) {
 
   return {
     mainColumnStart,
-    segments,
+    segments: annotateSourceSegmentsWithFieldRoles(segments),
   };
 }
 
@@ -172,6 +175,7 @@ export function createSourceCoverageReport({
   const unmatchedSourceSegments = [];
   const looseSourceMatches = [];
   const crossSectionOutputMatches = [];
+  const fieldMismatchOutputMatches = [];
   const untracedOutputValues = [];
 
   for (const [index, segment] of sourceView.segments.entries()) {
@@ -215,7 +219,15 @@ export function createSourceCoverageReport({
     }
   }
 
+  fieldMismatchOutputMatches.push(
+    ...createFieldMismatchOutputMatches({
+      outputValues,
+      sourceSegmentsBySection,
+    })
+  );
+
   const sections = createSectionReports({
+    fieldMismatchOutputMatches,
     outputValuesBySection,
     sourceSegmentsBySection,
     crossSectionOutputMatches,
@@ -233,6 +245,8 @@ export function createSourceCoverageReport({
     looseSourceMatches,
     crossSectionOutputMatchCount: crossSectionOutputMatches.length,
     crossSectionOutputMatches,
+    fieldMismatchOutputMatchCount: fieldMismatchOutputMatches.length,
+    fieldMismatchOutputMatches,
     outputValueCount: outputValues.length,
     untracedOutputValueCount: untracedOutputValues.length,
     untracedOutputValues,
@@ -254,6 +268,233 @@ function splitLayoutSegments(rawLine) {
       startColumn: match.index ?? 0,
       text: match[0],
     })
+  );
+}
+
+function annotateSourceSegmentsWithFieldRoles(segments) {
+  const fieldRolesByIndex = new Map();
+
+  annotateExperienceFieldRoles({ fieldRolesByIndex, segments });
+
+  return segments.map((segment, index) => {
+    const fieldMetadata = fieldRolesByIndex.get(index);
+
+    return fieldMetadata === undefined
+      ? segment
+      : {
+          ...segment,
+          ...fieldMetadata,
+        };
+  });
+}
+
+function annotateExperienceFieldRoles({ fieldRolesByIndex, segments }) {
+  const entries = sectionSegmentEntries({ section: 'experience', segments });
+  let entryState = 'start';
+  let groupIndex = -1;
+  let positionIndex = -1;
+
+  for (const [entryIndex, { index, segment }] of entries.entries()) {
+    const role = experienceFieldRole({
+      entries,
+      entryIndex,
+      entryState,
+      text: segment.text,
+    });
+
+    if (role !== undefined) {
+      if (role === 'organization') {
+        groupIndex += 1;
+        positionIndex += 1;
+      } else if (
+        role === 'title' &&
+        (entryState === 'afterDuration' ||
+          entryState === 'afterLocation' ||
+          entryState === 'afterDescription')
+      ) {
+        positionIndex += 1;
+      }
+
+      fieldRolesByIndex.set(index, {
+        experienceGroupIndex: groupIndex,
+        experiencePositionIndex: positionIndex,
+        fieldRole: role,
+      });
+      entryState = nextEntryState(role);
+    }
+  }
+}
+
+function sectionSegmentEntries({ section, segments }) {
+  return segments
+    .map((segment, index) => ({
+      index,
+      segment,
+    }))
+    .filter(entry => entry.segment.section === section);
+}
+
+function experienceFieldRole({ entries, entryIndex, entryState, text }) {
+  if (isDurationText(text)) {
+    return 'duration';
+  }
+
+  if (entryState === 'start' || startsExperienceEntry(entries, entryIndex)) {
+    return 'organization';
+  }
+
+  if (
+    (entryState === 'afterOrganization' || entryState === 'afterDescription') &&
+    nextEntryTextIsDuration(entries, entryIndex)
+  ) {
+    return 'title';
+  }
+
+  if (
+    (entryState === 'afterDuration' || entryState === 'afterLocation') &&
+    nextEntryTextIsDuration(entries, entryIndex)
+  ) {
+    return 'title';
+  }
+
+  if (
+    (entryState === 'afterDuration' || entryState === 'afterLocation') &&
+    isLikelyStandaloneLocation(text) &&
+    !startsExperienceEntry(entries, entryIndex)
+  ) {
+    return 'location';
+  }
+
+  if (
+    entryState === 'afterDuration' ||
+    entryState === 'afterLocation' ||
+    entryState === 'afterDescription'
+  ) {
+    return 'description';
+  }
+
+  if (entryState === 'afterOrganization') {
+    return 'title';
+  }
+
+  return undefined;
+}
+
+function nextEntryState(role) {
+  switch (role) {
+    case 'organization':
+      return 'afterOrganization';
+    case 'title':
+      return 'afterTitle';
+    case 'duration':
+      return 'afterDuration';
+    case 'location':
+      return 'afterLocation';
+    case 'description':
+      return 'afterDescription';
+    default:
+      return 'start';
+  }
+}
+
+function startsExperienceEntry(entries, entryIndex) {
+  return (
+    !isDurationText(entries[entryIndex].segment.text) &&
+    entries[entryIndex + 1] !== undefined &&
+    entries[entryIndex + 2] !== undefined &&
+    !isDurationText(entries[entryIndex + 1].segment.text) &&
+    isDurationText(entries[entryIndex + 2].segment.text)
+  );
+}
+
+function nextEntryTextIsDuration(entries, entryIndex) {
+  const nextEntry = entries[entryIndex + 1];
+
+  return (
+    nextEntry !== undefined &&
+    (isDurationText(nextEntry.segment.text) ||
+      isEducationYearText(nextEntry.segment.text))
+  );
+}
+
+function isDurationText(value) {
+  const normalizedValue = normalizeText(value);
+
+  return (
+    /(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{4})\s*-\s*(?:present|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{4}))/u.test(
+      normalizedValue
+    ) ||
+    /^\d+\s+(?:year|years|yr|yrs|month|months|mo|mos)\b(?:\s+\d+\s+(?:month|months|mo|mos)\b)?/u.test(
+      normalizedValue
+    ) ||
+    /\(\d+\s+(?:year|years|yr|yrs|month|months|mo|mos)\b/u.test(normalizedValue)
+  );
+}
+
+function isEducationYearText(value) {
+  return /^(?:\d{4})(?:\s*-\s*(?:\d{4}|present))?$/u.test(normalizeText(value));
+}
+
+function isLikelyStandaloneLocation(value) {
+  const normalizedValue = normalizeText(value);
+
+  if (
+    normalizedValue.length === 0 ||
+    normalizedValue.length > 80 ||
+    isDurationText(value) ||
+    /[$@]/u.test(normalizedValue) ||
+    /[.!?;:]/u.test(normalizedValue) ||
+    startsWithSentenceVerb(value)
+  ) {
+    return false;
+  }
+
+  if (
+    /^(?:remote|hybrid|onsite)$/u.test(normalizedValue) ||
+    (/,\s*/u.test(value) && looksLikeLocationWords(value))
+  ) {
+    return true;
+  }
+
+  if (
+    /\b(?:area|region|county|province|state|united states|usa|uk|canada|germany|france|india|china|japan|singapore|australia|brazil|mexico|spain|italy|korea)\b/u.test(
+      normalizedValue
+    ) &&
+    looksLikeLocationWords(value)
+  ) {
+    return true;
+  }
+
+  return (
+    knownStandaloneLocationPattern.test(normalizedValue) &&
+    looksLikeLocationWords(value)
+  );
+}
+
+function looksLikeLocationWords(value) {
+  const normalizedValue = normalizeText(value);
+  const words = value
+    .split(/\s+/u)
+    .map(word => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
+    .filter(word => word.length > 0);
+
+  return (
+    words.length >= 2 &&
+    words.length <= 5 &&
+    words.every(
+      word =>
+        /^[\p{Lu}\d][\p{L}\d.'-]*$/u.test(word) ||
+        /^(?:of|and|de|del|la|the)$/iu.test(word)
+    ) &&
+    !/\b(?:llc|llp|inc|corp|corporation|company|group|partners|university|college|school|foundation|law|engineer|manager|director|partner|consultant|professor|assistant|associate|scientist|researcher|fellow|intern|president|founder|officer|chief|head|principal|investor)\b/u.test(
+      normalizedValue
+    )
+  );
+}
+
+function startsWithSentenceVerb(value) {
+  return /^(?:built|created|developed|drove|enabled|founded|grew|helped|implemented|improved|led|managed|owned|provided|served|supported|worked)\b/iu.test(
+    value.trim()
   );
 }
 
@@ -494,6 +735,192 @@ function crossSectionOutputMatch({ combinedSourceTextBySection, outputValue }) {
   return undefined;
 }
 
+function createFieldMismatchOutputMatches({
+  outputValues,
+  sourceSegmentsBySection,
+}) {
+  const mismatches = [];
+  const seenMismatches = new Set();
+
+  for (const outputValue of outputValues) {
+    const outputFieldRole = outputFieldRoleFromPath(outputValue.path);
+
+    if (outputFieldRole === undefined) {
+      continue;
+    }
+
+    const matchCandidates = [];
+
+    for (const segment of sourceSegmentsBySection.get(outputValue.section) ??
+      []) {
+      if (
+        segment.fieldRole === undefined ||
+        segment.fieldRole === outputFieldRole ||
+        !fieldMismatchIsHighConfidence({
+          outputFieldRole,
+          outputValue,
+          segment,
+        })
+      ) {
+        continue;
+      }
+
+      const match = bestTextMatch(segment.text, [outputValue.value]);
+
+      if (match.kind !== 'none') {
+        matchCandidates.push({ match, segment });
+      }
+    }
+
+    const ordinalMatchCandidates = matchCandidates.filter(({ segment }) =>
+      sourceSegmentMatchesOutputPath({
+        outputPath: outputValue.path,
+        segment,
+      })
+    );
+    const selectedMatchCandidates =
+      ordinalMatchCandidates.length > 0
+        ? ordinalMatchCandidates
+        : matchCandidates;
+
+    for (const { match, segment } of selectedMatchCandidates) {
+      const mismatchKey = [
+        outputValue.path,
+        outputFieldRole,
+        segment.fieldRole,
+        normalizeText(segment.text),
+      ].join('\0');
+
+      if (seenMismatches.has(mismatchKey)) {
+        continue;
+      }
+
+      seenMismatches.add(mismatchKey);
+      mismatches.push({
+        path: outputValue.path,
+        section: outputValue.section,
+        value: outputValue.value,
+        outputFieldRole,
+        sourceFieldRole: segment.fieldRole,
+        sourceText: segment.text,
+        sourceLineNumber: segment.lineNumber,
+        sourcePageIndex: segment.pageIndex,
+        matchKind: match.kind,
+      });
+    }
+  }
+
+  return mismatches;
+}
+
+function sourceSegmentMatchesOutputPath({ outputPath, segment }) {
+  const outputExperienceIndex = outputExperienceIndexFromPath(outputPath);
+
+  if (outputExperienceIndex === undefined) {
+    return true;
+  }
+
+  if (
+    outputExperienceIndex.kind === 'group' &&
+    segment.experienceGroupIndex !== undefined
+  ) {
+    return segment.experienceGroupIndex === outputExperienceIndex.index;
+  }
+
+  if (
+    outputExperienceIndex.kind === 'position' &&
+    segment.experiencePositionIndex !== undefined
+  ) {
+    return segment.experiencePositionIndex === outputExperienceIndex.index;
+  }
+
+  return true;
+}
+
+function outputExperienceIndexFromPath(path) {
+  const experiencePathMatch = /^profile\.experience\[(\d+)]/.exec(path);
+
+  if (experiencePathMatch !== null) {
+    return {
+      index: Number(experiencePathMatch[1]),
+      kind: 'position',
+    };
+  }
+
+  const groupPathMatch = /^profile\.experience_groups\[(\d+)]/.exec(path);
+
+  if (groupPathMatch !== null) {
+    return {
+      index: Number(groupPathMatch[1]),
+      kind: 'group',
+    };
+  }
+
+  return undefined;
+}
+
+function outputFieldRoleFromPath(path) {
+  if (
+    !/^profile\.(?:experience|experience_groups|education)(?:\.|\[)/u.test(path)
+  ) {
+    return undefined;
+  }
+
+  if (/(?:^|\.)description$/u.test(path)) {
+    return 'description';
+  }
+
+  if (/(?:^|\.)location$/u.test(path)) {
+    return 'location';
+  }
+
+  if (
+    /(?:^|\.)(?:duration|totalDuration|year)$/u.test(path) ||
+    /\.dates\.(?:originalText|durationText|start\.text|end\.text)$/u.test(path)
+  ) {
+    return 'duration';
+  }
+
+  if (/(?:^|\.)(?:company|institution)$/u.test(path)) {
+    return 'organization';
+  }
+
+  if (/(?:^|\.)(?:title|degree)$/u.test(path)) {
+    return 'title';
+  }
+
+  return undefined;
+}
+
+function fieldMismatchIsHighConfidence({
+  outputFieldRole,
+  outputValue,
+  segment,
+}) {
+  if (outputFieldRole !== 'description') {
+    return false;
+  }
+
+  return (
+    sourceMetadataFieldRoles.has(segment.fieldRole) &&
+    sourceTextTouchesOutputBoundary({
+      outputValue: outputValue.value,
+      sourceText: segment.text,
+    })
+  );
+}
+
+function sourceTextTouchesOutputBoundary({ outputValue, sourceText }) {
+  return textVariants(outputValue).some(outputVariant =>
+    textVariants(sourceText).some(
+      sourceVariant =>
+        outputVariant === sourceVariant ||
+        outputVariant.startsWith(`${sourceVariant} `) ||
+        outputVariant.endsWith(` ${sourceVariant}`)
+    )
+  );
+}
+
 function bestTextMatch(sourceText, candidateValues) {
   const sourceVariants = textVariants(sourceText);
   const sourceTokens = meaningfulTokens(sourceText);
@@ -617,6 +1044,7 @@ function meaningfulTokens(value) {
 }
 
 function createSectionReports({
+  fieldMismatchOutputMatches,
   outputValuesBySection,
   sourceSegmentsBySection,
   crossSectionOutputMatches,
@@ -641,6 +1069,9 @@ function createSectionReports({
       ).length,
       outputValueCount: outputValues.length,
       crossSectionOutputMatchCount: crossSectionOutputMatches.filter(
+        outputValue => outputValue.section === section
+      ).length,
+      fieldMismatchOutputMatchCount: fieldMismatchOutputMatches.filter(
         outputValue => outputValue.section === section
       ).length,
       untracedOutputValueCount: untracedOutputValues.filter(

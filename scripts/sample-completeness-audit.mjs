@@ -40,6 +40,8 @@ const failOnSectionWarnings =
 const failOnLooseMatches = hasFlag('--fail-on-loose') || hasFlag('--strict');
 const failOnUntracedOutput =
   hasFlag('--fail-on-untraced-output') || hasFlag('--strict');
+const failOnFieldMismatches =
+  hasFlag('--fail-on-field-mismatches') || hasFlag('--strict');
 
 function layoutTextName(pdfFileName) {
   return `${path.basename(pdfFileName, path.extname(pdfFileName))}.layout.txt`;
@@ -125,6 +127,10 @@ const totalCrossSectionOutputMatchCount = fileReports.reduce(
   (total, fileReport) => total + fileReport.crossSectionOutputMatchCount,
   0
 );
+const totalFieldMismatchOutputMatchCount = fileReports.reduce(
+  (total, fileReport) => total + fileReport.fieldMismatchOutputMatchCount,
+  0
+);
 const totalSectionWarningCount = fileReports.reduce(
   (total, fileReport) => total + fileReport.sectionWarnings.length,
   0
@@ -138,6 +144,7 @@ const report = {
   totalUnmatchedLineCount,
   totalLooseSourceMatchCount,
   totalCrossSectionOutputMatchCount,
+  totalFieldMismatchOutputMatchCount,
   totalUntracedOutputValueCount,
   totalSectionWarningCount,
   files: fileReports,
@@ -153,6 +160,7 @@ console.log(
     `Unmatched source segments: ${totalUnmatchedLineCount}.`,
     `Loose source matches: ${totalLooseSourceMatchCount}.`,
     `Cross-section output matches: ${totalCrossSectionOutputMatchCount}.`,
+    `Field-mismatch output matches: ${totalFieldMismatchOutputMatchCount}.`,
     `Untraced output values: ${totalUntracedOutputValueCount}.`,
     `section_parse_warning count: ${totalSectionWarningCount}.`,
     `Report: ${path.relative(repoRoot, reportPath)}.`,
@@ -168,6 +176,10 @@ if (failOnUnmatched && totalUnmatchedLineCount > 0) {
 }
 
 if (failOnLooseMatches && totalLooseSourceMatchCount > 0) {
+  process.exitCode = 1;
+}
+
+if (failOnFieldMismatches && totalFieldMismatchOutputMatchCount > 0) {
   process.exitCode = 1;
 }
 

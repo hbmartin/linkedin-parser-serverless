@@ -181,6 +181,40 @@ describe('formatLinkedInProfile', () => {
     ).toBe(['Contact', 'Portfolio: https://example.com'].join('\n'));
   });
 
+  test('omits contact links that duplicate the canonical LinkedIn URL', () => {
+    expect(
+      formatLinkedInProfile(
+        {
+          ...createEmptyProfile(),
+          contact: {
+            links: [
+              {
+                label: 'LinkedIn',
+                rawText: 'LinkedIn',
+                url: 'https://linkedin.com/in/orion',
+              },
+              {
+                label: 'Portfolio',
+                rawText: 'Portfolio',
+                url: 'https://example.com/orion',
+              },
+            ],
+            linkedin_url: '  https://linkedin.com/in/orion  ',
+          },
+        },
+        {
+          includeContact: true,
+        }
+      )
+    ).toBe(
+      [
+        'Contact',
+        'LinkedIn: https://linkedin.com/in/orion',
+        'Portfolio: https://example.com/orion',
+      ].join('\n')
+    );
+  });
+
   test('normalizes whitespace and skips malformed contact links in markdown', () => {
     const profileWithMalformedLinks = JSON.parse(
       JSON.stringify({

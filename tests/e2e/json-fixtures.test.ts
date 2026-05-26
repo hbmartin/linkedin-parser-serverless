@@ -68,7 +68,7 @@ describe('PDF/JSON fixture baselines', () => {
 });
 
 function readFixtureText(filePath: string): string {
-  return fs.readFileSync(filePath, 'utf8').trimEnd();
+  return fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n').trimEnd();
 }
 
 function createNodeJsonFixtureDependencies(): JsonFixtureDependencies {

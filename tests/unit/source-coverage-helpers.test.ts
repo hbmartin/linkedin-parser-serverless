@@ -183,6 +183,151 @@ describe('source coverage helpers', () => {
     expect(report.untracedOutputValueCount).toBe(0);
   });
 
+  test('classifies standalone experience locations without confusing the next company', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Foundation Law Group LLP',
+        'Partner',
+        'August 2017 - Present (8 years 10 months)',
+        'Los Angeles',
+        'Foundation Law Group built client tools.',
+        'Arent Fox',
+        'Partner',
+        'January 2013 - August 2017 (4 years 8 months)',
+        'DLA Piper',
+        'Partner',
+        'January 2006 - December 2012 (7 years)',
+        'Los Angeles',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          experienceGroupIndex: 0,
+          experiencePositionIndex: 0,
+          fieldRole: 'location',
+          text: 'Los Angeles',
+        }),
+        expect.objectContaining({
+          experienceGroupIndex: 2,
+          experiencePositionIndex: 2,
+          fieldRole: 'organization',
+          text: 'DLA Piper',
+        }),
+      ])
+    );
+  });
+
+  test('reports location lines misclassified into experience descriptions', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Experience',
+        'Foundation Law Group LLP',
+        'Partner',
+        'August 2017 - Present (8 years 10 months)',
+        'Los Angeles',
+        'Built durable client tools.',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        experience: [
+          {
+            company: 'Foundation Law Group LLP',
+            title: 'Partner',
+            duration: 'August 2017 - Present',
+            description: 'Los Angeles Built durable client tools.',
+          },
+        ],
+      }),
+      pdfFileName: 'experience-location-description-mismatch.pdf',
+    });
+
+    expect(report.unmatchedSourceSegmentCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+    expect(report.fieldMismatchOutputMatchCount).toBe(1);
+    expect(report.fieldMismatchOutputMatches).toEqual([
+      expect.objectContaining({
+        outputFieldRole: 'description',
+        path: 'profile.experience[0].description',
+        sourceFieldRole: 'location',
+        sourceText: 'Los Angeles',
+      }),
+    ]);
+    expect(
+      report.sections.find(section => section.section === 'experience')
+    ).toEqual(expect.objectContaining({ fieldMismatchOutputMatchCount: 1 }));
+  });
+
+  test('accepts standalone experience locations when they remain in location fields', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Experience',
+        'Foundation Law Group LLP',
+        'Partner',
+        'August 2017 - Present (8 years 10 months)',
+        'Los Angeles',
+        'Built durable client tools.',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        experience: [
+          {
+            company: 'Foundation Law Group LLP',
+            title: 'Partner',
+            duration: 'August 2017 - Present',
+            location: 'Los Angeles',
+            description: 'Built durable client tools.',
+          },
+        ],
+      }),
+      pdfFileName: 'experience-location-field.pdf',
+    });
+
+    expect(report.fieldMismatchOutputMatchCount).toBe(0);
+  });
+
+  test('uses experience ordinals when identical locations appear in multiple entries', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Experience',
+        'Alpha LLP',
+        'Partner',
+        'August 2017 - Present (8 years 10 months)',
+        'Los Angeles',
+        'Built durable client tools.',
+        'Beta LLP',
+        'Partner',
+        'January 2006 - December 2012 (7 years)',
+        'Los Angeles',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        experience: [
+          {
+            company: 'Alpha LLP',
+            title: 'Partner',
+            duration: 'August 2017 - Present',
+            description: 'Built durable client tools.',
+          },
+          {
+            company: 'Beta LLP',
+            title: 'Partner',
+            duration: 'January 2006 - December 2012',
+            description: 'Los Angeles',
+          },
+        ],
+      }),
+      pdfFileName: 'repeated-location-mismatch.pdf',
+    });
+
+    expect(report.fieldMismatchOutputMatches).toEqual([
+      expect.objectContaining({
+        path: 'profile.experience[1].description',
+        sourceLineNumber: 10,
+        sourceText: 'Los Angeles',
+      }),
+    ]);
+  });
+
   test('traces output values found in another source section separately', () => {
     const report = createSourceCoverageReport({
       layoutText: ['Summary', 'Reach Cassandra at cassandra@example.com.'].join(
