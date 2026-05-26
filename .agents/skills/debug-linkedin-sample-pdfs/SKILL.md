@@ -45,6 +45,7 @@ Default to the repo-local `samples/` directory when the user does not provide a 
    - `parser-lines.json` and `parser.structural.json` for parser reconstruction.
    - `parser-output.json` for current parser output, including `warnings` and `diagnostics`.
    - `parser-source-coverage.json` or `baseline-source-coverage.json` for section-aware coverage prompts.
+   - `fieldMismatchOutputMatches` in coverage reports for high-confidence field-role mistakes inside a section, such as experience location or duration lines captured as descriptions.
 
 4. Decide whether the failure is source extraction, layout reconstruction, section assignment, field parsing, or fixture expectation drift. Cite artifact filenames and source lines/items when explaining the diagnosis.
 
@@ -83,7 +84,7 @@ Use strict mode when validating the local sample corpus:
 pnpm run samples:audit-coverage -- --samples samples/ --strict
 ```
 
-Strict mode fails on unmatched source, loose source matches, untraced output, and section warnings. Treat `crossSectionOutputMatches` as informational review prompts: the output was traced to source text, but not in the section inferred from its JSON path. Section inference is heuristic, so verify suspicious rows against `poppler.layout.txt`, `overlay.html`, and source geometry before changing parser code.
+Strict mode fails on unmatched source, loose source matches, untraced output, high-confidence field mismatches, and section warnings. Treat `crossSectionOutputMatches` as informational review prompts: the output was traced to source text, but not in the section inferred from its JSON path. Treat `fieldMismatchOutputMatches` as stronger evidence: the output traces to the right broad section but the source line has an inferred field role that conflicts with the JSON path. Verify suspicious rows against `poppler.layout.txt`, `overlay.html`, and source geometry before changing parser code.
 
 ## Artifact Reference
 

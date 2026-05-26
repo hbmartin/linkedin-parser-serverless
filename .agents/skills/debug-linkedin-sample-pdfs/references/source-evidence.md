@@ -26,6 +26,7 @@
 - `unmatchedSourceSegments`: PDF text in an inferred source section that did not appear in same-section JSON. Verify before changing code; common causes are section inference mistakes, parser omissions, or intentionally unmodeled fields.
 - `looseSourceMatches`: Source matched only by token containment, not exact normalized text. Use these to find punctuation, spacing, URL wrapping, or normalization issues.
 - `crossSectionOutputMatches`: JSON values traced to PDF text in a different inferred section. Treat these as review prompts for section inference or intentional duplicated content, not as untraced output failures.
+- `fieldMismatchOutputMatches`: JSON values traced to the same inferred section but to a source line with a conflicting field role. These are high-confidence prompts for values like standalone experience locations or dates being captured as descriptions.
 - `untracedOutputValues`: JSON values not traceable to same-section PDF text. These can reveal hallucinated/misassigned fields, normalized URLs, derived date fields, or text assigned to the wrong section.
 - `sectionWarnings`: Parser warnings from generated or baseline JSON. Treat `section_parse_warning` as higher priority than heuristic coverage noise.
 - `warnings` and `diagnostics`: Parser self-reporting in output JSON. Include these in the investigation notes even when the visible source text looks correct.
@@ -35,6 +36,7 @@
 1. Confirm visible truth in `poppler.layout.txt` and `overlay.html`.
 2. Compare Poppler, pdfplumber, and unpdf geometry if text is missing or split unexpectedly.
 3. Compare `unpdf.items.json` to `parser-lines.json` when columns, page transitions, or wrapped lines are wrong.
-4. Compare `parser-lines.json` to `parser-output.json` when parser input is correct but fields are wrong.
-5. Use `baseline-source-coverage.json` only to audit fixture completeness; do not treat the baseline as source truth.
-6. Keep generated artifacts in `.debug/` for ad hoc investigation and `.debug-dist/` for reproducible script output.
+4. Check `fieldMismatchOutputMatches` before accepting section coverage as sufficient; a same-section match can still be a field-level parse error.
+5. Compare `parser-lines.json` to `parser-output.json` when parser input is correct but fields are wrong.
+6. Use `baseline-source-coverage.json` only to audit fixture completeness; do not treat the baseline as source truth.
+7. Keep generated artifacts in `.debug/` for ad hoc investigation and `.debug-dist/` for reproducible script output.

@@ -75,6 +75,7 @@ function createIdentitySection(
 }
 
 function createContactSection(contact: Contact): SectionDraft | undefined {
+  const linkedinUrl = cleanValue(contact.linkedin_url);
   const linkLines =
     contact.links?.map(link => {
       if (!link) {
@@ -84,7 +85,7 @@ function createContactSection(contact: Contact): SectionDraft | undefined {
       const label = cleanValue(link.label);
       const url = cleanValue(link.url);
 
-      if (!url) {
+      if (!url || url === linkedinUrl) {
         return undefined;
       }
 
@@ -93,7 +94,7 @@ function createContactSection(contact: Contact): SectionDraft | undefined {
   const lines = cleanValues([
     contact.email ? `Email: ${contact.email}` : undefined,
     contact.phone ? `Phone: ${contact.phone}` : undefined,
-    contact.linkedin_url ? `LinkedIn: ${contact.linkedin_url}` : undefined,
+    linkedinUrl ? `LinkedIn: ${linkedinUrl}` : undefined,
     contact.location ? `Location: ${contact.location}` : undefined,
     ...linkLines,
   ]);
