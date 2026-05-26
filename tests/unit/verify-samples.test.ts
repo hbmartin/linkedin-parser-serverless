@@ -110,6 +110,48 @@ describe('sample verification wrapper', () => {
     ]);
   });
 
+  test('adds a suspect JSON generation step when bootstrapping PDFs', () => {
+    expect(
+      sampleVerificationSteps('samples', { shouldGenerateJson: true })
+    ).toEqual([
+      {
+        args: ['run', 'build'],
+        command: 'pnpm',
+        label: 'Build package',
+        stopOnFailure: true,
+      },
+      {
+        args: ['bin/cli.js', 'write-json', 'samples'],
+        command: 'node',
+        label: 'Generate suspect sample JSON baselines',
+        stopOnFailure: true,
+      },
+      {
+        args: ['bin/cli.js', 'verify-json', 'samples'],
+        command: 'node',
+        label: 'Verify sample JSON baselines',
+        stopOnFailure: false,
+      },
+      {
+        args: ['scripts/check-sample-warnings.mjs', '--samples', 'samples'],
+        command: 'node',
+        label: 'Check sample section warnings',
+        stopOnFailure: false,
+      },
+      {
+        args: [
+          'scripts/sample-completeness-audit.mjs',
+          '--samples',
+          'samples',
+          '--strict',
+        ],
+        command: 'node',
+        label: 'Audit sample source coverage',
+        stopOnFailure: false,
+      },
+    ]);
+  });
+
   test('fails before commands when the local samples directory is absent', async () => {
     const { commands, dependencies } = fakeDependencies({ exists: false });
 
@@ -169,6 +211,33 @@ describe('sample verification wrapper', () => {
     );
     expect(commands.filter(command => command.command === 'pnpm')).toHaveLength(
       1
+    );
+  });
+
+  test('generates suspect JSON when PDFs exist without JSON baselines', async () => {
+    const { commands, dependencies } = fakeDependencies({
+      entries: [
+        {
+          kind: 'file',
+          name: 'Profile.pdf',
+        },
+      ],
+    });
+
+    const result = await verifySamples({
+      dependencies,
+      samplesDir: 'samples',
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('Generate suspect sample JSON baselines');
+    expect(commands).toEqual(
+      sampleVerificationSteps('samples', { shouldGenerateJson: true }).map(
+        ({ args, command }) => ({
+          args,
+          command,
+        })
+      )
     );
   });
 

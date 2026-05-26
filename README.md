@@ -495,6 +495,19 @@ Use $debug-linkedin-sample-pdfs to investigate why samples/Persephone Kore.pdf p
 
 In the Codex app, use the same `$debug-linkedin-sample-pdfs` mention in the chat. The skill directs Codex to generate source evidence bundles with `pnpm run source:inspect -- <pdf>`, compare Poppler/pdfplumber/unpdf artifacts, and use the section-aware sample audit before changing parser code.
 
+For a private sample corpus, place top-level PDFs in the local gitignored
+`samples/` directory, then ask Codex to use the skill against the new set:
+
+```text
+Use $debug-linkedin-sample-pdfs to inspect my samples/ directory, identify parser gaps against the source PDFs, and improve the parser until pnpm run check and pnpm run samples:verify pass.
+```
+
+Codex will treat the PDFs as source truth, generate evidence bundles for
+suspicious cases, add focused tests for any parser change, and use
+`samples:verify` so another developer can iterate without committing private
+files. If no JSON exists yet, `samples:verify` generates initial JSON first;
+that generated JSON is suspect parser output for review, not golden truth.
+
 ### Developing and Testing the CLI
 
 The local CLI script loads the built package from `dist/`, so build the project before running it from a checkout:

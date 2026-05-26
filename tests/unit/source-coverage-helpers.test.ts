@@ -210,6 +210,34 @@ describe('source coverage helpers', () => {
     ]);
   });
 
+  test('traces cross-section output values across combined source segments', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Summary',
+        'Reach Cassandra at',
+        'cassandra@example.com.',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        contact: {
+          email: 'cassandra@example.com',
+        },
+        summary: 'Reach Cassandra at cassandra@example.com.',
+      }),
+      pdfFileName: 'combined-cross-section-email.pdf',
+    });
+
+    expect(report.unmatchedSourceSegmentCount).toBe(0);
+    expect(report.looseSourceMatchCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+    expect(report.crossSectionOutputMatches).toEqual([
+      expect.objectContaining({
+        matchedSection: 'summary',
+        path: 'profile.contact.email',
+        section: 'contact',
+      }),
+    ]);
+  });
+
   test('does not require derived date fields or warnings to trace to PDF text', () => {
     const values = collectOutputValues({
       profile: {

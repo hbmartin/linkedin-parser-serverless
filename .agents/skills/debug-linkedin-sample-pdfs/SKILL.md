@@ -9,7 +9,15 @@ Use source-derived artifacts as the authority. Parser JSON and sample baselines 
 
 ## Workflow
 
-1. Generate evidence before diagnosing:
+1. If `samples/` contains PDFs but no JSON files yet, generate initial JSON before checking:
+
+   ```bash
+   pnpm run samples:verify
+   ```
+
+   The generated JSON is not golden output. Treat it as suspect parser output that exists only to make coverage, diffing, and review workflows possible. Debug questionable values against the original PDFs with CLI PDF tools and the scripts in `scripts/`.
+
+2. Generate evidence before diagnosing:
 
    ```bash
    pnpm run source:inspect -- <pdf-path>
@@ -21,7 +29,7 @@ Use source-derived artifacts as the authority. Parser JSON and sample baselines 
    pnpm run source:inspect -- <pdf-path> --output .debug/<short-case-name>
    ```
 
-2. Inspect source artifacts first:
+3. Inspect source artifacts first:
    - `poppler.layout.txt` for readable columns and visible line order.
    - `overlay.html` for visual page geometry and text box placement.
    - `unpdf.items.json` for the extractor input the parser actually receives.
@@ -29,18 +37,27 @@ Use source-derived artifacts as the authority. Parser JSON and sample baselines 
    - `parser-lines.json` and `parser.structural.json` for parser reconstruction.
    - `parser-source-coverage.json` or `baseline-source-coverage.json` for section-aware coverage prompts.
 
-3. Decide whether the failure is source extraction, layout reconstruction, section assignment, field parsing, or fixture expectation drift. Cite artifact filenames and source lines/items when explaining the diagnosis.
+4. Decide whether the failure is source extraction, layout reconstruction, section assignment, field parsing, or fixture expectation drift. Cite artifact filenames and source lines/items when explaining the diagnosis.
 
-4. If changing parser behavior, add focused unit tests for the failing shape. Use a small synthetic text item or structural-line fixture unless the bug requires an end-to-end PDF fixture.
+5. If changing parser behavior, add focused unit tests for the failing shape. Use a small synthetic text item or structural-line fixture unless the bug requires an end-to-end PDF fixture.
 
-5. Run the repo-required verification after changes:
+6. Run the repo-required verification after changes:
 
    ```bash
    pnpm run check
    pnpm run samples:verify
    ```
 
-   `samples/` is local and gitignored, so `samples:verify` is intentionally separate from the default check. After `samples:verify`, report its result and make no further changes from that output unless the user explicitly asks.
+   `samples/` is local and gitignored, so `samples:verify` is intentionally separate from the default check. If no JSON files are present, `samples:verify` writes initial suspect JSON baselines before checking. After `samples:verify`, report its result and make no further changes from that output unless the user explicitly asks.
+
+## Required Final Report
+
+After using this skill, clearly document:
+
+- Which PDF files produced incorrect or incomplete parser output, with the source evidence used to identify each problem.
+- What code changes specifically address each failure case. Tie each fix to the PDF symptom it resolves rather than describing changes only by file name.
+- How the generated JSON should appear different after the changes, including the fields or sections expected to be added, removed, moved, or normalized.
+- Any generated JSON that remains suspect and still needs source-level review. Generated JSON is never golden output just because it was written by the CLI.
 
 ## Batch Audit
 
