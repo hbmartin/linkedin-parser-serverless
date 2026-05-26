@@ -1,5 +1,6 @@
 import {
   collectOutputValues,
+  containsDelimitedPhrase,
   createSourceCoverageReport,
   createSourceSegmentsFromLayoutText,
 } from '../../scripts/lib/source-coverage-helpers.mjs';
@@ -341,6 +342,67 @@ describe('source coverage helpers', () => {
     );
   });
 
+  test('classifies standalone uppercase region-code locations', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Example Co',
+        'Principal Engineer',
+        'January 2020 - Present',
+        'UK',
+        'Built durable client tools.',
+        'Second Co',
+        'Staff Engineer',
+        'January 2018 - December 2019',
+        'USA',
+        'Built durable internal tools.',
+        'Third Co',
+        'Advisor',
+        'January 2016 - December 2017',
+        'U.S.',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'UK',
+        }),
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'USA',
+        }),
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'U.S.',
+        }),
+      ])
+    );
+  });
+
+  test('normalizes diacritics for standalone location lookups', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Example Co',
+        'Principal Engineer',
+        'January 2020 - Present',
+        'São Paulo',
+        'Built durable client tools.',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'São Paulo',
+        }),
+      ])
+    );
+  });
+
   test('classifies longer standalone area locations with country tokens', () => {
     const sourceView = createSourceSegmentsFromLayoutText(
       [
@@ -442,6 +504,45 @@ describe('source coverage helpers', () => {
     expect(report.untracedOutputValueCount).toBe(0);
   });
 
+  test('keeps place-word organization names out of location field roles', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Los Angeles Animal Services',
+        'Commissioner',
+        'September 2003 - August 2005',
+        'Tokyo Forex',
+        'SVP',
+        'August 1992 - August 1994',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'organization',
+          text: 'Los Angeles Animal Services',
+        }),
+        expect.objectContaining({
+          fieldRole: 'organization',
+          text: 'Tokyo Forex',
+        }),
+      ])
+    );
+    expect(sourceView.segments).toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'Los Angeles Animal Services',
+        }),
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'Tokyo Forex',
+        }),
+      ])
+    );
+  });
+
   test('does not treat unsynced region codes as standalone locations', () => {
     const sourceView = createSourceSegmentsFromLayoutText(
       [
@@ -465,6 +566,26 @@ describe('source coverage helpers', () => {
   });
 
   test('classifies full-state city locations as metadata source fields', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Parametric',
+        'Senior Investment Analyst',
+        'September 2016 - May 2019',
+        'Minneapolis, Minnesota',
+        'Built overlay solutions.',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'Minneapolis, Minnesota',
+        }),
+      ])
+    );
+
     const report = createSourceCoverageReport({
       layoutText: [
         'Experience',
@@ -490,6 +611,10 @@ describe('source coverage helpers', () => {
 
     expect(report.fieldMismatchOutputMatchCount).toBe(0);
     expect(report.untracedOutputValueCount).toBe(0);
+  });
+
+  test('empty delimited phrases do not match', () => {
+    expect(containsDelimitedPhrase('Los Angeles', '')).toBe(false);
   });
 
   test('does not classify comma phrases as locations without geo evidence', () => {

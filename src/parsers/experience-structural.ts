@@ -344,6 +344,9 @@ export class ExperienceStructuralParser {
     const durationLine = titleLine
       ? this.nextContentLine(allLines, titleLine.index + 1)
       : undefined;
+    const hasWrappedOrganizationShape =
+      this.looksLikeLongAcademicOrganizationHeaderText(combinedText) ||
+      this.looksLikeWrappedOrganizationHeaderText(combinedText);
 
     return (
       titleLine !== undefined &&
@@ -353,9 +356,8 @@ export class ExperienceStructuralParser {
       !this.looksLikeDuration(nextLine.text) &&
       !this.looksLikePosition(line.text) &&
       !this.looksLikeLocation(line.text) &&
-      !this.looksLikeLocation(nextLine.text) &&
-      (this.looksLikeLongAcademicOrganizationHeaderText(combinedText) ||
-        this.looksLikeWrappedOrganizationHeaderText(combinedText)) &&
+      (!this.looksLikeLocation(nextLine.text) || hasWrappedOrganizationShape) &&
+      hasWrappedOrganizationShape &&
       (this.looksLikePosition(titleLine.text) ||
         this.looksLikePotentialPositionTitleLine(titleLine.text)) &&
       this.looksLikeDuration(durationLine.text)
@@ -485,7 +487,7 @@ export class ExperienceStructuralParser {
   }
 
   private static hasOrganizationDomainCueText(text: string): boolean {
-    return /\b(?:AI|Coalition|Connections|Labs?|Network|Robotics|Ventures?)\b/u.test(
+    return /\b(?:AI|Coalition|Connections|Federation|Forex|Labs?|Network|Robotics|Services?|Ventures?)\b/u.test(
       text
     );
   }
@@ -965,6 +967,14 @@ export class ExperienceStructuralParser {
     const hasFollowingPosition =
       this.hasImmediateTitleAndDurationAfterOrganization(index, allLines) ||
       this.hasTotalDurationThenPosition(index, allLines);
+    const hasLocationShape = this.looksLikeLocation(normalizedLine);
+    const hasOrganizationCue =
+      isLongAcademicOrganization ||
+      this.looksLikeLowerCamelOrganization(normalizedLine) ||
+      this.hasOrganizationDomainCueText(normalizedLine) ||
+      this.hasOrganizationSuffixText(normalizedLine) ||
+      looksLikeOrganizationNameText(normalizedLine) ||
+      this.looksLikeWrappedOrganizationHeaderText(normalizedLine);
 
     if (
       normalizedLine.length < 2 ||
@@ -976,7 +986,7 @@ export class ExperienceStructuralParser {
       /^[-+*•]/u.test(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
-      (this.looksLikeLocation(normalizedLine) && !hasFollowingPosition) ||
+      (hasLocationShape && (!hasFollowingPosition || !hasOrganizationCue)) ||
       this.looksLikeMediaDescriptionLine(normalizedLine) ||
       this.looksLikeSentenceLikeDescriptionText(normalizedLine)
     ) {
@@ -1453,7 +1463,6 @@ export class ExperienceStructuralParser {
     }
 
     const locationClassification = classifyLocationText({
-      context: { structuralContext: 'metadata' },
       text: normalizedLine,
     });
     const hasLocationShape =
@@ -1524,6 +1533,10 @@ export class ExperienceStructuralParser {
   private static normalizeLocationText(text: string): string {
     return text
       .replace(/\bY\s+ork\b/g, 'York')
+      .replace(
+        /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))\s+(?:U\s*S|USA)$/iu,
+        '$1'
+      )
       .replace(/,\s*([A-Z])\s+([A-Z])$/g, ', $1$2')
       .replace(/\s+,/g, ',')
       .replace(/,\s*/g, ', ')

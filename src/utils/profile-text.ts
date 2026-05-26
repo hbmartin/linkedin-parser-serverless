@@ -41,6 +41,8 @@ const ORGANIZATION_WORDS = new Set([
   'corps',
   'corporation',
   'enterprises',
+  'federation',
+  'forex',
   'foundation',
   'fund',
   'gmbh',

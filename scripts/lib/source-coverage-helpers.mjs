@@ -89,8 +89,9 @@ const standaloneLocationGenericQualifiers = setFromList(
   'area|bay|county|metropolitan|metro|province|region|state'
 );
 const standaloneLocationNegativeWords = setFromList(
-  'assistant|associate|chief|college|company|consulate|consultant|corporate|corporation|director|engineer|finance|fellow|foundation|founder|group|head|intern|investor|law|manager|officer|partner|partners|president|principal|professor|researcher|school|scientist|university'
+  'assistant|associate|chief|college|company|consulate|consultant|corporate|corporation|director|engineer|federation|finance|fellow|foundation|founder|forex|group|head|intern|investor|law|manager|officer|partner|partners|president|principal|professor|researcher|school|scientist|service|services|university'
 );
+const ambiguousStandaloneLocationRegionCodes = setFromList('in|me|or');
 
 export function normalizeText(value) {
   return value
@@ -527,7 +528,7 @@ function standaloneLocationScore({ normalizedValue, value }) {
   }
 
   if (hasRegionCode) {
-    score += 2;
+    score += 3;
   }
 
   if (hasCommaSeparatedStandaloneRegionEvidence(value)) {
@@ -563,18 +564,25 @@ function looksLikeLocationWords(value) {
         /^[\p{Lu}\d][\p{L}\d.'-]*$/u.test(word) ||
         /^(?:of|and|de|del|la|the)$/iu.test(word)
     ) &&
-    !/\b(?:llc|llp|inc|corp|corporation|company|group|partners|university|college|school|foundation|law|engineer|manager|director|partner|consultant|professor|assistant|associate|scientist|researcher|fellow|intern|president|founder|officer|chief|head|principal|investor)\b/u.test(
+    !/\b(?:llc|llp|inc|corp|corporation|company|group|partners|university|college|school|foundation|law|engineer|manager|director|partner|consultant|professor|assistant|associate|scientist|researcher|fellow|intern|president|founder|officer|chief|head|principal|investor|service|services|federation|forex)\b/u.test(
       normalizedValue
     )
   );
 }
 
 function setFromList(value) {
-  return new Set(value.split('|'));
+  return new Set(
+    value
+      .split('|')
+      .map(item => normalizeLocationLookupText(item))
+      .filter(Boolean)
+  );
 }
 
 function normalizeLocationLookupText(value) {
   return normalizeText(value)
+    .normalize('NFKD')
+    .replace(/\p{M}+/gu, '')
     .replace(/-/g, ' ')
     .replace(/[().,]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -591,7 +599,11 @@ function containsKnownStandaloneLocationPhrase(value, phrases) {
   return false;
 }
 
-function containsDelimitedPhrase(value, phrase) {
+export function containsDelimitedPhrase(value, phrase) {
+  if (phrase.length === 0) {
+    return false;
+  }
+
   let searchIndex = 0;
 
   while (searchIndex <= value.length) {
@@ -619,11 +631,26 @@ function isStandaloneLocationDelimiter(value) {
 }
 
 function hasContextualStandaloneRegionCode({ hasKnownPlace, lookupWords, value }) {
-  const hasRegionCode = standaloneRegionCodeCandidates(lookupWords).some(word =>
+  const regionCodeWords = standaloneRegionCodeCandidates(lookupWords).filter(word =>
     standaloneLocationRegionCodes.has(word)
   );
 
-  return hasRegionCode && (hasKnownPlace || value.includes(','));
+  if (regionCodeWords.length === 0) {
+    return false;
+  }
+
+  const hasUnambiguousRegionCode = regionCodeWords.some(
+    word => !ambiguousStandaloneLocationRegionCodes.has(word)
+  );
+  const hasStandaloneUpperRegionToken =
+    hasUnambiguousRegionCode &&
+    /^\s*(?:[A-Z]{2,3}|(?:[A-Z]\.){2,})\s*$/u.test(value);
+
+  return (
+    value.includes(',') ||
+    hasStandaloneUpperRegionToken ||
+    (hasKnownPlace && hasUnambiguousRegionCode)
+  );
 }
 
 function standaloneRegionCodeCandidates(words) {

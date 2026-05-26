@@ -2511,7 +2511,6 @@ describe('ExperienceStructuralParser', () => {
         positions: [
           expect.objectContaining({
             description: 'Public investing a special situation portfolio.',
-            location: undefined,
             title: 'Investor',
           }),
         ],
@@ -2532,7 +2531,7 @@ describe('ExperienceStructuralParser', () => {
   test('keeps adjacent location and place-word organization separate', () => {
     const experiences = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
-      textItem({ text: 'Cantor Fitzgerald', y: 670 }),
+      textItem({ text: 'Cantor Fitzgerald LLC', y: 670 }),
       textItem({ text: 'SVP Foreign Exchange Trader', y: 650, fontSize: 11.5 }),
       textItem({ text: 'August 1994 - August 1999', y: 630 }),
       textItem({ text: 'London, England', y: 610 }),
@@ -2544,7 +2543,7 @@ describe('ExperienceStructuralParser', () => {
 
     expect(experiences).toEqual([
       expect.objectContaining({
-        organization: 'Cantor Fitzgerald',
+        organization: 'Cantor Fitzgerald LLC',
         positions: [
           expect.objectContaining({
             duration: 'August 1994 - August 1999',
@@ -2632,6 +2631,23 @@ describe('ExperienceStructuralParser', () => {
         description: '--Increased order flow and revenue.',
         location: 'Greater New York City Area',
         title: 'Managing Director Institutional Equity Sales',
+      })
+    );
+  });
+
+  test('normalizes trailing country codes on greater-area locations', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Example Co', y: 670 }),
+      textItem({ text: 'Director', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - Present', y: 630 }),
+      textItem({ text: 'Greater Los Angeles Area US', y: 610 }),
+    ]);
+
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        location: 'Greater Los Angeles Area',
+        title: 'Director',
       })
     );
   });
@@ -3247,6 +3263,7 @@ describe('ExperienceStructuralParser', () => {
 
     for (const trueLocation of [
       'Los Angeles CA',
+      'San Diego',
       'San Diego Metropolitan Area',
       'Tallinn, Harjumaa, Estonia',
       'Dallas, Texas',
