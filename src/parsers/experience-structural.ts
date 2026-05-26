@@ -967,12 +967,14 @@ export class ExperienceStructuralParser {
       this.hasImmediateTitleAndDurationAfterOrganization(index, allLines) ||
       this.hasTotalDurationThenPosition(index, allLines);
     const hasLocationShape = this.looksLikeLocation(normalizedLine);
+    const hasNonLocationOrganizationNameShape =
+      !hasLocationShape && looksLikeOrganizationNameText(normalizedLine);
     const hasOrganizationCue =
       isLongAcademicOrganization ||
       this.looksLikeLowerCamelOrganization(normalizedLine) ||
       this.hasOrganizationDomainCueText(normalizedLine) ||
       this.hasOrganizationSuffixText(normalizedLine) ||
-      looksLikeOrganizationNameText(normalizedLine) ||
+      hasNonLocationOrganizationNameShape ||
       this.looksLikeWrappedOrganizationHeaderText(normalizedLine);
 
     if (
@@ -1533,7 +1535,7 @@ export class ExperienceStructuralParser {
     return text
       .replace(/\bY\s+ork\b/g, 'York')
       .replace(
-        /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))\s+U\.?\s*S\.?(?:\s*A\.?)?$/iu,
+        /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))[,\s]*(?:U\.?\s*S\.?(?:\.?A\.?)?|USA\.?)$/iu,
         '$1'
       )
       .replace(/,\s*([A-Z])\s+([A-Z])$/g, ', $1$2')

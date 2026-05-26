@@ -381,6 +381,59 @@ describe('source coverage helpers', () => {
     );
   });
 
+  test('does not classify ambiguous standalone region codes as locations', () => {
+    for (const regionCode of [
+      'IN',
+      'ME',
+      'OR',
+      'Platform, IN',
+      'Platform, ME',
+      'Platform, OR',
+    ]) {
+      const sourceView = createSourceSegmentsFromLayoutText(
+        [
+          'Experience',
+          'Example Co',
+          'Principal Engineer',
+          'January 2020 - Present',
+          regionCode,
+          'Built durable client tools.',
+        ].join('\n')
+      );
+
+      expect(sourceView.segments).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fieldRole: 'location',
+            text: regionCode,
+          }),
+        ])
+      );
+    }
+  });
+
+  test('keeps unambiguous comma-separated region-code locations', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Example Co',
+        'Principal Engineer',
+        'January 2020 - Present',
+        'Platform, TX',
+        'Built durable client tools.',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'Platform, TX',
+        }),
+      ])
+    );
+  });
+
   test('normalizes diacritics for standalone location lookups', () => {
     const sourceView = createSourceSegmentsFromLayoutText(
       [

@@ -30,6 +30,18 @@ describe('location classifier', () => {
         ]),
       })
     );
+
+    expect(
+      classifyLocationText({
+        context: { structuralContext: 'after-duration' },
+        text: 'IN, San Diego',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        isLocation: true,
+        signals: expect.arrayContaining(['known-place', 'region-code']),
+      })
+    );
   });
 
   test('rejects generic geo-token and title-bearing phrases without strong evidence', () => {
@@ -116,13 +128,18 @@ describe('location classifier', () => {
       'Tokyo Forex',
       'Keidanren (Japan Business Federation)',
       'schools that generate meaningful results for families in New York',
+      'built, IN',
     ]) {
-      expect(
-        classifyLocationText({
-          context: { structuralContext: 'after-duration' },
-          text,
-        }).isLocation
-      ).toBe(false);
+      const result = classifyLocationText({
+        context: { structuralContext: 'after-duration' },
+        text,
+      });
+      const hasRegionCodeSignal = result.signals.some(signal =>
+        signal.includes('region-code')
+      );
+
+      expect(result.isLocation).toBe(false);
+      expect(hasRegionCodeSignal).toBe(false);
     }
   });
 });

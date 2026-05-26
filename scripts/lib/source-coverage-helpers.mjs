@@ -542,7 +542,10 @@ function standaloneLocationScore({ normalizedValue, value }) {
     score += 2;
   }
 
-  if (startsWithSentenceVerb(value) || normalizedValue.split(/\s+/u).length > 8) {
+  if (
+    startsWithSentenceVerb(value) ||
+    normalizedValue.split(/\s+/u).length > 8
+  ) {
     score -= 4;
   }
 
@@ -616,7 +619,10 @@ export function containsDelimitedPhrase(value, phrase) {
     const before = value[index - 1];
     const after = value[index + phrase.length];
 
-    if (isStandaloneLocationDelimiter(before) && isStandaloneLocationDelimiter(after)) {
+    if (
+      isStandaloneLocationDelimiter(before) &&
+      isStandaloneLocationDelimiter(after)
+    ) {
       return true;
     }
 
@@ -630,9 +636,13 @@ function isStandaloneLocationDelimiter(value) {
   return value === undefined || !/[\p{L}\p{N}]/u.test(value);
 }
 
-function hasContextualStandaloneRegionCode({ hasKnownPlace, lookupWords, value }) {
-  const regionCodeWords = standaloneRegionCodeCandidates(lookupWords).filter(word =>
-    standaloneLocationRegionCodes.has(word)
+function hasContextualStandaloneRegionCode({
+  hasKnownPlace,
+  lookupWords,
+  value,
+}) {
+  const regionCodeWords = standaloneRegionCodeCandidates(lookupWords).filter(
+    word => standaloneLocationRegionCodes.has(word)
   );
 
   if (regionCodeWords.length === 0) {
@@ -646,11 +656,40 @@ function hasContextualStandaloneRegionCode({ hasKnownPlace, lookupWords, value }
     hasUnambiguousRegionCode &&
     /^\s*(?:[A-Z]{2,3}|(?:[A-Z]\.){2,})\s*$/u.test(value);
 
-  return (
-    value.includes(',') ||
+  if (
     hasStandaloneUpperRegionToken ||
     (hasKnownPlace && hasUnambiguousRegionCode)
-  );
+  ) {
+    return true;
+  }
+
+  const commaSegments = value
+    .split(',')
+    .map(part => normalizeLocationLookupText(part))
+    .filter(Boolean);
+
+  if (commaSegments.length < 2) {
+    return false;
+  }
+
+  return commaSegments.some(segment => {
+    const segmentWords = segment.split(/\s+/u).filter(Boolean);
+    const hasKnownPlaceSegment =
+      hasKnownPlace &&
+      containsKnownStandaloneLocationPhrase(
+        segment,
+        standaloneLocationPlaceNames
+      );
+    const hasUnambiguousRegionCodeSegment = standaloneRegionCodeCandidates(
+      segmentWords
+    ).some(
+      word =>
+        regionCodeWords.includes(word) &&
+        !ambiguousStandaloneLocationRegionCodes.has(word)
+    );
+
+    return hasKnownPlaceSegment || hasUnambiguousRegionCodeSegment;
+  });
 }
 
 function standaloneRegionCodeCandidates(words) {
@@ -683,12 +722,15 @@ function hasCommaSeparatedStandaloneRegionEvidence(value) {
     return false;
   }
 
-  return parts.slice(1).some(
-    part =>
-      standaloneLocationRegionCodes.has(part) ||
-      standaloneLocationCountryRegions.has(part) ||
-      standaloneLocationAdminRegions.has(part)
-  );
+  return parts
+    .slice(1)
+    .some(
+      part =>
+        (standaloneLocationRegionCodes.has(part) &&
+          !ambiguousStandaloneLocationRegionCodes.has(part)) ||
+        standaloneLocationCountryRegions.has(part) ||
+        standaloneLocationAdminRegions.has(part)
+    );
 }
 
 function startsWithSentenceVerb(value) {

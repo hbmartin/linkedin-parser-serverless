@@ -461,16 +461,6 @@ function includesWholeKeyword(text: string, keyword: string): boolean {
   return pattern.test(text);
 }
 
-function hasCommaSeparatedOrganizationSuffix(text: string): boolean {
-  return text
-    .split(',')
-    .map(part => part.trim())
-    .slice(1)
-    .some(part =>
-      ORGANIZATION_WORDS.has(part.toLowerCase().replace(/[.]/g, ''))
-    );
-}
-
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

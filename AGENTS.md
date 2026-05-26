@@ -9,7 +9,7 @@
 - When verification fails on unrelated dirty-worktree changes, report the exact failing command and failures instead of modifying unrelated code.
 - When debugging sample PDF extraction, use the repo-local skill at `.agents/skills/debug-linkedin-sample-pdfs`.
 - Sample coverage strictness must include field-level misclassification checks, not only section-level source traceability.
-- When skill-creator helper scripts are not executable, invoke them with `python3 <script-path> ...`.
+- NEVER edit, delete, overwrite, or otherwise modify anything in the samples/ directory.
 
 # TypeScript
 
