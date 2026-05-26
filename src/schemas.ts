@@ -125,7 +125,30 @@ export const ParseWarningSchema = z.union([
   SectionParseWarningSchema,
 ]);
 
+export const ParseDiagnosticsSchema = z.object({
+  confidence: z.number().min(0).max(1),
+  isEmpty: z.boolean(),
+  isLikelyLinkedInExport: z.boolean(),
+  sectionsFound: z.array(
+    z.enum([
+      'profile',
+      'contact',
+      'summary',
+      'top_skills',
+      'languages',
+      'certifications',
+      'volunteer_work',
+      'projects',
+      'publications',
+      'honors_awards',
+      'experience',
+      'education',
+    ])
+  ),
+});
+
 export const ParseResultSchema = z.object({
+  diagnostics: ParseDiagnosticsSchema,
   profile: LinkedInProfileSchema,
   rawText: z.string().optional(),
   warnings: z.array(ParseWarningSchema),

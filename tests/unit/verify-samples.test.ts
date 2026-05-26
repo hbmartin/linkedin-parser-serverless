@@ -241,6 +241,58 @@ describe('sample verification wrapper', () => {
     );
   });
 
+  test('stops after suspect JSON generation failure', async () => {
+    const allSteps = sampleVerificationSteps('samples', {
+      shouldGenerateJson: true,
+    });
+    const generationStepIndex = allSteps.findIndex(
+      step => step.label === 'Generate suspect sample JSON baselines'
+    );
+    const executedSteps = allSteps.slice(0, generationStepIndex + 1);
+    const skippedLabels = allSteps
+      .slice(generationStepIndex + 1)
+      .map(step => step.label);
+    const { commands, dependencies } = fakeDependencies({
+      entries: [
+        {
+          kind: 'file',
+          name: 'Profile.pdf',
+        },
+      ],
+      results: [
+        {
+          exitCode: 0,
+          stderr: '',
+          stdout: 'build ok\n',
+        },
+        {
+          exitCode: 1,
+          stderr: 'write-json failed\n',
+          stdout: '',
+        },
+      ],
+    });
+
+    const result = await verifySamples({
+      dependencies,
+      samplesDir: 'samples',
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      'Generate suspect sample JSON baselines exited with code 1'
+    );
+    expect(commands).toEqual(
+      executedSteps.map(({ args, command }) => ({
+        args,
+        command,
+      }))
+    );
+    for (const skippedLabel of skippedLabels) {
+      expect(result.stdout).not.toContain(skippedLabel);
+    }
+  });
+
   test('aggregates non-build sample command failures', async () => {
     const { commands, dependencies } = fakeDependencies({
       entries: samplePairEntries,

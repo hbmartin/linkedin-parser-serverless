@@ -520,5 +520,17 @@
       }
     ]
   },
-  "warnings": []
+  "warnings": [],
+  "diagnostics": {
+    "confidence": 1,
+    "isEmpty": false,
+    "isLikelyLinkedInExport": true,
+    "sectionsFound": [
+      "contact",
+      "experience",
+      "top_skills",
+      "certifications",
+      "education"
+    ]
+  }
 }

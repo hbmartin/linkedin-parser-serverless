@@ -580,6 +580,12 @@ interface MemoryCliDependencies {
 }
 
 const defaultParseResult: ParseResult = {
+  diagnostics: {
+    confidence: 0.7,
+    isEmpty: false,
+    isLikelyLinkedInExport: true,
+    sectionsFound: ['profile'],
+  },
   profile: {
     certifications: [],
     contact: {
@@ -587,7 +593,9 @@ const defaultParseResult: ParseResult = {
     },
     education: [],
     experience: [],
+    experience_groups: [],
     headline: 'Fixture headline',
+    honors_awards: [],
     languages: [],
     location: 'San Francisco, CA',
     name: 'Orion Helios',

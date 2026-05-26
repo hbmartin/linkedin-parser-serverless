@@ -746,5 +746,18 @@
       "field": "profile.contact.email",
       "message": "Could not extract contact email"
     }
-  ]
+  ],
+  "diagnostics": {
+    "confidence": 1,
+    "isEmpty": false,
+    "isLikelyLinkedInExport": true,
+    "sectionsFound": [
+      "contact",
+      "top_skills",
+      "summary",
+      "languages",
+      "experience",
+      "education"
+    ]
+  }
 }

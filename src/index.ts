@@ -5,6 +5,14 @@ import { EducationParser } from './parsers/education.js';
 import { ExtraSectionParser } from './parsers/extra-sections.js';
 import { IdentityStructuralParser } from './parsers/identity-structural.js';
 import { extractLinkedInPDFSourceDebug } from './pdf-source-debug.js';
+import { createParseDiagnostics } from './diagnostics.js';
+import {
+  LinkedInProfileParseError,
+  createLinkedInProfileParseError,
+  normalizeLinkedInProfileParseError,
+} from './errors.js';
+import { formatLinkedInProfile } from './formatter.js';
+import { ParseResultSchema } from './schemas.js';
 import { cleanPDFText } from './utils/text-utils.js';
 import type { LayoutInfo, TextItem } from './types/structural.js';
 import type {
@@ -35,9 +43,17 @@ export type {
   ParsedDateRange,
   ParsedProfileDate,
   ParsedProfileDatePrecision,
+  ParseDiagnostics,
   SectionParseWarning,
   WarningSection,
 } from './types/profile.js';
+export type { FormatLinkedInProfileOptions } from './formatter.js';
+export type { LinkedInProfileParseErrorCode } from './errors.js';
+export {
+  LinkedInProfileParseError,
+  createLinkedInProfileParseError,
+  formatLinkedInProfile,
+};
 export type { LinkedInPDFSourceDebugArtifacts } from './pdf-source-debug.js';
 export {
   ContactSchema,
@@ -48,12 +64,23 @@ export {
   ExperienceGroupSchema,
   LanguageSchema,
   LinkedInProfileSchema,
+  ParseDiagnosticsSchema,
   ParseResultSchema,
   ParseWarningSchema,
   ParsedDateRangeSchema,
   ParsedProfileDateSchema,
 } from './schemas.js';
 export { extractLinkedInPDFSourceDebug } from './pdf-source-debug.js';
+
+export type SafeParseLinkedInPDFResult =
+  | {
+      data: ParseResult;
+      success: true;
+    }
+  | {
+      error: LinkedInProfileParseError;
+      success: false;
+    };
 
 /**
  * Parses a LinkedIn PDF resume and extracts structured profile data
@@ -64,6 +91,57 @@ export { extractLinkedInPDFSourceDebug } from './pdf-source-debug.js';
 export async function parseLinkedInPDF(
   input: ArrayBuffer | Uint8Array | string,
   options: ParseOptions = {}
+): Promise<ParseResult> {
+  try {
+    return await parseLinkedInPDFInternal(input, options);
+  } catch (cause) {
+    throw normalizeLinkedInProfileParseError({
+      cause,
+      inputKind: typeof input === 'string' ? 'text' : 'pdf',
+    });
+  }
+}
+
+export async function parseLinkedInPDFStrict(
+  input: ArrayBuffer | Uint8Array | string,
+  options: ParseOptions = {}
+): Promise<ParseResult> {
+  const result = await parseLinkedInPDF(input, options);
+  const parsedResult = ParseResultSchema.safeParse(result);
+
+  if (!parsedResult.success) {
+    throw createLinkedInProfileParseError({
+      cause: parsedResult.error,
+      code: 'schema_validation_failed',
+    });
+  }
+
+  return parsedResult.data;
+}
+
+export async function safeParseLinkedInPDF(
+  input: ArrayBuffer | Uint8Array | string,
+  options: ParseOptions = {}
+): Promise<SafeParseLinkedInPDFResult> {
+  try {
+    return {
+      data: await parseLinkedInPDFStrict(input, options),
+      success: true,
+    };
+  } catch (cause) {
+    return {
+      error: normalizeLinkedInProfileParseError({
+        cause,
+        inputKind: typeof input === 'string' ? 'text' : 'pdf',
+      }),
+      success: false,
+    };
+  }
+}
+
+async function parseLinkedInPDFInternal(
+  input: ArrayBuffer | Uint8Array | string,
+  options: ParseOptions
 ): Promise<ParseResult> {
   let text: string;
   let structuralData: {
@@ -83,9 +161,10 @@ export async function parseLinkedInPDF(
         textItems: debugArtifacts.textItems,
       };
       text = debugArtifacts.rawText;
-    } catch (error) {
-      throw new Error('PDF appears to be empty or unreadable', {
-        cause: error,
+    } catch (cause) {
+      throw normalizeLinkedInProfileParseError({
+        cause,
+        inputKind: 'pdf',
       });
     }
   } else {
@@ -93,7 +172,9 @@ export async function parseLinkedInPDF(
   }
 
   if (!text || text.length < 50) {
-    throw new Error('PDF appears to be empty or unreadable');
+    throw createLinkedInProfileParseError({
+      code: 'text_extraction_failed',
+    });
   }
 
   // Clean and parse the text
@@ -239,12 +320,18 @@ export async function parseLinkedInPDF(
     education,
   };
 
+  const warnings = [
+    ...createParseWarnings(profile),
+    ...filterResolvedSectionWarnings(sectionWarnings, contact),
+  ];
   const result: ParseResult = {
     profile,
-    warnings: [
-      ...createParseWarnings(profile),
-      ...filterResolvedSectionWarnings(sectionWarnings, contact),
-    ],
+    warnings,
+    diagnostics: createParseDiagnostics({
+      profile,
+      text: cleanedText,
+      warnings,
+    }),
   };
 
   if (options.includeRawText) {
