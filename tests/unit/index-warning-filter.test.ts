@@ -7,8 +7,11 @@ import { ExtraSectionParser } from '../../src/parsers/extra-sections.js';
 import { IdentityStructuralParser } from '../../src/parsers/identity-structural.js';
 import { ListParser } from '../../src/parsers/lists.js';
 import { StructuralParser } from '../../src/parsers/structural-parser.js';
-import type { SectionParseWarning } from '../../src/types/profile.js';
-import type { TextItem } from '../../src/types/structural.js';
+import type {
+  Education,
+  SectionParseWarning,
+} from '../../src/types/profile.js';
+import type { TextItem, WorkExperience } from '../../src/types/structural.js';
 
 const contactWarning: SectionParseWarning = {
   code: 'section_parse_warning',
@@ -61,14 +64,78 @@ describe('parseLinkedInPDF warning filtering', () => {
       expect.arrayContaining([expect.objectContaining(contactWarning)])
     );
   });
+
+  test('prefers structural skills and removes phone numbers echoed in profile URLs', async () => {
+    mockBinaryParse({
+      basicInfoContact: {
+        phone: '+1 415 555 1212',
+      },
+      basicInfoWarnings: [],
+      education: [
+        {
+          degree: 'Bachelor of Science',
+          institution: 'Example University',
+          location: '',
+          year: '2020',
+        },
+      ],
+      linkedinUrl: 'https://linkedin.com/in/14155551212',
+      topSkills: ['TypeScript'],
+      workExperiences: [
+        {
+          organization: 'Example Labs',
+          positions: [
+            {
+              description: '',
+              duration: '',
+              title: 'Advisor',
+            },
+          ],
+          totalDuration: '1 year',
+        },
+      ],
+    });
+
+    const result = await parseLinkedInPDF(new Uint8Array([1, 2, 3]));
+
+    expect(result.profile.top_skills).toEqual(['TypeScript']);
+    expect(result.profile.contact).toEqual({
+      linkedin_url: 'https://linkedin.com/in/14155551212',
+    });
+    expect(result.profile.experience).toEqual([
+      expect.objectContaining({
+        company: 'Example Labs',
+        title: 'Advisor',
+      }),
+    ]);
+    expect(result.profile.experience_groups).toEqual([
+      expect.objectContaining({
+        company: 'Example Labs',
+        totalDuration: '1 year',
+      }),
+    ]);
+    expect(EducationParser.parseWithWarnings).not.toHaveBeenCalled();
+  });
 });
 
 function mockBinaryParse({
+  basicInfoContact = {},
   basicInfoWarnings,
+  education = [],
   linkedinUrl,
+  topSkills = [],
+  workExperiences = [],
 }: {
+  basicInfoContact?: {
+    email?: string;
+    linkedin_url?: string;
+    phone?: string;
+  };
   basicInfoWarnings: SectionParseWarning[];
+  education?: Education[];
   linkedinUrl: string | undefined;
+  topSkills?: string[];
+  workExperiences?: WorkExperience[];
 }): void {
   const textItem = createTextItem();
 
@@ -95,7 +162,7 @@ function mockBinaryParse({
     ]);
   jest.spyOn(BasicInfoParser, 'parseStructuralWithWarnings').mockReturnValue({
     value: {
-      contact: {},
+      contact: basicInfoContact,
       headline: 'Principal Parser',
       location: 'Oakland, California, United States',
       name: 'Resolved User',
@@ -105,7 +172,7 @@ function mockBinaryParse({
   jest.spyOn(IdentityStructuralParser, 'parseWithWarnings').mockReturnValue({
     value: {
       linkedinUrl,
-      topSkills: [],
+      topSkills,
     },
     warnings: [],
   });
@@ -124,6 +191,7 @@ function mockBinaryParse({
     .mockReturnValue({
       value: {
         certifications: [],
+        honors_awards: [],
         projects: [],
         publications: [],
         volunteer_work: [],
@@ -133,11 +201,11 @@ function mockBinaryParse({
   jest
     .spyOn(ExperienceStructuralParser, 'parseExperienceWithWarnings')
     .mockReturnValue({
-      value: [],
+      value: workExperiences,
       warnings: [],
     });
   jest.spyOn(EducationParser, 'parseStructuralWithWarnings').mockReturnValue({
-    value: [],
+    value: education,
     warnings: [],
   });
   jest.spyOn(EducationParser, 'parseWithWarnings').mockReturnValue({

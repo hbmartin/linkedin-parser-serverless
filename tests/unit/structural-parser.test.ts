@@ -246,4 +246,82 @@ describe('StructuralParser', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0].text).toBe('P&L management');
   });
+
+  test('uses global two-column detection when individual pages are too sparse', () => {
+    const sparsePageItems = [0, 1].flatMap(pageIndex => {
+      const pageYOffset = pageIndex * -10000;
+
+      return [
+        item({
+          pageIndex,
+          text: `left ${pageIndex}`,
+          x: 30,
+          y: pageYOffset + 700,
+        }),
+        ...Array.from({ length: 8 }, (_, index) =>
+          item({
+            pageIndex,
+            text: `right ${pageIndex}-${index}`,
+            x: 220,
+            y: pageYOffset + 700 - index * 20,
+          })
+        ),
+      ];
+    });
+
+    const layout = StructuralParser.detectLayout(sparsePageItems);
+
+    expect(layout.type).toBe('two-column');
+    expect(layout.pageLayouts?.every(page => page.type === 'single-column')).toBe(
+      true
+    );
+  });
+
+  test('rejects two-column layouts with insufficient visual gap', () => {
+    const leftItems = Array.from({ length: 2 }, (_, index) =>
+      item({
+        text: `left ${index}`,
+        width: 160,
+        x: 30,
+        y: 700 - index * 20,
+      })
+    );
+    const rightItems = Array.from({ length: 15 }, (_, index) =>
+      item({ text: `right ${index}`, x: 190, y: 700 - index * 20 })
+    );
+
+    expect(StructuralParser.detectLayout([...leftItems, ...rightItems])).toEqual(
+      expect.objectContaining({ type: 'single-column' })
+    );
+  });
+
+  test('covers empty bounds merging and default proximity grouping', () => {
+    expect(StructuralParser['mergeBounds']([undefined])).toBeUndefined();
+    expect(
+      StructuralParser['groupItemsByY']([
+        item({ text: 'A', x: 10, y: 700 }),
+        item({ text: 'B', x: 20, y: 696 }),
+        item({ text: 'C', x: 20, y: 680 }),
+      ])
+    ).toHaveLength(2);
+  });
+
+  test('falls back when a left-column item has no measured width', () => {
+    const leftItems = [
+      item({ text: 'left 0', width: 0, x: 30, y: 700 }),
+      item({ text: 'left 1', x: 30, y: 680 }),
+    ];
+    const rightItems = Array.from({ length: 15 }, (_, index) =>
+      item({ text: `right ${index}`, x: 220, y: 700 - index * 20 })
+    );
+
+    expect(StructuralParser.detectLayout([...leftItems, ...rightItems])).toEqual(
+      expect.objectContaining({
+        sidebarBounds: expect.objectContaining({
+          right: 130,
+        }),
+        type: 'two-column',
+      })
+    );
+  });
 });

@@ -598,6 +598,71 @@ describe('EducationParser', () => {
       }),
     ]);
   });
+
+  test('covers structural degree detail helper branches', () => {
+    const educationWithDatedDegree = {
+      degree: '',
+      institution: 'Example University',
+      location: '',
+      year: '',
+    };
+    const educationWithStandaloneYear = {
+      degree: '',
+      institution: 'Example University',
+      location: '',
+      year: '',
+    };
+
+    EducationParser['addStructuralEducationDetail']({
+      education: educationWithDatedDegree,
+      line: 'Product Design 2016',
+    });
+    EducationParser['addStructuralEducationDetail']({
+      education: educationWithStandaloneYear,
+      line: '2016',
+    });
+
+    expect(educationWithDatedDegree).toEqual(
+      expect.objectContaining({
+        degree: 'Product Design',
+        year: '2016',
+      })
+    );
+    expect(educationWithStandaloneYear).toEqual(
+      expect.objectContaining({
+        degree: '',
+        year: '2016',
+      })
+    );
+
+    expect(
+      EducationParser['shouldAppendStructuralDegreePart']({
+        degreePart: '',
+        existingDegree: 'Bachelor of',
+        line: '',
+        year: '',
+      })
+    ).toBe(false);
+    expect(
+      EducationParser['shouldAppendStructuralDegreePart']({
+        degreePart: 'New York, NY',
+        existingDegree: 'Bachelor of Science',
+        line: 'New York, NY',
+        year: '2020',
+      })
+    ).toBe(false);
+    expect(
+      EducationParser['looksLikeInstitutionContinuation']({
+        line: 'Business',
+      })
+    ).toBe(false);
+    expect(
+      EducationParser['looksLikeInstitutionContinuation']({
+        institution: 'Example University School of',
+        line: 'Business',
+      })
+    ).toBe(true);
+  });
 });
 
 function structuralLine({
