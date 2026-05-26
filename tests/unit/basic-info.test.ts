@@ -4,7 +4,7 @@ import type { StructuralLine } from '../../src/utils/structural-lines.js';
 describe('BasicInfoParser', () => {
   test('does not classify spaced email addresses as short company headlines', () => {
     const profile = BasicInfoParser.parse(`
-      Test User
+      Apollo Helios
       name @ domain.com
       Senior Engineer @ ExampleCo
       Los Angeles, California, United States
@@ -21,26 +21,26 @@ describe('BasicInfoParser', () => {
       München, Bayern, Deutschland
     `);
     const portugueseProfile = BasicInfoParser.parse(`
-      MARIA DE SOUZA
-      maria.souza@empresa.com.br
+      ARIADNE MINOS
+      ariadne.minos@example.com.br
       São Paulo, São Paulo, Brasil
     `);
     const apostropheProfile = BasicInfoParser.parse(`
-      Sean O'Neil
-      sean.oneil@example.consulting
+      Lugh O'Nuada
+      lugh.onuada@example.consulting
       Dublin, Leinster, Ireland
     `);
 
     expect(strategicProfile.name).toBe('Strategic Planning');
     expect(strategicProfile.location).toBe('München, Bayern, Deutschland');
-    expect(portugueseProfile.name).toBe('MARIA DE SOUZA');
+    expect(portugueseProfile.name).toBe('ARIADNE MINOS');
     expect(portugueseProfile.location).toBe('São Paulo, São Paulo, Brasil');
-    expect(apostropheProfile.name).toBe("Sean O'Neil");
+    expect(apostropheProfile.name).toBe("Lugh O'Nuada");
   });
 
   test('omits email instead of returning an empty string', () => {
     const profile = BasicInfoParser.parse(`
-      Missing Email User
+      Persephone Kore
       Product Advisor
       Toronto, Ontario, Canada
     `);
@@ -50,7 +50,7 @@ describe('BasicInfoParser', () => {
 
   test('does not emit basic-info warnings for later empty sections', () => {
     const result = BasicInfoParser.parseWithWarnings(`
-      Test User
+      Apollo Helios
       Principal Advisor
       Toronto, Ontario, Canada
 
@@ -65,7 +65,7 @@ describe('BasicInfoParser', () => {
 
   test('reports adjacent empty contact and summary sections in the header', () => {
     const result = BasicInfoParser.parseWithWarnings(`
-      Test User
+      Apollo Helios
       Principal Advisor
       Contact
       Available on request
@@ -86,7 +86,7 @@ describe('BasicInfoParser', () => {
 
   test('stops header warnings at later target sections', () => {
     const result = BasicInfoParser.parseWithWarnings(`
-      Test User
+      Apollo Helios
       Principal Advisor
       Contact
 
@@ -105,7 +105,7 @@ describe('BasicInfoParser', () => {
 
   test('stops header warnings at boundary sections', () => {
     const result = BasicInfoParser.parseWithWarnings(`
-      Test User
+      Apollo Helios
       Principal Advisor
       Contact
 
@@ -124,7 +124,7 @@ describe('BasicInfoParser', () => {
   test('extracts structural summary from its visual column', () => {
     const result = BasicInfoParser.parseStructuralWithWarnings(
       [
-        'Test User',
+        'Apollo Helios',
         'Principal Advisor',
         'Toronto, Ontario, Canada',
         'Summary',
@@ -186,7 +186,7 @@ describe('BasicInfoParser', () => {
   test('covers fallback headline and summary branch outcomes directly', () => {
     expect(
       BasicInfoParser['extractHeadline'](
-        ['Test User', 'Product | Engineering'].join('\n')
+        ['Apollo Helios', 'Product | Engineering'].join('\n')
       )
     ).toBeUndefined();
 
@@ -217,7 +217,7 @@ describe('BasicInfoParser', () => {
 
   test('skips blank identity lines while finding header warning boundaries', () => {
     const result = BasicInfoParser.parseWithWarnings(
-      ['Test User', '', 'Contact'].join('\n')
+      ['Apollo Helios', '', 'Contact'].join('\n')
     );
 
     expect(result.warnings).toEqual([
@@ -230,7 +230,7 @@ describe('BasicInfoParser', () => {
 
   test('extracts pipe-delimited headlines and phone contact fields', () => {
     const profile = BasicInfoParser.parse(`
-      Test User
+      Apollo Helios
       Product | Engineering | Operations
       Los Angeles, California, United States
       test.user@example.com
@@ -300,8 +300,8 @@ describe('BasicInfoParser', () => {
 
   test('keeps adjacent contact links separate and allows colon continuations', () => {
     const result = BasicInfoParser.parseWithWarnings(`
-      Test User
-      test@example.com
+      Apollo Helios
+      apollo@example.com
 
       Contact
       www.linkedin.com/in/example
@@ -342,7 +342,7 @@ describe('BasicInfoParser', () => {
 
   test('extracts eight digit local phone numbers', () => {
     const profile = BasicInfoParser.parse(`
-      Test User
+      Apollo Helios
       Product Advisor
 
       Contact
@@ -359,13 +359,15 @@ describe('BasicInfoParser', () => {
     );
     expect(BasicInfoParser['isPhoneSearchLine'](' 8765 4321 ')).toBe(true);
     expect(
-      BasicInfoParser['isPhoneSearchLine']('                8765 4321                 ')
+      BasicInfoParser['isPhoneSearchLine'](
+        '                8765 4321                 '
+      )
     ).toBe(true);
   });
 
   test('uses the multiline engineering manager headline fallback', () => {
     const profile = BasicInfoParser.parse(`
-      Test User
+      Apollo Helios
       Engineering Manager @ Acme |
       Platform Reliability
     `);
@@ -377,7 +379,7 @@ describe('BasicInfoParser', () => {
 
   test('builds a fallback summary from long identity lines', () => {
     const profile = BasicInfoParser.parse(`
-      Test User
+      Apollo Helios
       Principal Advisor
       Toronto, Ontario, Canada
       Portfolio Focus
@@ -394,7 +396,9 @@ describe('BasicInfoParser', () => {
   test('preserves structural summary length consistently with fallback summary parsing', () => {
     const longSummaryLine = `Builds ${'reliable systems '.repeat(40)}`.trim();
     const result = BasicInfoParser.parseStructuralWithWarnings(
-      ['Test User', 'Principal Advisor', 'Summary', longSummaryLine].join('\n'),
+      ['Apollo Helios', 'Principal Advisor', 'Summary', longSummaryLine].join(
+        '\n'
+      ),
       [
         structuralLine({ column: 'right', text: 'Summary', y: 700 }),
         structuralLine({ column: 'right', text: longSummaryLine, y: 690 }),
@@ -406,7 +410,7 @@ describe('BasicInfoParser', () => {
 
   test('covers contact link finalization, normalization, joining, and dedupe branches', () => {
     const result = BasicInfoParser.parseWithWarnings(`
-      Test User
+      Apollo Helios
       Principal Advisor
 
       Contact
@@ -443,8 +447,9 @@ describe('BasicInfoParser', () => {
   });
 
   test('ignores invalid contact link drafts and empty structural summary sections', () => {
-    const links: NonNullable<ReturnType<typeof BasicInfoParser.parse>['contact']['links']> =
-      [];
+    const links: NonNullable<
+      ReturnType<typeof BasicInfoParser.parse>['contact']['links']
+    > = [];
 
     BasicInfoParser['pushContactLink'](links, {
       parts: ['not-a-link'],
@@ -462,7 +467,7 @@ describe('BasicInfoParser', () => {
 
   test('deduplicates repeated contact links', () => {
     const result = BasicInfoParser.parseWithWarnings(`
-      Test User
+      Apollo Helios
       Principal Advisor
 
       Contact

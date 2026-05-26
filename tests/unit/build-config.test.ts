@@ -11,6 +11,7 @@ const REQUIRED_PACKAGE_SCRIPT_FILES: readonly string[] = [
   'scripts/check-size-budget.mjs',
   'scripts/inspect-pdf-source.mjs',
   'scripts/sample-completeness-audit.mjs',
+  'scripts/verify-samples.mjs',
   'scripts/lib/verification-helpers.mjs',
   'scripts/lib/source-coverage-helpers.mjs',
 ];
@@ -163,6 +164,10 @@ describe('build config contract', () => {
     expect(manifest.scripts['samples:audit-coverage']).toBe(
       'node scripts/sample-completeness-audit.mjs'
     );
+    expect(manifest.scripts['samples:verify']).toBe(
+      'node scripts/verify-samples.mjs'
+    );
+    expect(manifest.scripts.check).not.toContain('samples:verify');
     expect(manifest.scripts['quality:check']).toEqual(
       expect.stringContaining('pnpm run verify:artifacts')
     );

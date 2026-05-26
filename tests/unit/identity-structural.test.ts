@@ -29,10 +29,10 @@ describe('IdentityStructuralParser', () => {
       line({ column: 'left', text: 'Contact', y: 760 }),
       line({
         column: 'left',
-        text: 'www.linkedin.com/in/maria-de-souza',
+        text: 'www.linkedin.com/in/ariadne-minos',
         y: 740,
       }),
-      line({ fontSize: 26, text: 'MARIA DE SOUZA', y: 760 }),
+      line({ fontSize: 26, text: 'ARIADNE MINOS', y: 760 }),
       line({ fontSize: 11, text: 'Strategic Planning Advisor', y: 730 }),
       line({
         fontSize: 11,
@@ -45,9 +45,9 @@ describe('IdentityStructuralParser', () => {
     expect(identity).toEqual(
       expect.objectContaining({
         headline: 'Strategic Planning Advisor',
-        linkedinUrl: 'https://linkedin.com/in/maria-de-souza',
+        linkedinUrl: 'https://linkedin.com/in/ariadne-minos',
         location: 'São Paulo, São Paulo, Brasil',
-        name: 'MARIA DE SOUZA',
+        name: 'ARIADNE MINOS',
       })
     );
   });
@@ -56,19 +56,17 @@ describe('IdentityStructuralParser', () => {
     const identity = IdentityStructuralParser.parse([
       line({ column: 'left', text: 'Contact', y: 760 }),
       line({ column: 'left', text: 'www.linkedin.com/in/', y: 740 }),
-      line({ column: 'left', text: 'jameszhenwang (LinkedIn)', y: 720 }),
-      line({ fontSize: 26, text: 'James Wang', y: 760 }),
+      line({ column: 'left', text: 'theseusaegeus (LinkedIn)', y: 720 }),
+      line({ fontSize: 26, text: 'Theseus Aegeus', y: 760 }),
       line({ fontSize: 16, text: 'Experience', y: 700 }),
     ]);
 
-    expect(identity.linkedinUrl).toBe(
-      'https://linkedin.com/in/jameszhenwang'
-    );
+    expect(identity.linkedinUrl).toBe('https://linkedin.com/in/theseusaegeus');
   });
 
   test('keeps company-at headlines and non-US locations', () => {
     const identity = IdentityStructuralParser.parse([
-      line({ fontSize: 26, text: "Sean O'Neil", y: 760 }),
+      line({ fontSize: 26, text: "Lugh O'Nuada", y: 760 }),
       line({ fontSize: 11, text: 'CTO @ Example Labs', y: 730 }),
       line({
         fontSize: 11,
@@ -78,14 +76,14 @@ describe('IdentityStructuralParser', () => {
       line({ fontSize: 16, text: 'Education', y: 680 }),
     ]);
 
-    expect(identity.name).toBe("Sean O'Neil");
+    expect(identity.name).toBe("Lugh O'Nuada");
     expect(identity.headline).toBe('CTO @ Example Labs');
     expect(identity.location).toBe('München, Bayern, Deutschland');
   });
 
   test('keeps country-only locations out of the headline', () => {
     const identity = IdentityStructuralParser.parse([
-      line({ fontSize: 26, text: 'Niko Le Mieux', y: 760 }),
+      line({ fontSize: 26, text: 'Freya Vanir', y: 760 }),
       line({
         fontSize: 12,
         text: 'Web2.5 Finance & Payments Innovation',
@@ -133,14 +131,14 @@ describe('IdentityStructuralParser', () => {
       line({ column: 'left', text: 'TypeScript', y: 740 }),
       line({ column: 'left', text: 'Product Strategy', y: 720 }),
       line({ fontSize: 12, text: 'Technical Advisor', y: 760 }),
-      line({ fontSize: 26, text: 'Alex Rivera', y: 730 }),
+      line({ fontSize: 26, text: 'Artemis Selene', y: 730 }),
     ]);
 
     expect(identity).toEqual({
       headline: undefined,
       linkedinUrl: undefined,
       location: undefined,
-      name: 'Alex Rivera',
+      name: 'Artemis Selene',
       topSkills: ['TypeScript', 'Product Strategy'],
     });
   });

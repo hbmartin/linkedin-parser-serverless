@@ -25,6 +25,7 @@
 
 - `unmatchedSourceSegments`: PDF text in an inferred source section that did not appear in same-section JSON. Verify before changing code; common causes are section inference mistakes, parser omissions, or intentionally unmodeled fields.
 - `looseSourceMatches`: Source matched only by token containment, not exact normalized text. Use these to find punctuation, spacing, URL wrapping, or normalization issues.
+- `crossSectionOutputMatches`: JSON values traced to PDF text in a different inferred section. Treat these as review prompts for section inference or intentional duplicated content, not as untraced output failures.
 - `untracedOutputValues`: JSON values not traceable to same-section PDF text. These can reveal hallucinated/misassigned fields, normalized URLs, derived date fields, or text assigned to the wrong section.
 - `sectionWarnings`: Parser warnings from generated or baseline JSON. Treat `section_parse_warning` as higher priority than heuristic coverage noise.
 

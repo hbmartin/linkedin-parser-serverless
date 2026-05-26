@@ -272,7 +272,9 @@ describe('CLI runner', () => {
 
   test('writes JSON files for symlinked PDFs', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'linkedin-cli-'));
-    const nestedDir = fs.mkdtempSync(path.join(os.tmpdir(), 'linkedin-nested-'));
+    const nestedDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'linkedin-nested-')
+    );
     const nestedSymlinkPath = path.join(tempDir, 'Nested.pdf');
     const symlinkPath = path.join(tempDir, 'Profile-Link.pdf');
 
@@ -440,7 +442,7 @@ describe('CLI runner', () => {
       ...defaultParseResult,
       profile: {
         ...defaultParseResult.profile,
-        name: 'Old Name',
+        name: 'Hermes Trismegistus',
       },
     };
     const memoryCli = createMemoryCliDependencies({
@@ -468,8 +470,8 @@ describe('CLI runner', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('--- expected');
     expect(result.stderr).toContain('+++ generated');
-    expect(result.stderr).toContain('-     "name": "Old Name"');
-    expect(result.stderr).toContain('+     "name": "Fixture User"');
+    expect(result.stderr).toContain('-     "name": "Hermes Trismegistus"');
+    expect(result.stderr).toContain('+     "name": "Orion Helios"');
   });
 
   test('reports invalid JSON, parse failures, and missing pairs', async () => {
@@ -588,7 +590,7 @@ const defaultParseResult: ParseResult = {
     headline: 'Fixture headline',
     languages: [],
     location: 'San Francisco, CA',
-    name: 'Fixture User',
+    name: 'Orion Helios',
     projects: [],
     publications: [],
     top_skills: [],

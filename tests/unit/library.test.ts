@@ -49,8 +49,8 @@ describe('LinkedIn PDF Parser Library', () => {
 
     test('should parse extracted text directly', async () => {
       const result = await parseLinkedInPDF(`
-        Text Input User
-        text.input@example.com
+        Atalanta Calydon
+        atalanta.calydon@example.com
         Software Engineer
 
         Experience
@@ -58,8 +58,8 @@ describe('LinkedIn PDF Parser Library', () => {
         2021-2024
       `);
 
-      expect(result.profile.name).toBe('Text Input User');
-      expect(result.profile.contact.email).toBe('text.input@example.com');
+      expect(result.profile.name).toBe('Atalanta Calydon');
+      expect(result.profile.contact.email).toBe('atalanta.calydon@example.com');
     });
 
     test('should parse PDF with options', async () => {
@@ -227,8 +227,8 @@ describe('LinkedIn PDF Parser Library', () => {
   describe('Edge Cases and Parser Coverage', () => {
     test('should handle text with minimal information', async () => {
       const minimalText = `
-        John Doe
-        john.doe@example.com
+        Perseus Argos
+        perseus.argos@example.com
         Software Engineer
 
         Experience
@@ -242,11 +242,11 @@ describe('LinkedIn PDF Parser Library', () => {
 
       const result = await parseLinkedInPDF(minimalText);
       expect(result.profile).toEqual({
-        name: 'John Doe',
+        name: 'Perseus Argos',
         headline: undefined,
         location: undefined,
         contact: {
-          email: 'john.doe@example.com',
+          email: 'perseus.argos@example.com',
         },
         top_skills: [],
         languages: [],
@@ -325,22 +325,22 @@ describe('LinkedIn PDF Parser Library', () => {
 
     test('should handle text with missing sections', async () => {
       const sparseText = `
-        Jane Smith
-        jane@test.com
+        Cassandra Troy
+        cassandra@example.com
         No other information available
       `;
 
       const result = await parseLinkedInPDF(sparseText);
-      expect(result.profile.name).toBe('Jane Smith');
-      expect(result.profile.contact.email).toBe('jane@test.com');
+      expect(result.profile.name).toBe('Cassandra Troy');
+      expect(result.profile.contact.email).toBe('cassandra@example.com');
       expect(result.profile.experience).toEqual([]);
       expect(result.profile.education).toEqual([]);
     });
 
     test('groups fallback experiences by contiguous company and preserves honors-awards wiring', async () => {
       const result = await parseLinkedInPDF(`
-        Jane Example
-        jane@example.com
+        Cassandra Troy
+        cassandra@example.com
 
         Honors-Awards
         Parser Excellence Award
@@ -374,8 +374,8 @@ describe('LinkedIn PDF Parser Library', () => {
 
     test('should handle complex language patterns', async () => {
       const languageText = `
-        Test User
-        test@example.com
+        Apollo Helios
+        apollo@example.com
 
         Languages
         English (Native or Bilingual)
@@ -407,34 +407,34 @@ describe('LinkedIn PDF Parser Library', () => {
 
     test('should handle various contact patterns', async () => {
       const contactText = `
-        Contact Person
-        contact@example.com
+        Hermes Messenger
+        hermes.messenger@example.com
         +1 (555) 123-4567
-        https://linkedin.com/in/contactperson
+        https://linkedin.com/in/hermes-messenger
         San Francisco, CA
       `;
 
       const result = await parseLinkedInPDF(contactText);
-      expect(result.profile.contact.email).toBe('contact@example.com');
+      expect(result.profile.contact.email).toBe('hermes.messenger@example.com');
       expect(result.profile.contact.linkedin_url).toBe(
-        'https://linkedin.com/in/contactperson'
+        'https://linkedin.com/in/hermes-messenger'
       );
     });
 
     test('should handle fallback name extraction patterns', async () => {
       const nameText = `
-        John Smith  Extra Info
-        john@example.com
+        Perseus Argos  Extra Info
+        perseus@example.com
       `;
 
       const result = await parseLinkedInPDF(nameText);
-      expect(result.profile.name).toBe('John Smith');
+      expect(result.profile.name).toBe('Perseus Argos');
     });
 
     test('should handle location patterns', async () => {
       const locationText = `
-        Test User
-        test@example.com
+        Apollo Helios
+        apollo@example.com
         Software Engineer
         New York, NY
 
@@ -448,8 +448,8 @@ describe('LinkedIn PDF Parser Library', () => {
 
     test('should handle summary extraction fallback', async () => {
       const summaryText = `
-        Summary User
-        summary@example.com
+        Summary Calliope Muse
+        calliope@example.com
 
         This is a longer summary text that describes the professional background and experience of the user in detail
         Additional information about skills and accomplishments that should be captured in the summary section
@@ -461,14 +461,14 @@ describe('LinkedIn PDF Parser Library', () => {
 
       const result = await parseLinkedInPDF(summaryText);
       expect(result.profile.summary).toBe(
-        'User summary@example.com This is a longer summary text that describes the professional background and'
+        'Calliope Muse calliope@example.com This is a longer summary text that describes the professional background and'
       );
     });
 
     test('should handle language proficiency patterns', async () => {
       const languageProficiencyText = `
-        Language User
-        lang@example.com
+        Hermes Logos
+        hermes.logos@example.com
 
         Languages
         Portuguese Elementary
@@ -495,8 +495,8 @@ describe('LinkedIn PDF Parser Library', () => {
 
     test('should handle empty skills section', async () => {
       const noSkillsText = `
-        No Skills User
-        noskills@example.com
+        Ares Bronze
+        ares.bronze@example.com
 
         Top Skills
 
@@ -510,8 +510,8 @@ describe('LinkedIn PDF Parser Library', () => {
 
     test('should handle empty languages section', async () => {
       const noLanguagesText = `
-        No Languages User
-        nolang@example.com
+        Echo Nymph
+        echo.nymph@example.com
 
         Languages
 
@@ -525,8 +525,8 @@ describe('LinkedIn PDF Parser Library', () => {
 
     test('should handle education without location', async () => {
       const educationText = `
-        Education User
-        edu@example.com
+        Athena Owl
+        athena.owl@example.com
 
         Education
         Computer Science Degree
@@ -574,19 +574,19 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should handle specific name fallback patterns', async () => {
       // Test the fallback name extraction pattern (lines 53-54)
       const fallbackNameText = `
-        John  Smith
-        john@example.com
+        Perseus  Argos
+        perseus@example.com
       `;
 
       const result = await parseLinkedInPDF(fallbackNameText);
-      expect(result.profile.name).toBe('John Smith');
+      expect(result.profile.name).toBe('Perseus Argos');
     });
 
     test('should handle summary fallback extraction with line break conditions', async () => {
       // Test summary fallback with long lines that trigger all conditions (lines 129-142)
       const longSummaryText = `
-        Summary Test User
-        summarytest@example.com
+        Summary Apollo Helios
+        apollo.summary@example.com
         Short line
         Medium length line here
         This is a very long line that should be captured in the summary section because it meets all the length requirements and criteria for inclusion in the profile summary
@@ -597,15 +597,15 @@ describe('LinkedIn PDF Parser Library', () => {
 
       const result = await parseLinkedInPDF(longSummaryText);
       expect(result.profile.summary).toBe(
-        'Test User summarytest@example.com Short line Medium length line here This is a very long line that should be captured in the summary section because it meets all the length requirements and criteria for inclusion in the profile summary Another qualifying line that meets the length and content requirements for summary inclusion and should be processed correctly Even more qualifying content that should be included in the summary extraction process Final qualifying summary line that completes the summary content extraction process'
+        'Apollo Helios apollo.summary@example.com Short line Medium length line here This is a very long line that should be captured in the summary section because it meets all the length requirements and criteria for inclusion in the profile summary Another qualifying line that meets the length and content requirements for summary inclusion and should be processed correctly Even more qualifying content that should be included in the summary extraction process Final qualifying summary line that completes the summary content extraction process'
       );
     });
 
     test('should handle language proficiency regex patterns', async () => {
       // Test the proficiency regex pattern matching (lines 86-90)
       const proficiencyText = `
-        Proficiency User
-        prof@example.com
+        Hermes Psychopomp
+        hermes@example.com
 
         Languages
         French (Intermediate)
@@ -624,8 +624,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should handle single word language fallback', async () => {
       // Test the single word language fallback (line 98)
       const singleLangText = `
-        Single Lang User
-        single@example.com
+        Iris Rainbow
+        iris@example.com
 
         Languages
         Korean
@@ -648,8 +648,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should handle skills section with no content', async () => {
       // Test when skills section is found but has no valid skills (line 56 in lists.ts)
       const emptySkillsText = `
-        Empty Skills User
-        empty@example.com
+        Hestia Flame
+        hestia@example.com
 
         Top Skills
         summary
@@ -665,7 +665,7 @@ describe('LinkedIn PDF Parser Library', () => {
 
     test('should handle profile validation edge case', async () => {
       const noEmailText = `
-        No Email User
+        Poseidon Pontus
         Software Engineer at Company
 
         Experience
@@ -726,19 +726,19 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should handle basic-info edge cases for name extraction', async () => {
       // Test specific name fallback conditions (lines 53-54 in basic-info.ts)
       const nameEdgeCaseText = `
-        John Smith  Additional Content
-        john.edge@example.com
+        Perseus Argos  Additional Content
+        perseus.edge@example.com
       `;
 
       const result = await parseLinkedInPDF(nameEdgeCaseText);
-      expect(result.profile.name).toBe('John Smith');
+      expect(result.profile.name).toBe('Perseus Argos');
     });
 
     test('should handle education section edge case', async () => {
       // Test education line 58 condition
       const educationEdgeText = `
-        Education Edge User
-        edge@example.com
+        Minerva Owl
+        minerva@example.com
 
         Education
         Short
@@ -758,8 +758,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should handle lists edge cases', async () => {
       // Test lists.ts lines that aren't covered
       const listsEdgeText = `
-        Lists Edge User
-        lists@example.com
+        Selene Moon
+        selene@example.com
 
         Top Skills
         Very very very very very very very very very long skill name that exceeds the normal length
@@ -776,8 +776,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should handle summary with break condition', async () => {
       // Test the specific break condition in summary extraction (lines 141-142)
       const summaryBreakText = `
-        Summary Break User
-        break@example.com
+        Summary Ariadne Naxos
+        ariadne@example.com
         Short
         Medium
         This is exactly the right length line that should trigger the summary extraction and demonstrate the break condition working properly when the accumulated text reaches the specified threshold
@@ -787,26 +787,26 @@ describe('LinkedIn PDF Parser Library', () => {
 
       const result = await parseLinkedInPDF(summaryBreakText);
       expect(result.profile.summary).toBe(
-        'Break User break@example.com Short Medium This is exactly the right length line that should trigger the summary extraction and demonstrate the break condition working properly when the accumulated text reaches the specified threshold More content after break condition Even more content that should be ignored after break'
+        'Ariadne Naxos ariadne@example.com Short Medium This is exactly the right length line that should trigger the summary extraction and demonstrate the break condition working properly when the accumulated text reaches the specified threshold More content after break condition Even more content that should be ignored after break'
       );
     });
 
     test('should handle basic-info name extraction with multiple spaces', async () => {
       // Test lines 53-54 in basic-info.ts - name extraction with multiple spaces fallback
       const nameWithSpacesText = `
-        John  Smith  Extra Content
-        john@example.com
+        Perseus  Argos  Extra Content
+        perseus@example.com
       `;
 
       const result = await parseLinkedInPDF(nameWithSpacesText);
-      expect(result.profile.name).toBe('John Smith');
+      expect(result.profile.name).toBe('Perseus Argos');
     });
 
     test('should handle summary extraction fallback conditions', async () => {
       // Test lines 129-142 in basic-info.ts - summary extraction without Summary section
       const textWithoutSummarySection = [
-        'Test User',
-        'test@example.com',
+        'Apollo Helios',
+        'apollo@example.com',
         'Software Engineer',
         'Location: Austin, TX',
         'Contact info here',
@@ -842,8 +842,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should handle education line length validation', async () => {
       // Test line 58 in education.ts - continue condition for short lines
       const educationShortText = `
-        Education Short User
-        edushort@example.com
+        Demeter Grain
+        demeter@example.com
 
         Education
         a
@@ -876,8 +876,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should handle specific code coverage cases', async () => {
       // This test targets the remaining uncovered lines
       const complexText = `
-        John Smith Johnson
-        john.smith@test.com
+        Perseus Argos Helios
+        perseus.argos@example.com
 
         Top Skills Languages
         JavaScript
@@ -891,8 +891,8 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(complexText);
-      expect(result.profile.name).toBe('John Smith Johnson');
-      expect(result.profile.contact.email).toBe('john.smith@test.com');
+      expect(result.profile.name).toBe('Perseus Argos Helios');
+      expect(result.profile.contact.email).toBe('perseus.argos@example.com');
       expect(result.profile.top_skills).toEqual([]);
       expect(result.profile.languages).toEqual([]);
     });
@@ -900,30 +900,30 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should handle edge case name patterns', async () => {
       // Target specific name extraction patterns
       const namePatternText = `
-        Mary  Jane  Watson  Additional
-        mary@example.com
+        Ariadne  Naxos  Knossos  Additional
+        ariadne@example.com
       `;
 
       const result = await parseLinkedInPDF(namePatternText);
-      expect(result.profile.name).toBe('Mary Jane');
+      expect(result.profile.name).toBe('Ariadne Naxos');
     });
 
     test('should cover line 53-54 in basic-info.ts', async () => {
       // Target the specific name extraction pattern with multiple spaces
       const text = `
-        John Smith  Additional Text Here
-        john@test.com
+        Perseus Argos  Additional Text Here
+        perseus@test.com
       `;
 
       const result = await parseLinkedInPDF(text);
-      expect(result.profile.name).toBe('John Smith');
+      expect(result.profile.name).toBe('Perseus Argos');
     });
 
     test('should cover lines 129-142 in basic-info.ts', async () => {
       // Target the summary extraction fallback logic
       const text = `
-        Test User
-        test@test.com
+        Apollo Helios
+        apollo@test.com
         Location Info
         Short line
         Another short
@@ -941,8 +941,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should cover line 56 in lists.ts', async () => {
       // Test the continue condition in language parsing
       const text = `
-        Test User
-        test@example.com
+        Apollo Helios
+        apollo@example.com
 
         Languages
         summary
@@ -979,8 +979,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should cover line 58 in education.ts', async () => {
       // Test short line handling in education
       const text = `
-        Test User
-        test@example.com
+        Apollo Helios
+        apollo@example.com
 
         Education
         ab
@@ -998,8 +998,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should cover lines 53-54 and 129-142 in basic-info.ts', async () => {
       // Test name extraction with double spaces and summary fallback
       const text = `
-        John Smith  Additional text here that should be ignored
-        test@example.com
+        Perseus Argos  Additional text here that should be ignored
+        apollo@example.com
         Short headline
         Location info
         Another short line
@@ -1009,7 +1009,7 @@ describe('LinkedIn PDF Parser Library', () => {
       `;
 
       const result = await parseLinkedInPDF(text);
-      expect(result.profile.name).toBe('John Smith');
+      expect(result.profile.name).toBe('Perseus Argos');
       expect(result.profile.summary).toBe(
         'extraction because it has more than 50 characters and less than 200 characters Another qualifying line for summary extraction that meets the length requirements and should be included in the summary More content to reach the 100 character threshold for the summary extraction logic'
       );
@@ -1018,8 +1018,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should cover lines 86-90 and 98 in lists.ts', async () => {
       // Test language proficiency extraction with special patterns
       const text = `
-        Test User
-        test@example.com
+        Apollo Helios
+        apollo@example.com
 
         Languages
         Native Portuguese
@@ -1073,8 +1073,8 @@ describe('LinkedIn PDF Parser Library', () => {
     test('should cover education edge case line 58', async () => {
       // Specifically test the continue condition in education parsing
       const text = `
-        Test User
-        test@example.com
+        Apollo Helios
+        apollo@example.com
 
         Education
         a

@@ -27,7 +27,8 @@ skill at `.agents/skills/debug-linkedin-sample-pdfs`.
 | `check-sample-warnings.mjs` | `pnpm run samples:check-warnings` | Parses every PDF in `samples/` with the built parser and fails if any output contains a `section_parse_warning`. | Gives a fast regression check for section parsing against real sample PDFs. |
 | `extract-sample-layout-text.mjs` | none | Runs `pdftotext -layout` for each sample PDF and writes layout-preserving text files plus a manifest to `.debug-dist/sample-layout-text/` by default. Supports `--samples <dir>` and `--output <dir>`. | Makes PDF line layout visible when debugging column breaks, headings, contact blocks, or parser misses. |
 | `inspect-pdf-source.mjs` | `pnpm run source:inspect -- <pdf>` | Builds first, then writes a source evidence bundle for one or more PDFs. Each bundle includes Poppler text, bbox XHTML, pdf metadata, pdfplumber words/chars, raw unpdf items, parser structural lines, parser JSON, source coverage reports, rendered page PNGs, and `overlay.html`. Supports positional PDF paths, `--samples <dir>`, and `--output <dir>`. | Gives a parser-independent view of the PDF plus the parser's own reconstruction so extraction bugs can be investigated from source geometry instead of trusting generated JSON. |
-| `sample-completeness-audit.mjs` | `pnpm run samples:audit-coverage -- --samples samples/` | Compares layout-extracted sample text with matching sample JSON files by inferred source section, reports unmatched source segments, loose token-only matches, untraced output values, section coverage, and `section_parse_warning` entries. Supports `--samples <dir>`, `--layouts <dir>`, `--report <path>`, `--fail-on-unmatched`, `--fail-on-loose`, `--fail-on-untraced-output`, `--fail-on-section-warnings`, and `--strict`. | Helps identify PDF content missing from parsed JSON and JSON values that are not traceable to same-section source text. Treat reported items as review prompts because the section inference and matching remain heuristic. |
+| `sample-completeness-audit.mjs` | `pnpm run samples:audit-coverage -- --samples samples/` | Compares layout-extracted sample text with matching sample JSON files by inferred source section, reports unmatched source segments, loose token-only matches, cross-section output matches, untraced output values, section coverage, and `section_parse_warning` entries. Supports `--samples <dir>`, `--layouts <dir>`, `--report <path>`, `--fail-on-unmatched`, `--fail-on-loose`, `--fail-on-untraced-output`, `--fail-on-section-warnings`, and `--strict`. | Helps identify PDF content missing from parsed JSON and JSON values that are not traceable to source text. Treat cross-section matches as review prompts because the section inference and matching remain heuristic. |
+| `verify-samples.mjs` | `pnpm run samples:verify` | Builds once, verifies local sample JSON baselines with the built CLI, checks sample section warnings, and runs the strict completeness audit. Fails clearly when `samples/` is absent or has no matching PDF/JSON pairs. | Gives a single local robustness gate for the ignored `samples/` corpus without making `pnpm run check` depend on private sample files. |
 
 The layout extraction and completeness audit scripts require the Poppler
 `pdftotext` executable. The source inspection script uses Poppler tools
@@ -56,10 +57,10 @@ After parser or build changes, run the standard repository check:
 pnpm run check
 ```
 
-After that, verify sample JSON baselines:
+After that, run the local sample gate when `samples/` is available:
 
 ```bash
-pnpm cli verify-json samples/
+pnpm run samples:verify
 ```
 
 When a sample PDF parses incorrectly, use the repo-local debugging skill. The
@@ -67,7 +68,7 @@ lowest-cost command-only workflow is:
 
 ```bash
 node scripts/extract-sample-layout-text.mjs --samples samples/
-pnpm run samples:audit-coverage -- --samples samples/
+pnpm run samples:audit-coverage -- --samples samples/ --strict
 ```
 
 For deeper single-PDF investigation, generate a source evidence bundle:

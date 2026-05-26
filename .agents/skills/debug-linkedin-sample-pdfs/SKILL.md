@@ -37,10 +37,10 @@ Use source-derived artifacts as the authority. Parser JSON and sample baselines 
 
    ```bash
    pnpm run check
-   pnpm cli verify-json samples/
+   pnpm run samples:verify
    ```
 
-   After `verify-json`, report its result and make no further changes from that output unless the user explicitly asks.
+   `samples/` is local and gitignored, so `samples:verify` is intentionally separate from the default check. After `samples:verify`, report its result and make no further changes from that output unless the user explicitly asks.
 
 ## Batch Audit
 
@@ -50,13 +50,13 @@ Use the section-aware audit to scan all samples or compare a candidate fix:
 pnpm run samples:audit-coverage -- --samples samples/
 ```
 
-Useful strict flags:
+Use strict mode when validating the local sample corpus:
 
 ```bash
 pnpm run samples:audit-coverage -- --samples samples/ --strict
 ```
 
-Treat audit findings as review prompts. Section inference is heuristic, so verify suspicious rows against `poppler.layout.txt`, `overlay.html`, and source geometry before changing parser code.
+Strict mode fails on unmatched source, loose source matches, untraced output, and section warnings. Treat `crossSectionOutputMatches` as informational review prompts: the output was traced to source text, but not in the section inferred from its JSON path. Section inference is heuristic, so verify suspicious rows against `poppler.layout.txt`, `overlay.html`, and source geometry before changing parser code.
 
 ## Artifact Reference
 

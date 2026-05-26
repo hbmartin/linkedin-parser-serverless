@@ -10,7 +10,7 @@ describe('inspect PDF source overlay helpers', () => {
   test('derives inspectable text item coordinates from PDF.js transform matrices', () => {
     const rawTextItem = {
       height: 12,
-      str: 'Jane Doe',
+      str: 'Cassandra Troy',
       transform: [1, 0, 0, 1, 72.25, 650.5],
       width: 42,
     };
@@ -25,7 +25,7 @@ describe('inspect PDF source overlay helpers', () => {
   test('renders normalized unpdf text items without NaN overlay coordinates', () => {
     const normalizedTextItem = normalizeUnpdfTextItem({
       height: 12,
-      str: 'Jane Doe',
+      str: 'Cassandra Troy',
       transform: [1, 0, 0, 1, 72.25, 650.5],
       width: 42,
     });
@@ -38,7 +38,7 @@ describe('inspect PDF source overlay helpers', () => {
 
     expect(html).toContain('x="144.50"');
     expect(html).toContain('y="259.00"');
-    expect(html).toContain('Jane Doe');
+    expect(html).toContain('Cassandra Troy');
     expect(html).not.toContain('NaN');
   });
 

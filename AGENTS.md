@@ -2,9 +2,10 @@
 
 - After adding any code or functionality, write thorough unit tests and check coverage.
 - After making any changes always execute `pnpm run check` to verify
-- After completing a task and the check verification, run `pnpm cli verify-json samples/`. Make no further changes based on this output (unless explicitly asked) but report any changes to the user.
+- After completing a task and the check verification, run `pnpm run samples:verify`. Make no further changes based on this output (unless explicitly asked) but report any changes to the user.
+- `samples/` is local and gitignored, so sample verification is intentionally separate from `pnpm run check`.
 - Fix any pnpm format issues (even if they are unrelated)
-- Whenever there is any confusion or errors, automatically add a guideline to AGENTS.md
+- When confusion or errors reveal a reusable project workflow rule, add a concise guideline to AGENTS.md.
 - When verification fails on unrelated dirty-worktree changes, report the exact failing command and failures instead of modifying unrelated code.
 - When debugging sample PDF extraction, use the repo-local skill at `.agents/skills/debug-linkedin-sample-pdfs`.
 - When skill-creator helper scripts are not executable, invoke them with `python3 <script-path> ...`.
