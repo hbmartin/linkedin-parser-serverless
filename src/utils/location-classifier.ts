@@ -242,10 +242,12 @@ const titleOrOrganizationWords: ReadonlySet<string> = new Set([
   'corporation',
   'director',
   'engineer',
+  'federation',
   'finance',
   'fellow',
   'foundation',
   'founder',
+  'forex',
   'group',
   'head',
   'intern',
@@ -261,8 +263,12 @@ const titleOrOrganizationWords: ReadonlySet<string> = new Set([
   'researcher',
   'school',
   'scientist',
+  'service',
+  'services',
   'university',
 ]);
+
+const ambiguousRegionCodes: ReadonlySet<string> = new Set(['in', 'me', 'or']);
 
 const sentenceStartVerbs: ReadonlySet<string> = new Set([
   'built',
@@ -289,9 +295,6 @@ export function classifyLocationText({
   text,
 }: ClassifyLocationTextParams): LocationClassification {
   const normalizedText = normalizeVisibleText(text);
-  const lookupText = normalizeLookupText(normalizedText);
-  const words = visibleWords(normalizedText);
-  const lookupWords = lookupWordsFor(lookupText);
   const signals: LocationSignal[] = [];
   let score = 0;
 
@@ -309,15 +312,22 @@ export function classifyLocationText({
 
   if (normalizedText.length > 120) {
     add('too-long', -5);
+    return { isLocation: false, score, signals };
   }
 
   if (/[$@!?;:]/u.test(normalizedText)) {
     add('bad-character', -5);
+    return { isLocation: false, score, signals };
   }
 
   if (looksLikeDurationText(normalizedText)) {
     add('duration', -5);
+    return { isLocation: false, score, signals };
   }
+
+  const lookupText = normalizeLookupText(normalizedText);
+  const words = visibleWords(normalizedText);
+  const lookupWords = lookupWordsFor(lookupText);
 
   if (startsWithSentenceVerb(lookupWords)) {
     add('sentence-verb', -4);
@@ -342,7 +352,7 @@ export function classifyLocationText({
     add('remote', 5);
   }
 
-  if (/^\d{5}(?:-\d{3})?$/u.test(normalizedText)) {
+  if (/^\d{5}(?:-\d{3,4})?$/u.test(normalizedText)) {
     add('postal-code', 5);
   }
 
@@ -473,7 +483,7 @@ function hardReject(signals: readonly LocationSignal[]): boolean {
 
 function looksLikeDurationText(text: string): boolean {
   return (
-    /\b\d{4}\s*[-–]\s*(?:\d{4}|present|current)\b/iu.test(text) ||
+    /\b\d{4}\s*[-–—−]\s*(?:\d{4}|present|current)\b/iu.test(text) ||
     /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}/iu.test(
       text
     ) ||
@@ -544,7 +554,12 @@ function hasContextualRegionCode({
     return false;
   }
 
-  return hasKnownPlace || normalizedText.includes(',');
+  const hasCommaSeparator = normalizedText.includes(',');
+  const hasUnambiguousRegionCode = codeWords.some(
+    word => !ambiguousRegionCodes.has(word)
+  );
+
+  return hasCommaSeparator || (hasKnownPlace && hasUnambiguousRegionCode);
 }
 
 function regionCodeCandidates(words: readonly string[]): string[] {

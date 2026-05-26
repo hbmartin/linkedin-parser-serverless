@@ -66,6 +66,35 @@ describe('location classifier', () => {
     }
   });
 
+  test('recognizes standard ZIP+4 postal codes', () => {
+    expect(classifyLocationText({ text: '12345-6789' })).toEqual(
+      expect.objectContaining({
+        isLocation: true,
+        signals: expect.arrayContaining(['postal-code']),
+      })
+    );
+
+    expect(classifyLocationText({ text: '21941-911' })).toEqual(
+      expect.objectContaining({
+        isLocation: true,
+        signals: expect.arrayContaining(['postal-code']),
+      })
+    );
+
+    expect(classifyLocationText({ text: '12345-67' }).isLocation).toBe(false);
+  });
+
+  test('rejects duration ranges with alternate dash characters', () => {
+    for (const text of ['2020 — Present', '2020 − 2021']) {
+      expect(classifyLocationText({ text })).toEqual(
+        expect.objectContaining({
+          isLocation: false,
+          signals: expect.arrayContaining(['duration']),
+        })
+      );
+    }
+  });
+
   test('does not treat standalone country codes as location lines', () => {
     expect(
       classifyLocationText({
@@ -73,5 +102,21 @@ describe('location classifier', () => {
         text: 'US',
       }).isLocation
     ).toBe(false);
+  });
+
+  test('rejects place-word organization names and prose with ambiguous region-code words', () => {
+    for (const text of [
+      'Los Angeles Animal Services',
+      'Tokyo Forex',
+      'Keidanren (Japan Business Federation)',
+      'schools that generate meaningful results for families in New York',
+    ]) {
+      expect(
+        classifyLocationText({
+          context: { structuralContext: 'after-duration' },
+          text,
+        }).isLocation
+      ).toBe(false);
+    }
   });
 });
