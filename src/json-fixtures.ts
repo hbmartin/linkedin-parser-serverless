@@ -676,7 +676,7 @@ function collectJsonValueChanges(
     return [];
   }
 
-  if (Array.isArray(expectedValue) && Array.isArray(generatedValue)) {
+  if (isUnknownArray(expectedValue) && isUnknownArray(generatedValue)) {
     return collectArrayValueChanges(
       expectedValue,
       generatedValue,
@@ -703,8 +703,8 @@ function collectJsonValueChanges(
 }
 
 function collectArrayValueChanges(
-  expectedValues: unknown[],
-  generatedValues: unknown[],
+  expectedValues: ReadonlyArray<unknown>,
+  generatedValues: ReadonlyArray<unknown>,
   pathSegments: JsonPathSegment[]
 ): JsonValueChange[] {
   const changes: JsonValueChange[] = [];
@@ -790,7 +790,7 @@ function collectAddedJsonValueChanges(
   value: unknown,
   pathSegments: JsonPathSegment[]
 ): JsonValueChange[] {
-  if (Array.isArray(value) && value.length > 0) {
+  if (isUnknownArray(value) && value.length > 0) {
     return value.flatMap((childValue, index) =>
       collectAddedJsonValueChanges(
         childValue,
@@ -825,7 +825,7 @@ function collectRemovedJsonValueChanges(
   value: unknown,
   pathSegments: JsonPathSegment[]
 ): JsonValueChange[] {
-  if (Array.isArray(value) && value.length > 0) {
+  if (isUnknownArray(value) && value.length > 0) {
     return value.flatMap((childValue, index) =>
       collectRemovedJsonValueChanges(
         childValue,
@@ -928,6 +928,10 @@ function formatInlineJson(value: unknown): string {
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isUnknownArray(value: unknown): value is ReadonlyArray<unknown> {
+  return Array.isArray(value);
 }
 
 // Use the same two-space JSON form as fixture files for readable comparisons.

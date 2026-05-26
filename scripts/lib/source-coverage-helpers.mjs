@@ -73,10 +73,24 @@ const languageProficiencyTokens = new Set([
   'working',
 ]);
 const sourceMetadataFieldRoles = new Set(['duration', 'location']);
-const knownStandaloneLocationPattern =
-  /\b(?:atlanta|austin|berlin|boston|chicago|dallas|denver|houston|london|los angeles|miami|new york|palo alto|paris|san diego|san francisco|seattle|singapore|st\.? louis|sydney|tokyo|toronto|washington)\b/u;
-const standaloneLocationGeoTokenPattern =
-  /(?:\b(?:united states|united kingdom|usa|uk|canada|germany|france|india|china|japan|singapore|australia|brazil|mexico|spain|italy|korea|estonia|england|ireland|scotland|wales|texas|california|florida|illinois|massachusetts|colorado|georgia|ontario|quebec)\b|u\.s\.|u\.k\.)/u;
+const standaloneLocationPlaceNames = setFromList(
+  'atlanta|austin|berlin|boston|chicago|dallas|denver|geneva|harjumaa|the hague|houston|london|los angeles|miami|minneapolis st paul|munich|münchen|new york|new york city|palo alto|paris|rio de janeiro|san diego|san francisco|sao paulo|seattle|singapore|st louis|sydney|tallinn|tokyo|toronto|washington'
+);
+const standaloneLocationCountryRegions = setFromList(
+  'australia|brasil|brazil|canada|china|deutschland|england|estonia|france|germany|india|ireland|italy|japan|korea|mexico|netherlands|portugal|scotland|singapore|spain|switzerland|united kingdom|united states|vatican city state holy see|wales'
+);
+const standaloneLocationAdminRegions = setFromList(
+  'bayern|california|colorado|florida|georgia|harjumaa|illinois|massachusetts|michigan|new york|ohio|ontario|pennsylvania|quebec|texas'
+);
+const standaloneLocationRegionCodes = setFromList(
+  'ak|al|ar|az|ca|can|co|ct|dc|de|fl|ga|hi|ia|id|il|in|ks|ky|la|ma|md|me|mi|mn|mo|ms|mt|nc|nd|ne|nh|nj|nm|nv|ny|oh|ok|on|or|pa|qc|ri|sc|sd|tn|tx|uk|us|usa|ut|va|vt|wa|wi|wv|wy'
+);
+const standaloneLocationGenericQualifiers = setFromList(
+  'area|bay|county|metropolitan|metro|province|region|state'
+);
+const standaloneLocationNegativeWords = setFromList(
+  'assistant|associate|chief|college|company|consulate|consultant|corporate|corporation|director|engineer|finance|fellow|foundation|founder|group|head|intern|investor|law|manager|officer|partner|partners|president|principal|professor|researcher|school|scientist|university'
+);
 
 export function normalizeText(value) {
   return value
@@ -455,22 +469,83 @@ function isLikelyStandaloneLocation(value) {
     return true;
   }
 
-  if (
-    looksLikeLocationWords(value) &&
-    hasStandaloneLocationGeoEvidence({ normalizedValue, value })
-  ) {
-    return true;
-  }
-
-  return false;
+  return standaloneLocationScore({ normalizedValue, value }) >= 4;
 }
 
-function hasStandaloneLocationGeoEvidence({ normalizedValue, value }) {
-  return (
-    knownStandaloneLocationPattern.test(normalizedValue) ||
-    standaloneLocationGeoTokenPattern.test(normalizedValue) ||
-    /,\s*(?:[A-Z]{2,3}|(?:[A-Z]\.){2,})(?:\s|,|$)/u.test(value)
+function standaloneLocationScore({ normalizedValue, value }) {
+  const lookupText = normalizeLocationLookupText(value);
+  const lookupWords = lookupText.split(/\s+/u).filter(Boolean);
+  const hasKnownPlace = containsKnownStandaloneLocationPhrase(
+    lookupText,
+    standaloneLocationPlaceNames
   );
+  const hasCountryRegion = containsKnownStandaloneLocationPhrase(
+    lookupText,
+    standaloneLocationCountryRegions
+  );
+  const hasAdminRegion = containsKnownStandaloneLocationPhrase(
+    lookupText,
+    standaloneLocationAdminRegions
+  );
+  const hasRegionCode = hasContextualStandaloneRegionCode({
+    hasKnownPlace,
+    lookupWords,
+    value,
+  });
+  const hasGenericQualifier = lookupWords.some(word =>
+    standaloneLocationGenericQualifiers.has(word)
+  );
+  const hasNegativeWord = lookupWords.some(word =>
+    standaloneLocationNegativeWords.has(word)
+  );
+  let score = 1;
+
+  if (!looksLikeLocationWords(value)) {
+    score -= 3;
+  }
+
+  if (hasNegativeWord) {
+    score -= 4;
+  }
+
+  if (standaloneLocationPlaceNames.has(lookupText)) {
+    score += 4;
+  } else if (hasKnownPlace) {
+    score += 3;
+  }
+
+  if (standaloneLocationCountryRegions.has(lookupText)) {
+    score += 4;
+  } else if (hasCountryRegion) {
+    score += 3;
+  }
+
+  if (standaloneLocationAdminRegions.has(lookupText)) {
+    score += 4;
+  } else if (hasAdminRegion) {
+    score += 2;
+  }
+
+  if (hasRegionCode) {
+    score += 2;
+  }
+
+  if (hasCommaSeparatedStandaloneRegionEvidence(value)) {
+    score += 2;
+  }
+
+  if (
+    hasGenericQualifier &&
+    (hasKnownPlace || hasCountryRegion || hasAdminRegion || hasRegionCode)
+  ) {
+    score += 2;
+  }
+
+  if (startsWithSentenceVerb(value) || normalizedValue.split(/\s+/u).length > 8) {
+    score -= 4;
+  }
+
+  return score;
 }
 
 function looksLikeLocationWords(value) {
@@ -491,6 +566,101 @@ function looksLikeLocationWords(value) {
     !/\b(?:llc|llp|inc|corp|corporation|company|group|partners|university|college|school|foundation|law|engineer|manager|director|partner|consultant|professor|assistant|associate|scientist|researcher|fellow|intern|president|founder|officer|chief|head|principal|investor)\b/u.test(
       normalizedValue
     )
+  );
+}
+
+function setFromList(value) {
+  return new Set(value.split('|'));
+}
+
+function normalizeLocationLookupText(value) {
+  return normalizeText(value)
+    .replace(/-/g, ' ')
+    .replace(/[().,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function containsKnownStandaloneLocationPhrase(value, phrases) {
+  for (const phrase of phrases) {
+    if (containsDelimitedPhrase(value, phrase)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function containsDelimitedPhrase(value, phrase) {
+  let searchIndex = 0;
+
+  while (searchIndex <= value.length) {
+    const index = value.indexOf(phrase, searchIndex);
+
+    if (index < 0) {
+      return false;
+    }
+
+    const before = value[index - 1];
+    const after = value[index + phrase.length];
+
+    if (isStandaloneLocationDelimiter(before) && isStandaloneLocationDelimiter(after)) {
+      return true;
+    }
+
+    searchIndex = index + phrase.length;
+  }
+
+  return false;
+}
+
+function isStandaloneLocationDelimiter(value) {
+  return value === undefined || !/[\p{L}\p{N}]/u.test(value);
+}
+
+function hasContextualStandaloneRegionCode({ hasKnownPlace, lookupWords, value }) {
+  const hasRegionCode = standaloneRegionCodeCandidates(lookupWords).some(word =>
+    standaloneLocationRegionCodes.has(word)
+  );
+
+  return hasRegionCode && (hasKnownPlace || value.includes(','));
+}
+
+function standaloneRegionCodeCandidates(words) {
+  const candidates = [...words];
+
+  for (let index = 0; index < words.length - 1; index += 1) {
+    const firstWord = words[index];
+    const secondWord = words[index + 1];
+
+    if (
+      firstWord !== undefined &&
+      secondWord !== undefined &&
+      firstWord.length === 1 &&
+      secondWord.length === 1
+    ) {
+      candidates.push(`${firstWord}${secondWord}`);
+    }
+  }
+
+  return candidates;
+}
+
+function hasCommaSeparatedStandaloneRegionEvidence(value) {
+  const parts = value
+    .split(',')
+    .map(part => normalizeLocationLookupText(part))
+    .filter(Boolean);
+
+  if (parts.length < 2 || parts.length > 3) {
+    return false;
+  }
+
+  return parts.slice(1).some(
+    part =>
+      standaloneLocationRegionCodes.has(part) ||
+      standaloneLocationCountryRegions.has(part) ||
+      standaloneLocationAdminRegions.has(part)
   );
 }
 

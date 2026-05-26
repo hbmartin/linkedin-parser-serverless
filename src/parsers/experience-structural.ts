@@ -13,6 +13,7 @@ import {
   looksLikeDateRangeText,
   parseProfileDateRange,
 } from '../utils/date-parser.js';
+import { classifyLocationText } from '../utils/location-classifier.js';
 import {
   cleanOrganizationNameText,
   isEducationSectionHeaderText,
@@ -84,8 +85,6 @@ export class ExperienceStructuralParser {
     /^(?:less than a year|\d+\s+(?:yr|yrs|year|years|mo|mos|month|months|ano|anos|mes|mês|meses|jahr|jahre)(?:\s+\d+\s+(?:yr|yrs|year|years|mo|mos|month|months|ano|anos|mes|mês|meses|jahr|jahre))?)$/iu;
   private static readonly MEDIA_DESCRIPTION_LINE_PATTERN =
     /^(?:(?:directed|executive\s+produced|produced|written)\s+by\s+.+|(?:documentary|feature|short|television|tv|web)\s+(?:film|series|show))$/iu;
-  private static readonly US_STATE_CODE_PATTERN =
-    /(?:A[LKZR]|C[AOT]|D[CE]|F[LM]|G[AU]|HI|I[ADLN]|K[SY]|LA|M[ADEHINOPST]|N[CDEHJMVY]|O[HKR]|P[ARW]|RI|S[CD]|T[NX]|UT|V[AIT]|W[AIVY])/u;
   private static readonly ORGANIZATION_CONNECTOR_WORD_PATTERN =
     /^(?:a|an|and|at|by|da|de|di|do|du|for|in|la|le|of|on|or|than|the|to|van|von|with|à)$/iu;
   private static readonly COMBINED_ORGANIZATION_TITLE_LINE_PATTERN =
@@ -1453,28 +1452,12 @@ export class ExperienceStructuralParser {
       return false;
     }
 
-    // Common location patterns
-    const stateCode = this.US_STATE_CODE_PATTERN.source;
-    const locationPatterns = [
-      /^[A-Z][A-Za-z\s]+,\s*[A-Z]{2,3}$/, // City, ST/Country
-      new RegExp(
-        `^(?!The\\b)[A-Z][A-Za-z]+(?:\\s+[A-Z][A-Za-z]+)*\\s+${stateCode}$`,
-        'u'
-      ), // City ST
-      /^[A-Z][A-Za-z\s]+,\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/, // City, State
-      /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*(?:[\p{Lu}]{2,3}|[\p{Lu}][\p{Ll}\p{M}]+(?:\s+[\p{Lu}][\p{Ll}\p{M}]+)*)$/u,
-      /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*(?:[\p{Lu}]\.){2,}$/u,
-      /^[A-Z][A-Za-z\s]+,\s*(?:[A-Z]{2,3}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*),\s*(?:[A-Z]{2,3}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/, // City, State, Country
-      /^[A-Z][A-Za-z\s]+(?:\s+[A-Z]{2})?-[A-Z][A-Za-z\s]+ Area$/,
-      /^Vatican City State \(Holy See\)$/u,
-      /^Greater\s+[\p{Lu}][\p{L}\p{M}.'\-\s]+(?:Area|,\s*[\p{Lu}\s]{2,})?$/u,
-      /^\d{5}(?:-\d{3})?$/,
-      /^(California|New York|Texas|Florida|United States|Brasil|Brazil|Rio de Janeiro|São Paulo)$/i,
-    ];
+    const locationClassification = classifyLocationText({
+      context: { structuralContext: 'metadata' },
+      text: normalizedLine,
+    });
     const hasLocationShape =
-      isAddressLocation ||
-      isLikelyLocationText(normalizedLine) ||
-      locationPatterns.some(pattern => pattern.test(normalizedLine));
+      isAddressLocation || locationClassification.isLocation;
 
     return (
       normalizedLine.length < 120 &&
@@ -1521,39 +1504,6 @@ export class ExperienceStructuralParser {
     );
   }
 
-  private static looksLikeStandalonePlaceNameShape(line: string): boolean {
-    if (/[:+$&/]/u.test(line)) {
-      return false;
-    }
-
-    const words = line
-      .split(/\s+/u)
-      .map(word => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}.]+$/gu, ''))
-      .filter(Boolean);
-
-    if (words.length < 2 || words.length > 4) {
-      return false;
-    }
-
-    return words.every((word, index) => {
-      const normalizedWord = word.toLowerCase().replace(/[.]+$/u, '');
-
-      if (
-        this.COMMA_SEPARATED_ORGANIZATION_SUFFIXES.has(normalizedWord) ||
-        looksLikePositionTitleText(word) ||
-        (index > 0 && /^[A-Z]{2,}$/u.test(word))
-      ) {
-        return false;
-      }
-
-      return (
-        /^[\p{Lu}](?:[\p{L}\p{M}'-]+\.?|\.)$/u.test(word) ||
-        /^(?:[\p{Lu}]\.)+$/u.test(word) ||
-        /^(?:da|das|de|del|do|dos|y)$/iu.test(word)
-      );
-    });
-  }
-
   private static looksLikeStandaloneLocationAfterDuration(
     line: string,
     index: number,
@@ -1564,7 +1514,10 @@ export class ExperienceStructuralParser {
     return (
       previousLine !== undefined &&
       this.looksLikeDuration(previousLine) &&
-      this.looksLikeStandalonePlaceNameShape(line)
+      classifyLocationText({
+        context: { structuralContext: 'after-duration' },
+        text: line,
+      }).isLocation
     );
   }
 

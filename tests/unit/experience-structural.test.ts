@@ -2465,6 +2465,30 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('does not classify title-bearing area phrases as locations', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Creative Artists Agency', y: 670 }),
+      textItem({
+        text: 'Chief of Staff to the CEO - Evolution Media',
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'April 2013 - April 2014', y: 630 }),
+      textItem({
+        text: 'Corporate Finance Los Angeles Metropolitan Area',
+        y: 610,
+      }),
+    ]);
+
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        description: 'Corporate Finance Los Angeles Metropolitan Area',
+      })
+    );
+    expect(experience.positions[0].location).toBeUndefined();
+  });
+
   test('keeps standalone city locations out of following descriptions', () => {
     const [experience] = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),

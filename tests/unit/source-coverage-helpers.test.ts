@@ -398,6 +398,32 @@ describe('source coverage helpers', () => {
     );
   });
 
+  test('keeps title-bearing area phrases in descriptions', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Experience',
+        'Creative Artists Agency',
+        'Chief of Staff to the CEO - Evolution Media',
+        'April 2013 - April 2014',
+        'Corporate Finance Los Angeles Metropolitan Area',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        experience: [
+          {
+            company: 'Creative Artists Agency',
+            title: 'Chief of Staff to the CEO - Evolution Media',
+            duration: 'April 2013 - April 2014',
+            description: 'Corporate Finance Los Angeles Metropolitan Area',
+          },
+        ],
+      }),
+      pdfFileName: 'title-bearing-area-description.pdf',
+    });
+
+    expect(report.fieldMismatchOutputMatchCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+  });
+
   test('does not classify comma phrases as locations without geo evidence', () => {
     const sourceView = createSourceSegmentsFromLayoutText(
       [
