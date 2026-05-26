@@ -273,6 +273,230 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('keeps short media descriptors inside experience descriptions', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Fulldome Film Society', y: 670 }),
+      textItem({
+        text: 'Producer, “MYSTERY OF THE KUMBH MELA"',
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'February 2013 - April 2013 (3 months)', y: 630 }),
+      textItem({ text: 'Directed by Stanislav Aistov', y: 610 }),
+      textItem({ text: 'Feature Film', y: 590 }),
+      textItem({
+        text: 'Scouted to find story subjects and conducted pre-interviews for back story',
+        y: 570,
+      }),
+      textItem({ text: 'Discovery Communications / Fischer Productions', y: 530 }),
+      textItem({ text: '4 months', y: 510 }),
+      textItem({
+        text: "Post Production Supervisor, KING'S OF CRASH",
+        y: 490,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'November 2012 - January 2013 (3 months)', y: 470 }),
+      textItem({ text: 'Park City, UT', y: 450 }),
+      textItem({
+        text: 'Executive Produced by Alexander Campbell & Naomi Steinberg',
+        y: 430,
+      }),
+      textItem({ text: 'Television Series', y: 410 }),
+      textItem({ text: 'Areas of responsibility included:', y: 390 }),
+      textItem({
+        text: '• Maintenance of daily operation of the Facilis server and editor workstations',
+        y: 370,
+      }),
+      textItem({
+        text: "Producer, KING'S OF CRASH",
+        y: 330,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'October 2012 - November 2012 (2 months)', y: 310 }),
+      textItem({ text: 'Park City, UT', y: 290 }),
+      textItem({
+        text: 'Executive Produced by Alexander Campbell & Naomi Steinberg',
+        y: 270,
+      }),
+      textItem({ text: 'Television Series', y: 250 }),
+      textItem({
+        text: 'I was a primary shooter/field producer on a fast-paced reality television series',
+        y: 230,
+      }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Fulldome Film Society',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Directed by Stanislav Aistov Feature Film Scouted to find story subjects and conducted pre-interviews for back story',
+            title: 'Producer, “MYSTERY OF THE KUMBH MELA"',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Discovery Communications / Fischer Productions',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Executive Produced by Alexander Campbell & Naomi Steinberg Television Series Areas of responsibility included: • Maintenance of daily operation of the Facilis server and editor workstations',
+            title: "Post Production Supervisor, KING'S OF CRASH",
+          }),
+          expect.objectContaining({
+            description:
+              'Executive Produced by Alexander Campbell & Naomi Steinberg Television Series I was a primary shooter/field producer on a fast-paced reality television series',
+            title: "Producer, KING'S OF CRASH",
+          }),
+        ],
+        totalDuration: '4 months',
+      }),
+    ]);
+  });
+
+  test('keeps short descriptors and client labels in descriptions', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Visual Machines Group', y: 670 }),
+      textItem({ text: 'Leader', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'July 2018 - Present (7 years 11 months)', y: 630 }),
+      textItem({ text: 'Los Angeles CA', y: 610 }),
+      textItem({ text: 'Spatial AI', y: 590 }),
+      textItem({ text: 'OnePager', y: 550 }),
+      textItem({ text: 'Venture', y: 530, fontSize: 11.5 }),
+      textItem({
+        text: 'September 2020 - February 2022 (1 year 6 months)',
+        y: 510,
+      }),
+      textItem({
+        text: 'data room for startups in one link— email gate, analytics, and deck viewer.',
+        y: 490,
+      }),
+      textItem({ text: 'RQ', y: 450 }),
+      textItem({ text: 'Account Supervisor', y: 430, fontSize: 11.5 }),
+      textItem({ text: 'May 2015 - September 2017 (2 years 5 months)', y: 410 }),
+      textItem({ text: 'Client: Paypal + Airbnb', y: 390 }),
+      textItem({
+        text: 'Meet Halfway led the co-marketing initiative.',
+        y: 370,
+      }),
+      textItem({ text: 'Client: 1800 Tequila', y: 350 }),
+      textItem({
+        text: 'Led the strategic repositioning of 1800 Tequila.',
+        y: 330,
+      }),
+      textItem({ text: 'KPMG', y: 290 }),
+      textItem({ text: 'Intern', y: 270, fontSize: 11.5 }),
+      textItem({ text: 'September 2003 - February 2004 (6 months)', y: 250 }),
+      textItem({ text: 'Paris Area, France', y: 230 }),
+      textItem({ text: 'Audit', y: 210 }),
+      textItem({ text: 'HEC Junior Conseil', y: 170 }),
+      textItem({ text: 'Consultant', y: 150, fontSize: 11.5 }),
+      textItem({ text: 'December 2001 - March 2003 (1 year 4 months)', y: 130 }),
+      textItem({ text: 'Consulting', y: 110 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Visual Machines Group',
+        positions: [
+          expect.objectContaining({
+            description: 'Spatial AI',
+            title: 'Leader',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'OnePager',
+        positions: [
+          expect.objectContaining({
+            description:
+              'data room for startups in one link— email gate, analytics, and deck viewer.',
+            title: 'Venture',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'RQ',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Client: Paypal + Airbnb Meet Halfway led the co-marketing initiative. Client: 1800 Tequila Led the strategic repositioning of 1800 Tequila.',
+            title: 'Account Supervisor',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'KPMG',
+        positions: [
+          expect.objectContaining({
+            description: 'Audit',
+            title: 'Intern',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'HEC Junior Conseil',
+        positions: [
+          expect.objectContaining({
+            description: 'Consulting',
+            title: 'Consultant',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('does not let sentence-like description lines hide the next organization', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Hermès', y: 670 }),
+      textItem({ text: 'VP, corporate VC investments', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'February 2019 - Present (7 years 4 months)', y: 630 }),
+      textItem({ text: 'Greater Los Angeles Area', y: 610 }),
+      textItem({
+        text: 'Exploring modern craftsmanship and looking for singularity through our',
+        y: 590,
+      }),
+      textItem({
+        text: 'Corporate VC. Actively but discreetly investing in tech …',
+        y: 570,
+      }),
+      textItem({ text: 'Ampli & Co', y: 530 }),
+      textItem({ text: 'Consultant', y: 510, fontSize: 11.5 }),
+      textItem({ text: 'February 2018 - February 2019 (1 year 1 month)', y: 490 }),
+      textItem({ text: 'Greater Los Angeles Area', y: 470 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Hermès',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Exploring modern craftsmanship and looking for singularity through our Corporate VC. Actively but discreetly investing in tech …',
+            title: 'VP, corporate VC investments',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Ampli & Co',
+        positions: [
+          expect.objectContaining({
+            duration: 'February 2018 - February 2019',
+            location: 'Greater Los Angeles Area',
+            title: 'Consultant',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('parses board-advisor organization names with lowercase connectors', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -1106,7 +1330,7 @@ describe('ExperienceStructuralParser', () => {
         positions: [
           expect.objectContaining({
             description:
-              'Agroup of ecommerce and technology companies in the office supplies, Successfully spin-off three business units that lead to three different exits.',
+              'A group of ecommerce and technology companies in the office supplies, Successfully spin-off three business units that lead to three different exits.',
             title:
               'Co-Founder & CEO (Business Units Acquired Separately: 2006, 2010, 2013)',
           }),
@@ -2391,6 +2615,7 @@ describe('ExperienceStructuralParser', () => {
           }),
           organizationLine,
           parserLine({ index: 2, text: 'Staff Engineer' }),
+          parserLine({ index: 3, text: 'January 2020 - Present' }),
         ],
         index: 1,
         line: organizationLine,

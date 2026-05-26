@@ -63,6 +63,7 @@ const ORGANIZATION_WORDS = new Set([
   'services',
   'software',
   'solutions',
+  'society',
   'studio',
   'systems',
   'tech',
@@ -139,6 +140,7 @@ const POSITION_KEYWORDS = [
   'technical lead',
   'tech lead',
   'undergraduate research',
+  'venture',
   'vice president',
   'vp',
   'writer',
@@ -421,6 +423,7 @@ function organizationWords(text: string): string[] {
 function isOrganizationWordShape(word: string): boolean {
   return (
     LOWERCASE_CONNECTOR_WORDS.has(word.toLowerCase()) ||
+    word === '&' ||
     /^[\p{Lu}0-9][\p{L}0-9&.'+-]*$/u.test(word)
   );
 }

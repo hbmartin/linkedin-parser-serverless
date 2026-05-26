@@ -39,6 +39,31 @@ type ExperienceLineState =
   | 'seeking_dates'
   | 'in_description';
 
+interface WrappedParserLineMergeParams {
+  allLines: NormalizedParserLine[];
+  combinedText: string;
+  index: number;
+  line: NormalizedParserLine;
+  nextLine: NormalizedParserLine;
+}
+
+interface MergedParserLineParams {
+  combinedText: string;
+  index: number;
+  line: NormalizedParserLine;
+  nextLine: NormalizedParserLine;
+}
+
+interface CombinedOrganizationTitleLineParams {
+  line: string;
+  nextLine?: string;
+}
+
+interface CombinedOrganizationTitleLine {
+  organization: string;
+  title: string;
+}
+
 export class ExperienceStructuralParser {
   private static readonly MIN_DESCRIPTION_LINE_LENGTH = 30;
   private static readonly MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH = 20;
@@ -50,12 +75,14 @@ export class ExperienceStructuralParser {
     /\b(?:yr|yrs|year|years|mo|mos|month|months|jahr|jahre|ano|anos|mes|mês|meses)\b/iu;
   private static readonly TOTAL_DURATION_LINE_PATTERN =
     /^(?:less than a year|\d+\s+(?:yr|yrs|year|years|mo|mos|month|months|ano|anos|mes|mês|meses|jahr|jahre)(?:\s+\d+\s+(?:yr|yrs|year|years|mo|mos|month|months|ano|anos|mes|mês|meses|jahr|jahre))?)$/iu;
+  private static readonly MEDIA_DESCRIPTION_LINE_PATTERN =
+    /^(?:(?:directed|executive\s+produced|produced|written)\s+by\s+.+|(?:documentary|feature|short|television|tv|web)\s+(?:film|series|show))$/iu;
   private static readonly US_STATE_CODE_PATTERN =
     /(?:A[LKZR]|C[AOT]|D[CE]|F[LM]|G[AU]|HI|I[ADLN]|K[SY]|LA|M[ADEHINOPST]|N[CDEHJMVY]|O[HKR]|P[ARW]|RI|S[CD]|T[NX]|UT|V[AIT]|W[AIVY])/u;
   private static readonly COMBINED_ORGANIZATION_TITLE_LINE_PATTERN =
     /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?))\s+(.+)$/iu;
   private static readonly ORGANIZATION_SUFFIX_TITLE_FRAGMENT_PATTERN =
-    /^(?:Agency|AG|Company|Corp\.?|Corporation|GmbH|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?)$/iu;
+    /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?)$/iu;
   private static readonly COMMA_SEPARATED_ORGANIZATION_SUFFIXES: ReadonlySet<string> =
     new Set([
       'company',
@@ -748,6 +775,8 @@ export class ExperienceStructuralParser {
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikeLocation(normalizedLine) ||
       this.looksLikePosition(normalizedLine) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
+      this.looksLikeSentenceLikeDescriptionText(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
       (!options.allowPersonLikeName &&
         !hasVisualOrganizationCue &&
@@ -784,6 +813,7 @@ export class ExperienceStructuralParser {
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikeLocation(normalizedLine) ||
       this.looksLikePosition(normalizedLine) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
       isSectionHeaderText(normalizedLine)
     ) {
       return false;
@@ -798,6 +828,7 @@ export class ExperienceStructuralParser {
         word =>
           /^(?:a|an|and|at|by|for|in|of|on|or|than|the|to|with)$/i.test(word) ||
           this.looksLikeOrganizationSuffixText(word) ||
+          /^&$/u.test(word) ||
           /^[-–]$/u.test(word) ||
           /^\([\p{Lu}0-9&.'+!–-]+\)$/u.test(word) ||
           /^\([a-z0-9.-]+\.[a-z0-9.-]+\)$/iu.test(word) ||
@@ -821,6 +852,7 @@ export class ExperienceStructuralParser {
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikeLocation(normalizedLine) ||
       this.looksLikePosition(normalizedLine) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
       isSectionHeaderText(normalizedLine)
     ) {
       return false;
@@ -848,6 +880,10 @@ export class ExperienceStructuralParser {
 
   private static looksLikePosition(line: string): boolean {
     const normalizedLine = line.trim();
+
+    if (/^venture$/iu.test(normalizedLine)) {
+      return true;
+    }
 
     return (
       !/^[-+*•]/u.test(normalizedLine) &&
@@ -883,7 +919,9 @@ export class ExperienceStructuralParser {
       /^[-+*•]/u.test(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
-      this.looksLikeLocation(normalizedLine)
+      this.looksLikeLocation(normalizedLine) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
+      this.looksLikeSentenceLikeDescriptionText(normalizedLine)
     ) {
       return false;
     }
@@ -975,8 +1013,7 @@ export class ExperienceStructuralParser {
 
       if (
         this.looksLikeDuration(nextLine) ||
-        this.looksLikePosition(nextLine) ||
-        this.looksLikePotentialPositionTitleLine(nextLine)
+        this.looksLikePosition(nextLine)
       ) {
         return true;
       }
@@ -1079,7 +1116,9 @@ export class ExperienceStructuralParser {
       isSectionHeaderText(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikeLocation(normalizedLine) ||
-      this.looksLikePosition(normalizedLine)
+      this.looksLikePosition(normalizedLine) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
+      this.looksLikeSentenceLikeDescriptionText(normalizedLine)
     ) {
       return false;
     }
@@ -1112,6 +1151,7 @@ export class ExperienceStructuralParser {
       !this.isExperienceNoiseLine(normalizedLine) &&
       !this.looksLikeDuration(normalizedLine) &&
       !this.looksLikeLocation(normalizedLine) &&
+      !this.looksLikeMediaDescriptionLine(normalizedLine) &&
       !isSectionHeaderText(normalizedLine)
     );
   }
@@ -1215,6 +1255,17 @@ export class ExperienceStructuralParser {
       return true;
     }
 
+    if (this.looksLikeMediaDescriptionLine(normalizedLine)) {
+      return true;
+    }
+
+    if (
+      normalizedPreviousLine &&
+      this.looksLikeShortDescriptorLine(normalizedLine)
+    ) {
+      return true;
+    }
+
     // Stock ticker fragments often appear in description text for public companies.
     if (/\$[A-Z]{1,8}\b/.test(normalizedLine)) {
       return true;
@@ -1225,7 +1276,9 @@ export class ExperienceStructuralParser {
     }
 
     if (
-      /^[\p{Lu}0-9][\p{L}\p{M}0-9\s&/+.'-]{1,45}:\s*\S*$/u.test(normalizedLine)
+      /^[\p{Lu}0-9][\p{L}\p{M}0-9\s&/+.'-]{1,45}:\s*(?:\S.*)?$/u.test(
+        normalizedLine
+      )
     ) {
       return true;
     }
@@ -1304,6 +1357,7 @@ export class ExperienceStructuralParser {
 
     return (
       /^[a-z]/.test(normalizedLine) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
       (/[.!?]$/.test(normalizedLine) &&
         !this.looksLikeDuration(normalizedLine) &&
         !this.looksLikeLocation(normalizedLine) &&
@@ -1811,6 +1865,39 @@ export class ExperienceStructuralParser {
     }
 
     return normalizedText;
+  }
+
+  private static looksLikeMediaDescriptionLine(line: string): boolean {
+    return this.MEDIA_DESCRIPTION_LINE_PATTERN.test(line.trim());
+  }
+
+  private static looksLikeSentenceLikeDescriptionText(line: string): boolean {
+    const normalizedLine = line.trim();
+
+    return (
+      /…/u.test(normalizedLine) ||
+      /[.!?]\s+(?:actively|i|our|successfully|the|this|we)\b/iu.test(
+        normalizedLine
+      )
+    );
+  }
+
+  private static looksLikeShortDescriptorLine(line: string): boolean {
+    const normalizedLine = line.trim();
+
+    return (
+      normalizedLine.length >= 2 &&
+      normalizedLine.length <= 45 &&
+      normalizedLine.split(/\s+/).length <= 5 &&
+      /^[\p{Lu}0-9]/u.test(normalizedLine) &&
+      !/[.!?]$/.test(normalizedLine) &&
+      !normalizedLine.includes('@') &&
+      !/https?:\/\//i.test(normalizedLine) &&
+      !/^[-+*•]/u.test(normalizedLine) &&
+      !this.looksLikeDuration(normalizedLine) &&
+      !this.looksLikeLocation(normalizedLine) &&
+      !isSectionHeaderText(normalizedLine)
+    );
   }
 
   private static createExperienceWarnings(
