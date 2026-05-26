@@ -75,19 +75,7 @@ function sectionFromLine(line: string): WarningSection | undefined {
 }
 
 function dedupeSections(sections: WarningSection[]): WarningSection[] {
-  const seenSections = new Set<WarningSection>();
-  const dedupedSections: WarningSection[] = [];
-
-  for (const section of sections) {
-    if (seenSections.has(section)) {
-      continue;
-    }
-
-    seenSections.add(section);
-    dedupedSections.push(section);
-  }
-
-  return dedupedSections;
+  return Array.from(new Set(sections));
 }
 
 function calculateConfidence({

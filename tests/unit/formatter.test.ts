@@ -57,6 +57,84 @@ describe('formatLinkedInProfile', () => {
     );
   });
 
+  test('formats partial contact links without undefined text', () => {
+    expect(
+      formatLinkedInProfile(
+        {
+          ...createEmptyProfile(),
+          contact: {
+            links: [
+              {
+                label: 'Portfolio',
+                rawText: 'Portfolio',
+                url: '',
+              },
+              {
+                rawText: 'https://example.com',
+                url: 'https://example.com',
+              },
+            ],
+          },
+        },
+        {
+          includeContact: true,
+        }
+      )
+    ).toBe(['Contact', 'Portfolio', 'https://example.com'].join('\n'));
+  });
+
+  test('separates multiple experience and education entries', () => {
+    expect(
+      formatLinkedInProfile({
+        ...createEmptyProfile(),
+        education: [
+          {
+            degree: 'BS Computer Science',
+            institution: 'Example University',
+            year: '2012',
+          },
+          {
+            degree: 'MS Systems',
+            institution: 'Northern College',
+            year: '2014',
+          },
+        ],
+        experience: [
+          {
+            company: 'Fixture Co',
+            description: 'Built parsing tools.',
+            duration: '2020 - 2022',
+            title: 'Engineer',
+          },
+          {
+            company: 'Example Labs',
+            description: 'Led platform work.',
+            duration: '2022 - Present',
+            title: 'Senior Engineer',
+          },
+        ],
+      })
+    ).toBe(
+      [
+        'Experience',
+        'Engineer at Fixture Co',
+        '2020 - 2022',
+        'Built parsing tools.',
+        '',
+        'Senior Engineer at Example Labs',
+        '2022 - Present',
+        'Led platform work.',
+        '',
+        'Education',
+        'BS Computer Science, Example University',
+        '2012',
+        '',
+        'MS Systems, Northern College',
+        '2014',
+      ].join('\n')
+    );
+  });
+
   test('normalizes whitespace and skips empty sections', () => {
     expect(
       formatLinkedInProfile({

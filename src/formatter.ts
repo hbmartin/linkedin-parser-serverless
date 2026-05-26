@@ -54,11 +54,16 @@ function createIdentitySection(
 
 function createContactSection(contact: Contact): SectionDraft | undefined {
   const linkLines =
-    contact.links?.map(link =>
-      cleanValue(link.label)
-        ? `${cleanValue(link.label)}: ${cleanValue(link.url)}`
-        : cleanValue(link.url)
-    ) ?? [];
+    contact.links?.map(link => {
+      const label = cleanValue(link.label);
+      const url = cleanValue(link.url);
+
+      if (label && url) {
+        return `${label}: ${url}`;
+      }
+
+      return url ?? label;
+    }) ?? [];
   const lines = cleanValues([
     contact.email ? `Email: ${contact.email}` : undefined,
     contact.phone ? `Phone: ${contact.phone}` : undefined,
@@ -96,7 +101,9 @@ function createSingleValueSection(
 function createExperienceSection(
   experience: Experience[]
 ): SectionDraft | undefined {
-  const lines = experience.flatMap(formatExperience);
+  const lines = separateEntryLines(
+    experience.map(item => formatExperience(item))
+  );
 
   if (lines.length === 0) {
     return undefined;
@@ -111,7 +118,9 @@ function createExperienceSection(
 function createEducationSection(
   education: Education[]
 ): SectionDraft | undefined {
-  const lines = education.flatMap(formatEducation);
+  const lines = separateEntryLines(
+    education.map(item => formatEducation(item))
+  );
 
   if (lines.length === 0) {
     return undefined;
@@ -209,6 +218,14 @@ function cleanValues(values: Array<string | undefined>): string[] {
   return values
     .map(value => cleanValue(value))
     .filter((value): value is string => value !== undefined);
+}
+
+function separateEntryLines(entries: string[][]): string[] {
+  return entries
+    .filter(entryLines => entryLines.length > 0)
+    .flatMap((entryLines, index) =>
+      index > 0 ? ['', ...entryLines] : entryLines
+    );
 }
 
 function cleanValue(value: string | undefined): string | undefined {
