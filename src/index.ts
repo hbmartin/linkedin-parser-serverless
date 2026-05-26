@@ -69,6 +69,7 @@ export {
   ParseWarningSchema,
   ParsedDateRangeSchema,
   ParsedProfileDateSchema,
+  WarningSectionSchema,
 } from './schemas.js';
 export { extractLinkedInPDFSourceDebug } from './pdf-source-debug.js';
 

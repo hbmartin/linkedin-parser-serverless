@@ -1,5 +1,5 @@
 import type { WarningSection } from '../warning-sections.js';
-export type { WarningSection } from '../warning-sections.js';
+export type { WarningSection };
 
 export interface Contact {
   email?: string;

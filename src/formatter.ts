@@ -55,8 +55,8 @@ function createIdentitySection(
 function createContactSection(contact: Contact): SectionDraft | undefined {
   const linkLines =
     contact.links?.map(link => {
-      const label = cleanValue(link.label);
-      const url = cleanValue(link.url);
+      const label = cleanValue(link?.label);
+      const url = cleanValue(link?.url);
 
       if (!url) {
         return undefined;

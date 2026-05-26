@@ -7,6 +7,8 @@ description: Use when debugging LinkedIn PDF extraction in this repo, especially
 
 Use source-derived artifacts as the authority. Parser JSON and sample baselines are useful regression outputs, but they are not proof of what the PDF contains.
 
+Default to the repo-local `samples/` directory when the user does not provide a PDF path, sample directory, or specific parser symptom. Do not ask which PDF to inspect before running the default repo-wide sample pass.
+
 ## Workflow
 
 1. If `samples/` contains PDFs but no JSON files yet, generate initial JSON before checking:
@@ -17,7 +19,13 @@ Use source-derived artifacts as the authority. Parser JSON and sample baselines 
 
    The generated JSON is not golden output. Treat it as suspect parser output that exists only to make coverage, diffing, and review workflows possible. Debug questionable values against the original PDFs with CLI PDF tools and the scripts in `scripts/`.
 
-2. Generate evidence before diagnosing:
+2. Generate evidence before diagnosing. When no PDF path or sample directory is provided, inspect the repo-local `samples/` directory by default:
+
+   ```bash
+   pnpm run source:inspect
+   ```
+
+   For a specific PDF:
 
    ```bash
    pnpm run source:inspect -- <pdf-path>
@@ -35,6 +43,7 @@ Use source-derived artifacts as the authority. Parser JSON and sample baselines 
    - `unpdf.items.json` for the extractor input the parser actually receives.
    - `pdfplumber.words.json` for independent word geometry.
    - `parser-lines.json` and `parser.structural.json` for parser reconstruction.
+   - `parser-output.json` for current parser output, including `warnings` and `diagnostics`.
    - `parser-source-coverage.json` or `baseline-source-coverage.json` for section-aware coverage prompts.
 
 4. Decide whether the failure is source extraction, layout reconstruction, section assignment, field parsing, or fixture expectation drift. Cite artifact filenames and source lines/items when explaining the diagnosis.
@@ -57,6 +66,7 @@ After using this skill, clearly document:
 - Which PDF files produced incorrect or incomplete parser output, with the source evidence used to identify each problem.
 - What code changes specifically address each failure case. Tie each fix to the PDF symptom it resolves rather than describing changes only by file name.
 - How the generated JSON should appear different after the changes, including the fields or sections expected to be added, removed, moved, or normalized.
+- Any `warnings` and `diagnostics` present in generated output JSON, including warnings that remain after the fix.
 - Any generated JSON that remains suspect and still needs source-level review. Generated JSON is never golden output just because it was written by the CLI.
 
 ## Batch Audit
