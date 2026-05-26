@@ -1866,6 +1866,43 @@ describe('ExperienceStructuralParser', () => {
     });
   });
 
+  test('recognizes dotted GmbH organization boundary rows', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Bosch Company GmbH.', y: 670 }),
+      textItem({ text: 'Business Controller', y: 650, fontSize: 11.5 }),
+      textItem({
+        text: 'February 2018 - December 2018 (11 months)',
+        y: 630,
+      }),
+      textItem({ text: 'Acme Holding, GmbH.', y: 590 }),
+      textItem({ text: 'Principal Consultant', y: 570, fontSize: 11.5 }),
+      textItem({ text: 'January 2015 - January 2018 (3 years)', y: 550 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Bosch Company GmbH.',
+        positions: [
+          expect.objectContaining({
+            duration: 'February 2018 - December 2018',
+            title: 'Business Controller',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Acme Holding, GmbH.',
+        positions: [
+          expect.objectContaining({
+            duration: 'January 2015 - January 2018',
+            title: 'Principal Consultant',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('keeps Palo Alto as a location instead of a no-date First Republic role', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
