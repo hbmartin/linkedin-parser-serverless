@@ -363,6 +363,41 @@ describe('source coverage helpers', () => {
     );
   });
 
+  test('keeps generic geo-token phrases in descriptions without stronger location evidence', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Experience',
+        'Example Co',
+        'Principal Engineer',
+        'January 2020 - Present',
+        'Platform Region',
+        'Built durable client tools.',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        experience: [
+          {
+            company: 'Example Co',
+            title: 'Principal Engineer',
+            duration: 'January 2020 - Present',
+            description: 'Platform Region Built durable client tools.',
+          },
+        ],
+      }),
+      pdfFileName: 'generic-geo-token-description.pdf',
+    });
+
+    expect(report.fieldMismatchOutputMatchCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+    expect(report.unmatchedSourceSegments).toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'Platform Region',
+        }),
+      ])
+    );
+  });
+
   test('does not classify comma phrases as locations without geo evidence', () => {
     const sourceView = createSourceSegmentsFromLayoutText(
       [

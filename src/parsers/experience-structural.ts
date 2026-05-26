@@ -1547,7 +1547,8 @@ export class ExperienceStructuralParser {
       }
 
       return (
-        /^[\p{Lu}][\p{L}\p{M}'-]+\.?$/u.test(word) ||
+        /^[\p{Lu}](?:[\p{L}\p{M}'-]+\.?|\.)$/u.test(word) ||
+        /^(?:[\p{Lu}]\.)+$/u.test(word) ||
         /^(?:da|das|de|del|do|dos|y)$/iu.test(word)
       );
     });

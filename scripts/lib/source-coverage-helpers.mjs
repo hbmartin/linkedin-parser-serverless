@@ -76,7 +76,7 @@ const sourceMetadataFieldRoles = new Set(['duration', 'location']);
 const knownStandaloneLocationPattern =
   /\b(?:atlanta|austin|berlin|boston|chicago|dallas|denver|houston|london|los angeles|miami|new york|palo alto|paris|san diego|san francisco|seattle|singapore|st\.? louis|sydney|tokyo|toronto|washington)\b/u;
 const standaloneLocationGeoTokenPattern =
-  /(?:\b(?:area|region|county|province|state|metropolitan|metro|united states|united kingdom|usa|uk|canada|germany|france|india|china|japan|singapore|australia|brazil|mexico|spain|italy|korea|estonia|england|ireland|scotland|wales|texas|california|florida|illinois|massachusetts|colorado|georgia|ontario|quebec)\b|u\.s\.|u\.k\.)/u;
+  /(?:\b(?:united states|united kingdom|usa|uk|canada|germany|france|india|china|japan|singapore|australia|brazil|mexico|spain|italy|korea|estonia|england|ireland|scotland|wales|texas|california|florida|illinois|massachusetts|colorado|georgia|ontario|quebec)\b|u\.s\.|u\.k\.)/u;
 
 export function normalizeText(value) {
   return value
