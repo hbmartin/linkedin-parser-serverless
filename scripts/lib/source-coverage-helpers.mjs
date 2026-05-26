@@ -75,6 +75,8 @@ const languageProficiencyTokens = new Set([
 const sourceMetadataFieldRoles = new Set(['duration', 'location']);
 const knownStandaloneLocationPattern =
   /\b(?:atlanta|austin|berlin|boston|chicago|dallas|denver|houston|london|los angeles|miami|new york|palo alto|paris|san diego|san francisco|seattle|singapore|st\.? louis|sydney|tokyo|toronto|washington)\b/u;
+const standaloneLocationGeoTokenPattern =
+  /(?:\b(?:area|region|county|province|state|metropolitan|metro|united states|united kingdom|usa|uk|canada|germany|france|india|china|japan|singapore|australia|brazil|mexico|spain|italy|korea|estonia|england|ireland|scotland|wales|texas|california|florida|illinois|massachusetts|colorado|georgia|ontario|quebec)\b|u\.s\.|u\.k\.)/u;
 
 export function normalizeText(value) {
   return value
@@ -443,31 +445,31 @@ function isLikelyStandaloneLocation(value) {
     normalizedValue.length > 80 ||
     isDurationText(value) ||
     /[$@]/u.test(normalizedValue) ||
-    /[.!?;:]/u.test(normalizedValue) ||
+    /[!?;:]/u.test(normalizedValue) ||
     startsWithSentenceVerb(value)
   ) {
     return false;
   }
 
-  if (
-    /^(?:remote|hybrid|onsite)$/u.test(normalizedValue) ||
-    (/,\s*/u.test(value) && looksLikeLocationWords(value))
-  ) {
+  if (/^(?:remote|hybrid|onsite)$/u.test(normalizedValue)) {
     return true;
   }
 
   if (
-    /\b(?:area|region|county|province|state|united states|usa|uk|canada|germany|france|india|china|japan|singapore|australia|brazil|mexico|spain|italy|korea)\b/u.test(
-      normalizedValue
-    ) &&
-    looksLikeLocationWords(value)
+    looksLikeLocationWords(value) &&
+    hasStandaloneLocationGeoEvidence({ normalizedValue, value })
   ) {
     return true;
   }
 
+  return false;
+}
+
+function hasStandaloneLocationGeoEvidence({ normalizedValue, value }) {
   return (
-    knownStandaloneLocationPattern.test(normalizedValue) &&
-    looksLikeLocationWords(value)
+    knownStandaloneLocationPattern.test(normalizedValue) ||
+    standaloneLocationGeoTokenPattern.test(normalizedValue) ||
+    /,\s*(?:[A-Z]{2,3}|(?:[A-Z]\.){2,})(?:\s|,|$)/u.test(value)
   );
 }
 
@@ -480,7 +482,7 @@ function looksLikeLocationWords(value) {
 
   return (
     words.length >= 2 &&
-    words.length <= 5 &&
+    words.length <= 7 &&
     words.every(
       word =>
         /^[\p{Lu}\d][\p{L}\d.'-]*$/u.test(word) ||

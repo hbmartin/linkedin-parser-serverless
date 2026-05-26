@@ -154,7 +154,7 @@ company links, blogs, or "Other" links from the LinkedIn contact section.
 The parser now avoids treating digits inside URLs as phone numbers and removes a
 phone number when it is just the numeric portion of a LinkedIn profile URL.
 
-## Plain-Text Formatter
+## Formatter Output (Plain Text & Markdown)
 
 Use `formatLinkedInProfile` when callers need app-facing plain text from an
 extracted profile, such as notes, search indexes, or downstream prompts:

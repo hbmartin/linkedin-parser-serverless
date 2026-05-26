@@ -246,6 +246,16 @@ describe('BasicInfoParser', () => {
     );
   });
 
+  test('extracts whitespace-labeled email lines from the header', () => {
+    const profile = BasicInfoParser.parse(`
+      Apollo Helios
+      Principal Advisor
+      Email apollo@example.com
+    `);
+
+    expect(profile.contact.email).toBe('apollo@example.com');
+  });
+
   test('extracts structural contact links while ignoring URL path digits as phones', () => {
     const result = BasicInfoParser.parseStructuralWithWarnings(
       [
@@ -328,9 +338,36 @@ describe('BasicInfoParser', () => {
     expect(result.value.contact.linkedin_url).toBe(
       'https://linkedin.com/in/jd-example'
     );
-    expect(result.value.summary).toBe(
-      'JD can be reached at jd@example.com.'
+    expect(result.value.summary).toBe('JD can be reached at jd@example.com.');
+  });
+
+  test('falls back to header contact lines for empty structural contact sections', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      [
+        'Apollo Helios',
+        'Principal Advisor',
+        'apollo@example.com',
+        'Contact',
+        'Experience',
+      ].join('\n'),
+      [
+        structuralLine({ column: 'right', text: 'Apollo Helios', y: 800 }),
+        structuralLine({
+          column: 'right',
+          text: 'Principal Advisor',
+          y: 780,
+        }),
+        structuralLine({
+          column: 'right',
+          text: 'apollo@example.com',
+          y: 760,
+        }),
+        structuralLine({ column: 'left', text: 'Contact', y: 740 }),
+        structuralLine({ column: 'right', text: 'Experience', y: 720 }),
+      ]
     );
+
+    expect(result.value.contact.email).toBe('apollo@example.com');
   });
 
   test('does not extract text contact email from summary sections', () => {

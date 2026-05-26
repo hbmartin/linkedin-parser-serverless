@@ -2902,6 +2902,20 @@ describe('ExperienceStructuralParser', () => {
       })
     ).toBe(false);
     expect(
+      ExperienceStructuralParser['looksLikeDescriptionLine']({
+        allLines: ['Inspire Medical $INSP IPO'],
+        index: 0,
+        line: 'Inspire Medical $INSP IPO',
+      })
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionLine']({
+        allLines: ['Responsibilities: Led platform rollout.'],
+        index: 0,
+        line: 'Responsibilities: Led platform rollout.',
+      })
+    ).toBe(true);
+    expect(
       ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
         'continued rollout'
       )
@@ -3118,6 +3132,22 @@ describe('ExperienceStructuralParser', () => {
         '2020 - 2020 (less than a year)'
       )
     ).toBe(true);
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        allLines: [
+          parserLine({ index: 0, text: 'Partner' }),
+          parserLine({ index: 1, text: 'August 2017 - Present' }),
+          parserLine({ index: 2, text: 'San Diego' }),
+          parserLine({
+            index: 3,
+            text: 'Confirm BioSciences is a diagnostic commercialization company.',
+          }),
+        ],
+        index: 2,
+        line: parserLine({ index: 2, text: 'San Diego' }),
+        state: 'in_description',
+      })
+    ).toBe('location');
   });
 
   test('covers remaining structural classification and helper branches', () => {
@@ -3166,6 +3196,21 @@ describe('ExperienceStructuralParser', () => {
         state: 'in_description',
       })
     ).toBe('description');
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        allLines: [
+          parserLine({
+            index: 0,
+            text: 'Owned migration planning with enough context',
+          }),
+          parserLine({ index: 1, text: 'continued rollout' }),
+          parserLine({ index: 2, text: '2020 - 2021' }),
+        ],
+        index: 1,
+        line: parserLine({ index: 1, text: 'continued rollout' }),
+        state: 'in_description',
+      })
+    ).toBe('description');
 
     expect(
       ExperienceStructuralParser['hasTotalDurationThenPosition'](0, [
@@ -3186,6 +3231,13 @@ describe('ExperienceStructuralParser', () => {
         'short'
       )
     ).toBe(false);
+    expect(
+      ExperienceStructuralParser['looksLikeShortDescriptorEntryHeader'](
+        'Principal Engineer',
+        0,
+        ['Principal Engineer', '2020 - 2021']
+      )
+    ).toBe(true);
   });
 
   test('covers work-experience completion and warning edge branches directly', () => {
