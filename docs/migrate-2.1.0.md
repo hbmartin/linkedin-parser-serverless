@@ -179,8 +179,11 @@ debugging or source inspection.
 Formatting options:
 
 ```ts
+type LinkedInProfileOutputFormat = 'plainText' | 'markdown';
+
 interface FormatLinkedInProfileOptions {
   includeContact?: boolean;
+  outputFormat?: LinkedInProfileOutputFormat;
 }
 ```
 
@@ -191,6 +194,15 @@ plain-text output should include the `Contact` section:
 ```ts
 const textWithContact = formatLinkedInProfile(profile, {
   includeContact: true,
+});
+```
+
+Pass `outputFormat: 'markdown'` when callers need Markdown headings instead of
+plain-text section labels:
+
+```ts
+const markdownSummary = formatLinkedInProfile(profile, {
+  outputFormat: 'markdown',
 });
 ```
 
