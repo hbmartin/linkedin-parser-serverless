@@ -232,6 +232,27 @@ describe('StructuralParser', () => {
     expect(lines[0].text).toBe('I lead');
   });
 
+  test('does not join single-letter domain acronyms into the following word', () => {
+    const lines = createStructuralLines({
+      layout: {
+        type: 'single-column',
+      },
+      textItems: [
+        item({ text: 'Series', x: 220, y: 700 }),
+        item({ text: 'A', x: 260, y: 700 }),
+        item({ text: 'interest', x: 270, y: 700 }),
+        item({ text: 'Model', x: 220, y: 680 }),
+        item({ text: 'Y', x: 260, y: 680 }),
+        item({ text: 'production', x: 270, y: 680 }),
+      ],
+    });
+
+    expect(lines.map(line => line.text)).toEqual([
+      'Series A interest',
+      'Model Y production',
+    ]);
+  });
+
   test('does not join words after ampersand abbreviations', () => {
     const lines = createStructuralLines({
       layout: {
