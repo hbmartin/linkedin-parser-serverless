@@ -14,7 +14,7 @@
 - `unpdf.items.json`: Raw unpdf/PDF.js text items before parser normalization.
 - `parser.structural.json`: Parser debug export with detected layout, raw text, text items, and structural lines.
 - `parser-lines.json`: Reconstructed structural lines consumed by section parsers.
-- `parser-output.json`: Current parser output with `rawText`.
+- `parser-output.json`: Current parser output with `rawText`, `warnings`, and `diagnostics`.
 - `source-segments.json`: Poppler layout text split into inferred source sections.
 - `parser-source-coverage.json`: Source coverage of the current parser output.
 - `baseline-source-coverage.json`: Source coverage of the adjacent sample JSON baseline, when present.
@@ -28,6 +28,7 @@
 - `crossSectionOutputMatches`: JSON values traced to PDF text in a different inferred section. Treat these as review prompts for section inference or intentional duplicated content, not as untraced output failures.
 - `untracedOutputValues`: JSON values not traceable to same-section PDF text. These can reveal hallucinated/misassigned fields, normalized URLs, derived date fields, or text assigned to the wrong section.
 - `sectionWarnings`: Parser warnings from generated or baseline JSON. Treat `section_parse_warning` as higher priority than heuristic coverage noise.
+- `warnings` and `diagnostics`: Parser self-reporting in output JSON. Include these in the investigation notes even when the visible source text looks correct.
 
 ## Triage Checklist
 

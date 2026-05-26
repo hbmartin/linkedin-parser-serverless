@@ -83,6 +83,34 @@ describe('formatLinkedInProfile', () => {
     ).toBe(['Contact', 'https://example.com'].join('\n'));
   });
 
+  test('skips malformed contact link entries without crashing', () => {
+    const profileWithMalformedLinks = JSON.parse(
+      JSON.stringify({
+        ...createEmptyProfile(),
+        contact: {
+          links: [
+            null,
+            {
+              label: '  Portfolio  ',
+              rawText: 'Portfolio',
+              url: '  https://example.com  ',
+            },
+            {
+              label: 'No URL',
+              rawText: 'No URL',
+            },
+          ],
+        },
+      })
+    );
+
+    expect(
+      formatLinkedInProfile(profileWithMalformedLinks, {
+        includeContact: true,
+      })
+    ).toBe(['Contact', 'Portfolio: https://example.com'].join('\n'));
+  });
+
   test('separates multiple experience and education entries', () => {
     expect(
       formatLinkedInProfile({

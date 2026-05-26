@@ -6,6 +6,7 @@ import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   execFileAsync,
+  defaultSamplesDir,
   optionValue,
   readSortedPdfFileNames,
   repoRoot,
@@ -20,12 +21,14 @@ const commandMaxBuffer = 64 * 1024 * 1024;
 const renderScale = 2;
 const usageText = `
 Usage:
+  node scripts/inspect-pdf-source.mjs [--output <dir>]
   node scripts/inspect-pdf-source.mjs <pdf-file> [more-pdfs...] [--output <dir>]
   node scripts/inspect-pdf-source.mjs --samples <dir> [--output <dir>]
 
 Writes a PDF source evidence bundle with Poppler text, pdfplumber geometry,
 raw unpdf items, parser structural lines, rendered page PNGs, and an HTML box
-overlay. Run pnpm run build first, or use the package script that builds first.
+overlay. Defaults to samples/ when no PDF path or --samples value is provided.
+Run pnpm run build first, or use the package script that builds first.
 `;
 
 if (isCliEntrypoint()) {
@@ -83,10 +86,17 @@ function isCliEntrypoint() {
   );
 }
 
-async function resolvePdfPaths({ samplesOption }) {
-  if (samplesOption !== undefined) {
-    const samplesDir = path.resolve(repoRoot, samplesOption);
-    const pdfFileNames = await readSortedPdfFileNames(
+export async function resolvePdfPaths({
+  dependencies = { readSortedPdfFileNames },
+  positionalPdfPaths = positionalArgs(),
+  samplesOption,
+} = {}) {
+  if (samplesOption !== undefined || positionalPdfPaths.length === 0) {
+    const samplesDir = path.resolve(
+      repoRoot,
+      samplesOption ?? defaultSamplesDir
+    );
+    const pdfFileNames = await dependencies.readSortedPdfFileNames(
       samplesDir,
       `No PDF files found in ${samplesDir}`
     );
@@ -94,7 +104,7 @@ async function resolvePdfPaths({ samplesOption }) {
     return pdfFileNames.map(pdfFileName => path.join(samplesDir, pdfFileName));
   }
 
-  return positionalArgs().map(pdfPath => path.resolve(repoRoot, pdfPath));
+  return positionalPdfPaths.map(pdfPath => path.resolve(repoRoot, pdfPath));
 }
 
 function positionalArgs() {

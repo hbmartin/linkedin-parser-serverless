@@ -99,7 +99,7 @@ const MissingProfileFieldWarningSchema = z.object({
   message: z.string(),
 });
 
-const WarningSectionSchema = z.enum(WARNING_SECTIONS);
+export const WarningSectionSchema = z.enum(WARNING_SECTIONS);
 
 const SectionParseWarningSchema = z.object({
   code: z.literal('section_parse_warning'),

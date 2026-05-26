@@ -4,6 +4,7 @@ import {
   ParseDiagnosticsSchema,
   ParseResultSchema,
   ParseWarningSchema,
+  WarningSectionSchema,
 } from '../../src/index.js';
 import { WARNING_SECTIONS } from '../../src/warning-sections.js';
 
@@ -118,6 +119,7 @@ describe('exported Zod schemas', () => {
 
   test('uses the same section values for warnings and diagnostics', () => {
     for (const section of WARNING_SECTIONS) {
+      expect(WarningSectionSchema.safeParse(section).success).toBe(true);
       expect(
         ParseWarningSchema.safeParse({
           code: 'section_parse_warning',
