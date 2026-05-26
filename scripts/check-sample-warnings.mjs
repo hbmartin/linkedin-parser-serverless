@@ -5,7 +5,9 @@ import {
   defaultSamplesDir,
   readSortedPdfFileNames,
   repoRoot,
+  sampleWarningFailureDetailLines,
   sectionParseWarnings,
+  unknownErrorMessage,
 } from './lib/sample-script-helpers.mjs';
 
 const samplesDir = defaultSamplesDir;
@@ -18,31 +20,30 @@ const failures = [];
 
 for (const pdfFileName of pdfFileNames) {
   const pdfPath = path.join(samplesDir, pdfFileName);
-  const result = await parseLinkedInPDF(await fs.readFile(pdfPath));
-  const warnings = sectionParseWarnings(result);
 
-  if (warnings.length === 0) {
-    continue;
+  try {
+    const result = await parseLinkedInPDF(await fs.readFile(pdfPath));
+    const warnings = sectionParseWarnings(result);
+
+    if (warnings.length === 0) {
+      continue;
+    }
+
+    failures.push({
+      pdfFileName,
+      warnings,
+    });
+  } catch (error) {
+    failures.push({
+      parseError: unknownErrorMessage(error),
+      pdfFileName,
+      warnings: [],
+    });
   }
-
-  failures.push({
-    pdfFileName,
-    warnings,
-  });
 }
 
 if (failures.length > 0) {
-  const details = failures
-    .flatMap(failure =>
-      failure.warnings.map(warning => {
-        const field = warning.field ? `.${warning.field}` : '';
-        const entry = warning.entry === undefined ? '' : `#${warning.entry}`;
-        const rawText = warning.rawText ? `: ${warning.rawText}` : '';
-
-        return `${failure.pdfFileName} ${warning.section}${field}${entry} ${warning.message}${rawText}`;
-      })
-    )
-    .join('\n');
+  const details = sampleWarningFailureDetailLines(failures).join('\n');
 
   throw new Error(
     `Found section_parse_warning warnings in sample PDFs:\n${details}`

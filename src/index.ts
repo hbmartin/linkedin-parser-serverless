@@ -1,10 +1,10 @@
-import { StructuralParser } from './parsers/structural-parser.js';
 import { ExperienceStructuralParser } from './parsers/experience-structural.js';
 import { BasicInfoParser } from './parsers/basic-info.js';
 import { ListParser } from './parsers/lists.js';
 import { EducationParser } from './parsers/education.js';
 import { ExtraSectionParser } from './parsers/extra-sections.js';
 import { IdentityStructuralParser } from './parsers/identity-structural.js';
+import { extractLinkedInPDFSourceDebug } from './pdf-source-debug.js';
 import { cleanPDFText } from './utils/text-utils.js';
 import { createStructuralLines } from './utils/structural-lines.js';
 import type { LayoutInfo, TextItem } from './types/structural.js';
@@ -38,6 +38,7 @@ export type {
   SectionParseWarning,
   WarningSection,
 } from './types/profile.js';
+export type { LinkedInPDFSourceDebugArtifacts } from './pdf-source-debug.js';
 export {
   ContactSchema,
   ContactLinkSchema,
@@ -52,6 +53,7 @@ export {
   ParsedDateRangeSchema,
   ParsedProfileDateSchema,
 } from './schemas.js';
+export { extractLinkedInPDFSourceDebug } from './pdf-source-debug.js';
 
 /**
  * Parses a LinkedIn PDF resume and extracts structured profile data
@@ -70,15 +72,13 @@ export async function parseLinkedInPDF(
   // Handle both binary PDF data and extracted text inputs
   if (typeof input !== 'string') {
     try {
-      // Use structural parser for PDF binary data
-      structuralData = await StructuralParser.extractStructuredText(input);
+      const debugArtifacts = await extractLinkedInPDFSourceDebug(input);
 
-      // Create fallback text from structural data
-      const groups = StructuralParser.groupTextByProximity(
-        structuralData.textItems
-      );
-      const lines = StructuralParser.combineGroupedText(groups);
-      text = lines.join('\n');
+      structuralData = {
+        layout: debugArtifacts.layout,
+        textItems: debugArtifacts.textItems,
+      };
+      text = debugArtifacts.rawText;
     } catch (error) {
       throw new Error('PDF appears to be empty or unreadable', {
         cause: error,

@@ -9,7 +9,10 @@ const REQUIRED_PACKAGE_SCRIPT_FILES: readonly string[] = [
   'scripts/verify-artifacts.mjs',
   'scripts/verify-packed-package.mjs',
   'scripts/check-size-budget.mjs',
+  'scripts/inspect-pdf-source.mjs',
+  'scripts/sample-completeness-audit.mjs',
   'scripts/lib/verification-helpers.mjs',
+  'scripts/lib/source-coverage-helpers.mjs',
 ];
 const PACKAGE_JSON_PATH = fileURLToPath(
   new URL('../../package.json', import.meta.url)
@@ -153,6 +156,12 @@ describe('build config contract', () => {
     );
     expect(manifest.scripts['size:check']).toBe(
       'node scripts/check-size-budget.mjs'
+    );
+    expect(manifest.scripts['source:inspect']).toBe(
+      'pnpm run build && node scripts/inspect-pdf-source.mjs'
+    );
+    expect(manifest.scripts['samples:audit-coverage']).toBe(
+      'node scripts/sample-completeness-audit.mjs'
     );
     expect(manifest.scripts['quality:check']).toEqual(
       expect.stringContaining('pnpm run verify:artifacts')

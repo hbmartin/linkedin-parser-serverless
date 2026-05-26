@@ -19,7 +19,13 @@ export function optionValue(name) {
     return undefined;
   }
 
-  return process.argv[index + 1];
+  const value = process.argv[index + 1];
+
+  if (value === undefined || value.startsWith('-')) {
+    throw new Error(`Missing value for ${name}`);
+  }
+
+  return value;
 }
 
 export async function readSortedPdfFileNames(samplesDir, emptyMessage) {
@@ -50,6 +56,22 @@ export function sectionParseWarnings(parsedJson) {
       'code' in warning &&
       warning.code === 'section_parse_warning'
   );
+}
+
+export function sampleWarningFailureDetailLines(failures) {
+  return failures.flatMap(failure => {
+    if (failure.parseError) {
+      return [`${failure.pdfFileName} parse_error ${failure.parseError}`];
+    }
+
+    return failure.warnings.map(warning => {
+      const field = warning.field ? `.${warning.field}` : '';
+      const entry = warning.entry === undefined ? '' : `#${warning.entry}`;
+      const rawText = warning.rawText ? `: ${warning.rawText}` : '';
+
+      return `${failure.pdfFileName} ${warning.section}${field}${entry} ${warning.message}${rawText}`;
+    });
+  });
 }
 
 export function unknownErrorMessage(error) {

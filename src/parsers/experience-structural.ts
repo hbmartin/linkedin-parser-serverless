@@ -97,6 +97,7 @@ export class ExperienceStructuralParser {
       'company',
       'corp',
       'corporation',
+      'gmbh',
       'inc',
       'labs',
       'llc',
@@ -1159,7 +1160,7 @@ export class ExperienceStructuralParser {
         !isKnownLowercaseOrganization &&
         !isLowerCamelOrganization) ||
       (/[.!?]$/.test(normalizedLine) &&
-        !/\b(?:co|corp|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
+        !/\b(?:co|corp|gmbh|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
       normalizedLine.includes('@') ||
       /^[-+*•]/u.test(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||

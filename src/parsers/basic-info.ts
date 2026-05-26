@@ -310,6 +310,8 @@ export class BasicInfoParser {
     for (const line of sectionLines.map(line => line.text)) {
       const trimmedLine = line.trim();
 
+      // Skip short leading fragments as noise, but keep short continuation
+      // lines once summary capture has started.
       if (
         !trimmedLine ||
         isPageFooterLine(trimmedLine) ||
