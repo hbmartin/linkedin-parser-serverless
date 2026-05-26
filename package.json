@@ -126,6 +126,7 @@
 			"**/coverage/**",
 			"**/test/**",
 			"**/src/generated/**",
+			"**/tests/fixtures/*.txt",
 			"**/*.json",
 			"**/*.test.ts",
 			"**/*.md",

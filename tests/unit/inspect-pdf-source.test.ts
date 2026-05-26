@@ -162,6 +162,21 @@ describe('inspect PDF source overlay helpers', () => {
     ]);
   });
 
+  test('rejects simultaneous samples option and positional PDFs', async () => {
+    const { calls, dependencies } = fakePdfDirectory(['Unused.pdf']);
+
+    await expect(
+      resolvePdfPaths({
+        dependencies,
+        positionalPdfPaths: ['custom/Profile.pdf'],
+        samplesOption: 'fixtures/pdfs',
+      })
+    ).rejects.toThrow(
+      'Cannot specify both --samples and positional PDF paths.'
+    );
+    expect(calls).toEqual([]);
+  });
+
   test('includes failure detail artifact paths in manifest entries', () => {
     expect(
       createFailureManifestEntry({

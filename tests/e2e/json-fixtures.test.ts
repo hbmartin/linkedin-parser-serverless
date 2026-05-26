@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseLinkedInPDF } from '../../src/index.js';
+import { formatLinkedInProfile, parseLinkedInPDF } from '../../src/index.js';
 import {
   verifyJsonFixtures,
   type JsonFixtureDependencies,
@@ -9,9 +9,7 @@ import {
 import { getNodeDirectoryEntryKind } from '../../src/node-directory-entry.js';
 
 describe('PDF/JSON fixture baselines', () => {
-  const fixturesPath = fileURLToPath(
-    new URL('../fixtures', import.meta.url)
-  );
+  const fixturesPath = fileURLToPath(new URL('../fixtures', import.meta.url));
 
   test('verifies every checked-in structured JSON fixture against its PDF', async () => {
     const result = await verifyJsonFixtures({
@@ -26,9 +24,7 @@ describe('PDF/JSON fixture baselines', () => {
       stdout: expect.stringContaining('Verified 2 PDF/JSON pair(s)'),
     });
     expect(result.stdout).toContain(path.join(fixturesPath, 'Profile.pdf'));
-    expect(result.stdout).toContain(
-      path.join(fixturesPath, 'test_resume.pdf')
-    );
+    expect(result.stdout).toContain(path.join(fixturesPath, 'test_resume.pdf'));
   });
 
   test('keeps checked-in fixture JSON structured-only', () => {
@@ -47,7 +43,33 @@ describe('PDF/JSON fixture baselines', () => {
       expect(parsedJson).not.toHaveProperty('rawText');
     }
   });
+
+  test('verifies every checked-in plain-text fixture against its PDF', async () => {
+    const pdfFileNames = fs
+      .readdirSync(fixturesPath)
+      .filter(fileName => fileName.toLowerCase().endsWith('.pdf'))
+      .sort((left, right) => left.localeCompare(right));
+
+    expect(pdfFileNames).toEqual(['Profile.pdf', 'test_resume.pdf']);
+
+    for (const pdfFileName of pdfFileNames) {
+      const pdfPath = path.join(fixturesPath, pdfFileName);
+      const fileStem = path.basename(pdfFileName, path.extname(pdfFileName));
+      const { profile } = await parseLinkedInPDF(fs.readFileSync(pdfPath));
+
+      expect(formatLinkedInProfile(profile)).toBe(
+        readFixtureText(path.join(fixturesPath, `${fileStem}.txt`))
+      );
+      expect(formatLinkedInProfile(profile, { includeContact: true })).toBe(
+        readFixtureText(path.join(fixturesPath, `${fileStem}.with-contact.txt`))
+      );
+    }
+  });
 });
+
+function readFixtureText(filePath: string): string {
+  return fs.readFileSync(filePath, 'utf8').trimEnd();
+}
 
 function createNodeJsonFixtureDependencies(): JsonFixtureDependencies {
   return {

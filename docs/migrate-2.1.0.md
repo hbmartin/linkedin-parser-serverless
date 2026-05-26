@@ -156,8 +156,8 @@ phone number when it is just the numeric portion of a LinkedIn profile URL.
 
 ## Plain-Text Formatter
 
-Use `formatLinkedInProfile` when callers need a compact text profile for notes,
-search indexes, or downstream prompts:
+Use `formatLinkedInProfile` when callers need app-facing plain text from an
+extracted profile, such as notes, search indexes, or downstream prompts:
 
 ```ts
 import {
@@ -172,9 +172,38 @@ const summaryText = formatLinkedInProfile(profile, {
 ```
 
 The formatter emits stable section headings, skips empty sections, and
-normalizes whitespace. Contact details are omitted by default for privacy. Pass
-`includeContact: true` to include email, phone, LinkedIn URL, location, and
-profile links.
+normalizes whitespace. It formats the parsed `profile`; it is different from
+`result.rawText`, which is the raw PDF text stream and is mostly useful for
+debugging or source inspection.
+
+Formatting options:
+
+```ts
+interface FormatLinkedInProfileOptions {
+  includeContact?: boolean;
+}
+```
+
+`includeContact` defaults to `false`, so email, phone, LinkedIn URL, location,
+and profile links are omitted for privacy. Pass `includeContact: true` when the
+plain-text output should include the `Contact` section:
+
+```ts
+const textWithContact = formatLinkedInProfile(profile, {
+  includeContact: true,
+});
+```
+
+If callers need the original extracted PDF text instead of normalized profile
+text, request it during parsing:
+
+```ts
+const result = await parseLinkedInPDF(pdfData, {
+  includeRawText: true,
+});
+
+const rawPdfText = result.rawText;
+```
 
 ## Typed Errors
 
