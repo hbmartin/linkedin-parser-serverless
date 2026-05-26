@@ -91,7 +91,7 @@ export async function verifySamples({
   const stepResults = [];
   const failures = [];
 
-  for (const step of sampleVerificationSteps(samplePathArg)) {
+  for (const step of sampleVerificationSteps(samplePathArg, sampleCorpus)) {
     const commandResult = await dependencies.runCommand({
       args: step.args,
       command: step.command,
@@ -123,14 +123,29 @@ export async function verifySamples({
   };
 }
 
-export function sampleVerificationSteps(samplePathArg) {
-  return [
+export function sampleVerificationSteps(
+  samplePathArg,
+  { shouldGenerateJson = false } = {}
+) {
+  const steps = [
     {
       args: ['run', 'build'],
       command: 'pnpm',
       label: 'Build package',
       stopOnFailure: true,
     },
+  ];
+
+  if (shouldGenerateJson) {
+    steps.push({
+      args: ['bin/cli.js', 'write-json', samplePathArg],
+      command: 'node',
+      label: 'Generate suspect sample JSON baselines',
+      stopOnFailure: true,
+    });
+  }
+
+  steps.push(
     {
       args: ['bin/cli.js', 'verify-json', samplePathArg],
       command: 'node',
@@ -153,8 +168,10 @@ export function sampleVerificationSteps(samplePathArg) {
       command: 'node',
       label: 'Audit sample source coverage',
       stopOnFailure: false,
-    },
-  ];
+    }
+  );
+
+  return steps;
 }
 
 async function resolveSampleCorpus({ dependencies, samplesDir }) {
@@ -176,6 +193,15 @@ async function resolveSampleCorpus({ dependencies, samplesDir }) {
   const entries = await dependencies.listDirectory(samplesDir);
   const pdfNames = fileNamesByExtension(entries, '.pdf');
   const jsonNames = fileNamesByExtension(entries, '.json');
+
+  if (pdfNames.length > 0 && jsonNames.length === 0) {
+    return {
+      kind: 'valid',
+      pairCount: pdfNames.length,
+      shouldGenerateJson: true,
+    };
+  }
+
   const jsonStems = new Set(jsonNames.map(name => fileStem(name)));
   const pairCount = pdfNames.filter(name =>
     jsonStems.has(fileStem(name))
@@ -200,6 +226,7 @@ async function resolveSampleCorpus({ dependencies, samplesDir }) {
   return {
     kind: 'valid',
     pairCount,
+    shouldGenerateJson: false,
   };
 }
 

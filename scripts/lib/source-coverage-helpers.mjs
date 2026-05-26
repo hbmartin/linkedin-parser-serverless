@@ -166,6 +166,9 @@ export function createSourceCoverageReport({
   const outputValues = collectOutputValues(parsedJson);
   const outputValuesBySection = groupBySection(outputValues);
   const sourceSegmentsBySection = groupBySection(sourceView.segments);
+  const combinedSourceTextBySection = combineSourceTextBySection(
+    sourceSegmentsBySection
+  );
   const unmatchedSourceSegments = [];
   const looseSourceMatches = [];
   const crossSectionOutputMatches = [];
@@ -193,17 +196,14 @@ export function createSourceCoverageReport({
   }
 
   for (const outputValue of outputValues) {
-    const matchingSourceSegments =
-      sourceSegmentsBySection.get(outputValue.section) ?? [];
-    const combinedSourceText = matchingSourceSegments
-      .map(segment => segment.text)
-      .join(' ');
+    const combinedSourceText =
+      combinedSourceTextBySection.get(outputValue.section) ?? '';
     const match = bestTextMatch(outputValue.value, [combinedSourceText]);
 
     if (match.kind === 'none') {
       const crossSectionMatch = crossSectionOutputMatch({
+        combinedSourceTextBySection,
         outputValue,
-        sourceSegmentsBySection,
       });
 
       if (crossSectionMatch !== undefined) {
@@ -384,6 +384,19 @@ function groupBySection(items) {
   return groups;
 }
 
+function combineSourceTextBySection(sourceSegmentsBySection) {
+  const combinedSourceTextBySection = new Map();
+
+  for (const [section, sourceSegments] of sourceSegmentsBySection) {
+    combinedSourceTextBySection.set(
+      section,
+      sourceSegments.map(segment => segment.text).join(' ')
+    );
+  }
+
+  return combinedSourceTextBySection;
+}
+
 function bestSourceTextMatch(sourceTexts, candidateValues) {
   let looseMatch;
 
@@ -461,15 +474,12 @@ function adjacentSourceSegment({ direction, index, segments }) {
   return undefined;
 }
 
-function crossSectionOutputMatch({ outputValue, sourceSegmentsBySection }) {
-  for (const [section, sourceSegments] of sourceSegmentsBySection) {
+function crossSectionOutputMatch({ combinedSourceTextBySection, outputValue }) {
+  for (const [section, combinedSourceText] of combinedSourceTextBySection) {
     if (section === outputValue.section) {
       continue;
     }
 
-    const combinedSourceText = sourceSegments
-      .map(segment => segment.text)
-      .join(' ');
     const match = bestTextMatch(outputValue.value, [combinedSourceText]);
 
     if (match.kind !== 'none') {

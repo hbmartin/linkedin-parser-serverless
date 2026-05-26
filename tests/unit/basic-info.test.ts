@@ -393,6 +393,49 @@ describe('BasicInfoParser', () => {
     );
   });
 
+  test('does not use text fallback summary parsing for structural PDFs without a summary section', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      [
+        'Apollo Helios',
+        'Principal Advisor',
+        'Toronto, Ontario, Canada',
+        'Experience',
+        'Example Labs',
+        'Strategic Advisor',
+        'March 2026 - Present (3 months)',
+        'Example Labs builds reliable product and engineering systems for teams that need repeatable delivery across multiple business units.',
+      ].join('\n'),
+      [
+        structuralLine({ column: 'right', text: 'Apollo Helios', y: 760 }),
+        structuralLine({ column: 'right', text: 'Principal Advisor', y: 740 }),
+        structuralLine({
+          column: 'right',
+          text: 'Toronto, Ontario, Canada',
+          y: 720,
+        }),
+        structuralLine({ column: 'right', text: 'Experience', y: 690 }),
+        structuralLine({ column: 'right', text: 'Example Labs', y: 670 }),
+        structuralLine({
+          column: 'right',
+          text: 'Strategic Advisor',
+          y: 650,
+        }),
+        structuralLine({
+          column: 'right',
+          text: 'March 2026 - Present (3 months)',
+          y: 630,
+        }),
+        structuralLine({
+          column: 'right',
+          text: 'Example Labs builds reliable product and engineering systems for teams that need repeatable delivery across multiple business units.',
+          y: 610,
+        }),
+      ]
+    );
+
+    expect(result.value.summary).toBeUndefined();
+  });
+
   test('preserves structural summary length consistently with fallback summary parsing', () => {
     const longSummaryLine = `Builds ${'reliable systems '.repeat(40)}`.trim();
     const result = BasicInfoParser.parseStructuralWithWarnings(

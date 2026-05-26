@@ -356,6 +356,16 @@ async function writeUnpdfArtifacts({ failures, files, outputDir, pdfBuffer }) {
 }
 
 export function normalizeUnpdfTextItem(item) {
+  if (item === null || item === undefined) {
+    return {
+      height: 0,
+      str: '',
+      width: 0,
+      x: 0,
+      y: 0,
+    };
+  }
+
   return {
     ...item,
     x: textItemCoordinate({ item, propertyName: 'x', transformIndex: 4 }),

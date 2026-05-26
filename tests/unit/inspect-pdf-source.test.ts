@@ -22,6 +22,19 @@ describe('inspect PDF source overlay helpers', () => {
     });
   });
 
+  test('normalizes nullish unpdf text items to an overlay-safe blank item', () => {
+    const blankTextItem = {
+      height: 0,
+      str: '',
+      width: 0,
+      x: 0,
+      y: 0,
+    };
+
+    expect(normalizeUnpdfTextItem(null)).toEqual(blankTextItem);
+    expect(normalizeUnpdfTextItem(undefined)).toEqual(blankTextItem);
+  });
+
   test('renders normalized unpdf text items without NaN overlay coordinates', () => {
     const normalizedTextItem = normalizeUnpdfTextItem({
       height: 12,

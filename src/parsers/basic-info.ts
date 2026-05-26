@@ -99,9 +99,7 @@ export class BasicInfoParser {
       name: this.extractName(text),
       headline: this.extractHeadline(text),
       location: this.extractLocation(text),
-      summary:
-        this.extractStructuralSummary(structuralLines) ??
-        this.extractSummary(text),
+      summary: this.extractStructuralSummary(structuralLines),
       contact: this.extractStructuralContact(text, structuralLines),
     };
 
