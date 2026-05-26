@@ -1,6 +1,6 @@
 ---
 name: debug-linkedin-sample-pdfs
-description: Use when debugging LinkedIn PDF extraction in this repo, especially sample PDFs, parser misses, section or column errors, unpdf/pdfplumber/Poppler comparisons, source evidence bundles, sample completeness audits, or questions about whether parsed JSON accurately reflects the original PDF.
+description: Use automatically when working in this repo and the user or developer discusses a specific PDF file/path, sample PDF, parser JSON, generated JSON output, baseline JSON, or whether JSON accurately reflects the original PDF. Also use for LinkedIn PDF extraction bugs, parser misses, section or column errors, unpdf/pdfplumber/Poppler comparisons, source evidence bundles, and sample completeness audits.
 ---
 
 # Debug LinkedIn Sample PDFs

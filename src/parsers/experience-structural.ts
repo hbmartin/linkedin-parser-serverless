@@ -356,7 +356,6 @@ export class ExperienceStructuralParser {
       !this.looksLikeDuration(nextLine.text) &&
       !this.looksLikePosition(line.text) &&
       !this.looksLikeLocation(line.text) &&
-      (!this.looksLikeLocation(nextLine.text) || hasWrappedOrganizationShape) &&
       hasWrappedOrganizationShape &&
       (this.looksLikePosition(titleLine.text) ||
         this.looksLikePotentialPositionTitleLine(titleLine.text)) &&
@@ -487,7 +486,7 @@ export class ExperienceStructuralParser {
   }
 
   private static hasOrganizationDomainCueText(text: string): boolean {
-    return /\b(?:AI|Coalition|Connections|Federation|Forex|Labs?|Network|Robotics|Services?|Ventures?)\b/u.test(
+    return /\b(?:AI|Angels|Coalition|Connections|Federation|Forex|Labs?|Network|Robotics|Services?|Ventures?)\b/u.test(
       text
     );
   }
@@ -1534,7 +1533,7 @@ export class ExperienceStructuralParser {
     return text
       .replace(/\bY\s+ork\b/g, 'York')
       .replace(
-        /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))\s+(?:U\s*S|USA)$/iu,
+        /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))\s+U\.?\s*S\.?(?:\s*A\.?)?$/iu,
         '$1'
       )
       .replace(/,\s*([A-Z])\s+([A-Z])$/g, ', $1$2')

@@ -85,7 +85,13 @@ describe('location classifier', () => {
   });
 
   test('rejects duration ranges with alternate dash characters', () => {
-    for (const text of ['2020 — Present', '2020 − 2021']) {
+    for (const text of [
+      '2020 ‐ Present',
+      '2020 ‑ 2021',
+      '2020 ‒ current',
+      '2020 — Present',
+      '2020 − 2021',
+    ]) {
       expect(classifyLocationText({ text })).toEqual(
         expect.objectContaining({
           isLocation: false,
