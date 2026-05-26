@@ -121,6 +121,13 @@ describe('build config contract', () => {
     ]);
   });
 
+  test('exposes package scripts for local CLI runs', () => {
+    const manifest = packageJson();
+
+    expect(manifest.scripts.cli).toBe('pnpm run build && node bin/cli.js');
+    expect(manifest.scripts['cli:built']).toBe('node bin/cli.js');
+  });
+
   test('does not keep esbuild in the production build path', () => {
     const manifest = packageJson();
 

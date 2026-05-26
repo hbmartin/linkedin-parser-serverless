@@ -239,6 +239,32 @@ describe('EducationParser', () => {
     );
   });
 
+  test('joins minor degree continuations', () => {
+    const [education] = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({ fontSize: 14, text: 'University of Denver', y: 730 }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Bachelor of Science (B.S.) Bachelor of Arts (B.A.), Economics , History, Minor',
+        y: 710,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'in Speech Communication',
+        y: 696,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 660 }),
+    ]);
+
+    expect(education).toEqual(
+      expect.objectContaining({
+        degree:
+          'Bachelor of Science (B.S.) Bachelor of Arts (B.A.), Economics , History, Minor in Speech Communication',
+        institution: 'University of Denver',
+      })
+    );
+  });
+
   test('preserves degree text when structural date ranges share the same line', () => {
     const educations = EducationParser.parseStructural([
       structuralLine({ fontSize: 16, text: 'Education', y: 760 }),

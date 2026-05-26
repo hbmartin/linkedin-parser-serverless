@@ -140,7 +140,6 @@ const POSITION_KEYWORDS = [
   'technical lead',
   'tech lead',
   'undergraduate research',
-  'venture',
   'vice president',
   'vp',
   'writer',
@@ -331,7 +330,6 @@ export function cleanOrganizationNameText(text: string): string | undefined {
     .replace(/\b\d{4}\s*[-–]\s*(?:\d{4}|present|current)\b/gi, '')
     .replace(/\(\d+\s+(?:years?|months?|anos?|meses?)[^)]*\)/gi, '')
     .replace(/\s+[|•]\s+.*$/, '')
-    .replace(/\s+-\s+.*$/, '')
     .replace(/[,:;]+$/, '')
     .trim();
 
@@ -458,7 +456,7 @@ export function isLikelyLocationText(text: string): boolean {
       normalizedText
     ) ||
     (!hasOrganizationSuffix &&
-      /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}]{2}$/u.test(normalizedText)) ||
+      /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}]{2,3}$/u.test(normalizedText)) ||
     looksLikeCommaSeparatedLocationText(normalizedText)
   );
 }
@@ -504,7 +502,7 @@ function looksLikeCommaSeparatedLocationText(text: string): boolean {
     parts.length <= 3 &&
     parts.every(
       (part, index) =>
-        (index > 0 && /^[\p{Lu}]{2}$/u.test(part)) ||
+        (index > 0 && /^[\p{Lu}]{2,3}$/u.test(part)) ||
         looksLikeLocationNamePart(part)
     )
   );

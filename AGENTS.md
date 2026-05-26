@@ -2,8 +2,11 @@
 
 - After adding any code or functionality, write thorough unit tests and check coverage.
 - After making any changes always execute `pnpm run check` to verify
+- After completing a task and the check verification, run `pnpm cli verify-json samples/`. Make no further changes based on this output (unless explicitely asked) but report any changes to the user.
 - Fix any pnpm format issues (even if they are unrelated)
-- Whenever there is any confusion or errors, suggest to me a guideline to add to AGENTS.md
+- Whenever there is any confusion or errors, automatically add a guideline to AGENTS.md
+- When you are investigating a bug or analyzing PDFs, use or write helper scripts in .debug/
+- When trying to understand PDF content, use pdfplumber (uvx tool) and the poppler family of cli utils (ask the user to install if not present)
 
 # TypeScript
 

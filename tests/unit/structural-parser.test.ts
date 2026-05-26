@@ -244,12 +244,19 @@ describe('StructuralParser', () => {
         item({ text: 'Model', x: 220, y: 680 }),
         item({ text: 'Y', x: 260, y: 680 }),
         item({ text: 'production', x: 270, y: 680 }),
+        item({ text: 'Gen', x: 220, y: 660 }),
+        item({ text: 'Z', x: 250, y: 660 }),
+        item({ text: 'brand', x: 260, y: 660 }),
+        item({ text: 'S/S', x: 220, y: 640 }),
+        item({ text: 'collection', x: 250, y: 640 }),
       ],
     });
 
     expect(lines.map(line => line.text)).toEqual([
       'Series A interest',
       'Model Y production',
+      'Gen Z brand',
+      'S/S collection',
     ]);
   });
 

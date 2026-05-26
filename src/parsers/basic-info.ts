@@ -305,14 +305,23 @@ export class BasicInfoParser {
       return undefined;
     }
 
-    const summary = normalizeWhitespace(
-      sectionLines
-        .map(line => line.text)
-        .filter(
-          line => line.trim().length > 10 && !isPageFooterLine(line.trim())
-        )
-        .join(' ')
-    );
+    const summaryParts: string[] = [];
+
+    for (const line of sectionLines.map(line => line.text)) {
+      const trimmedLine = line.trim();
+
+      if (
+        !trimmedLine ||
+        isPageFooterLine(trimmedLine) ||
+        (trimmedLine.length <= 10 && summaryParts.length === 0)
+      ) {
+        continue;
+      }
+
+      summaryParts.push(trimmedLine);
+    }
+
+    const summary = normalizeWhitespace(summaryParts.join(' '));
 
     return summary || undefined;
   }

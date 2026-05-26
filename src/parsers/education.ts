@@ -68,7 +68,7 @@ export class EducationParser {
   private static readonly STRUCTURAL_DEGREE_WORD_CONNECTOR_PATTERN: RegExp =
     /\b(?:and|for|in|of)\s*$/iu;
   private static readonly STRUCTURAL_ACADEMIC_FRAGMENT_PATTERN: RegExp =
-    /\b(?:administration|analytics|arts|baccalaureate|business|communications|data|design|economics|education|engineering|finance|law|management|marketing|mathematics|policy|product|program|science|sciences|software|studies|systems|technician|technology)\b/iu;
+    /\b(?:administration|analytics|arts|baccalaureate|business|communication|communications|data|design|economics|education|engineering|finance|law|management|marketing|mathematics|minor|policy|product|program|science|sciences|software|studies|systems|technician|technology)\b/iu;
 
   static parse(text: string): Education[] {
     return this.parseWithWarnings(text).value;

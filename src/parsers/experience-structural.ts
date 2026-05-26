@@ -64,6 +64,13 @@ interface CombinedOrganizationTitleLine {
   title: string;
 }
 
+interface DescriptionLineParams {
+  allLines: string[];
+  index: number;
+  line: string;
+  previousLine?: string;
+}
+
 export class ExperienceStructuralParser {
   private static readonly MIN_DESCRIPTION_LINE_LENGTH = 30;
   private static readonly MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH = 20;
@@ -79,10 +86,12 @@ export class ExperienceStructuralParser {
     /^(?:(?:directed|executive\s+produced|produced|written)\s+by\s+.+|(?:documentary|feature|short|television|tv|web)\s+(?:film|series|show))$/iu;
   private static readonly US_STATE_CODE_PATTERN =
     /(?:A[LKZR]|C[AOT]|D[CE]|F[LM]|G[AU]|HI|I[ADLN]|K[SY]|LA|M[ADEHINOPST]|N[CDEHJMVY]|O[HKR]|P[ARW]|RI|S[CD]|T[NX]|UT|V[AIT]|W[AIVY])/u;
+  private static readonly ORGANIZATION_CONNECTOR_WORD_PATTERN =
+    /^(?:a|an|and|at|by|da|de|di|do|du|for|in|la|le|of|on|or|than|the|to|van|von|with|à)$/iu;
   private static readonly COMBINED_ORGANIZATION_TITLE_LINE_PATTERN =
-    /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?))\s+(.+)$/iu;
+    /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?))\s+(.+)$/iu;
   private static readonly ORGANIZATION_SUFFIX_TITLE_FRAGMENT_PATTERN =
-    /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?)$/iu;
+    /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?)$/iu;
   private static readonly COMMA_SEPARATED_ORGANIZATION_SUFFIXES: ReadonlySet<string> =
     new Set([
       'company',
@@ -312,13 +321,7 @@ export class ExperienceStructuralParser {
     index,
     line,
     nextLine,
-  }: {
-    allLines: NormalizedParserLine[];
-    combinedText: string;
-    index: number;
-    line: NormalizedParserLine;
-    nextLine: NormalizedParserLine;
-  }): boolean {
+  }: WrappedParserLineMergeParams): boolean {
     const followingLine = this.nextContentLine(allLines, index + 2);
 
     return (
@@ -337,13 +340,7 @@ export class ExperienceStructuralParser {
     index,
     line,
     nextLine,
-  }: {
-    allLines: NormalizedParserLine[];
-    combinedText: string;
-    index: number;
-    line: NormalizedParserLine;
-    nextLine: NormalizedParserLine;
-  }): boolean {
+  }: WrappedParserLineMergeParams): boolean {
     const titleLine = this.nextContentLine(allLines, index + 2);
     const durationLine = titleLine
       ? this.nextContentLine(allLines, titleLine.index + 1)
@@ -358,7 +355,8 @@ export class ExperienceStructuralParser {
       !this.looksLikePosition(line.text) &&
       !this.looksLikeLocation(line.text) &&
       !this.looksLikeLocation(nextLine.text) &&
-      this.looksLikeLongAcademicOrganizationHeaderText(combinedText) &&
+      (this.looksLikeLongAcademicOrganizationHeaderText(combinedText) ||
+        this.looksLikeWrappedOrganizationHeaderText(combinedText)) &&
       (this.looksLikePosition(titleLine.text) ||
         this.looksLikePotentialPositionTitleLine(titleLine.text)) &&
       this.looksLikeDuration(durationLine.text)
@@ -390,12 +388,7 @@ export class ExperienceStructuralParser {
     index,
     line,
     nextLine,
-  }: {
-    combinedText: string;
-    index: number;
-    line: NormalizedParserLine;
-    nextLine: NormalizedParserLine;
-  }): NormalizedParserLine {
+  }: MergedParserLineParams): NormalizedParserLine {
     return {
       ...line,
       fontSize:
@@ -445,10 +438,9 @@ export class ExperienceStructuralParser {
   private static splitCombinedOrganizationTitleLine({
     line,
     nextLine,
-  }: {
-    line: string;
-    nextLine?: string;
-  }): { organization: string; title: string } | undefined {
+  }: CombinedOrganizationTitleLineParams):
+    | CombinedOrganizationTitleLine
+    | undefined {
     if (!nextLine || !this.looksLikeDuration(nextLine)) {
       return undefined;
     }
@@ -647,10 +639,12 @@ export class ExperienceStructuralParser {
         }
 
         if (
-          this.looksLikeDescriptionLine(
-            text,
-            lineTexts[index - 1] ?? undefined
-          ) &&
+          this.looksLikeDescriptionLine({
+            allLines: lineTexts,
+            index,
+            line: text,
+            previousLine: lineTexts[index - 1],
+          }) &&
           (!this.hasOwnDurationBeforeBoundary(index, lineTexts) ||
             text.length > this.MIN_DESCRIPTION_LINE_LENGTH)
         ) {
@@ -679,7 +673,12 @@ export class ExperienceStructuralParser {
         }
 
         if (
-          this.looksLikeDescriptionLine(text, lineTexts[index - 1] ?? undefined)
+          this.looksLikeDescriptionLine({
+            allLines: lineTexts,
+            index,
+            line: text,
+            previousLine: lineTexts[index - 1],
+          })
         ) {
           return 'description';
         }
@@ -750,6 +749,8 @@ export class ExperienceStructuralParser {
       this.looksLikeLowerCamelOrganization(normalizedLine);
     const isLongAcademicOrganization =
       this.looksLikeLongAcademicOrganizationHeaderText(normalizedLine);
+    const isWrappedOrganization =
+      this.looksLikeWrappedOrganizationHeaderText(normalizedLine);
     const hasJobDetailsAfter =
       this.hasJobDetailsAfterOrganization(index, allLines) ||
       this.hasImmediateTitleAndDurationAfterOrganization(index, allLines, 4) ||
@@ -758,17 +759,20 @@ export class ExperienceStructuralParser {
       isKnownLowercaseOrganization ||
       isLowerCamelOrganization ||
       isLongAcademicOrganization ||
+      isWrappedOrganization ||
       this.hasOrganizationDomainCueText(normalizedLine) ||
       this.hasOrganizationSuffixText(normalizedLine) ||
       /\bthan\b/i.test(normalizedLine) ||
-      /[&–]/u.test(normalizedLine) ||
+      /[&|–-]/u.test(normalizedLine) ||
       /\b[A-Z]{2,}\b/.test(normalizedLine);
 
     if (
-      (normalizedLine.length > 80 && !isLongAcademicOrganization) ||
+      (normalizedLine.length > 80 &&
+        !isLongAcademicOrganization &&
+        !isWrappedOrganization) ||
       /^[-+*•]/u.test(normalizedLine) ||
       (/[.?]$/.test(normalizedLine) &&
-        !/\b(?:co|corp|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
+        !/\b(?:co|corp|gmbh|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
       (/^[a-z]/.test(normalizedLine) &&
         !isKnownLowercaseOrganization &&
         !isLowerCamelOrganization) ||
@@ -790,6 +794,7 @@ export class ExperienceStructuralParser {
       isKnownLowercaseOrganization ||
       isLowerCamelOrganization ||
       isLongAcademicOrganization ||
+      isWrappedOrganization ||
       ((options.allowPersonLikeName || hasVisualOrganizationCue) &&
         this.looksLikeVisualOrganizationHeaderText(normalizedLine));
 
@@ -826,13 +831,56 @@ export class ExperienceStructuralParser {
       words.length <= 8 &&
       words.every(
         word =>
-          /^(?:a|an|and|at|by|for|in|of|on|or|than|the|to|with)$/i.test(word) ||
+          this.ORGANIZATION_CONNECTOR_WORD_PATTERN.test(word) ||
           this.looksLikeOrganizationSuffixText(word) ||
           /^&$/u.test(word) ||
           /^[-–]$/u.test(word) ||
           /^\([\p{Lu}0-9&.'+!–-]+\)$/u.test(word) ||
           /^\([a-z0-9.-]+\.[a-z0-9.-]+\)$/iu.test(word) ||
           /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word)
+      )
+    );
+  }
+
+  private static looksLikeWrappedOrganizationHeaderText(line: string): boolean {
+    const normalizedLine = line.trim();
+    const hasPipeSeparator = normalizedLine.includes('|');
+
+    if (
+      normalizedLine.length < 12 ||
+      normalizedLine.length > 140 ||
+      normalizedLine.includes('@') ||
+      normalizedLine.includes('•') ||
+      /https?:\/\//i.test(normalizedLine) ||
+      /^page\s+\d+\s+of\s+\d+$/i.test(normalizedLine) ||
+      this.looksLikeDuration(normalizedLine) ||
+      this.looksLikeLocation(normalizedLine) ||
+      this.looksLikePosition(normalizedLine) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
+      this.looksLikeSentenceLikeDescriptionText(normalizedLine) ||
+      isSectionHeaderText(normalizedLine)
+    ) {
+      return false;
+    }
+
+    const words = normalizedLine.split(/\s+/).filter(Boolean);
+    const hasOrganizationCue =
+      hasPipeSeparator || this.hasOrganizationSuffixText(normalizedLine);
+
+    return (
+      hasOrganizationCue &&
+      words.length >= 3 &&
+      words.length <= 18 &&
+      words.every(
+        word =>
+          this.ORGANIZATION_CONNECTOR_WORD_PATTERN.test(word) ||
+          this.looksLikeOrganizationSuffixText(word) ||
+          /^&$/u.test(word) ||
+          /^\|$/u.test(word) ||
+          /^[-–]$/u.test(word) ||
+          /^\([\p{L}\p{M}0-9&.'+!–-]+\)$/u.test(word) ||
+          /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word) ||
+          (hasPipeSeparator && /^[\p{Ll}\p{M}]+$/u.test(word))
       )
     );
   }
@@ -871,7 +919,7 @@ export class ExperienceStructuralParser {
       words.length <= 14 &&
       words.every(
         word =>
-          /^(?:a|an|and|at|by|for|in|of|on|or|the|to|with)$/i.test(word) ||
+          this.ORGANIZATION_CONNECTOR_WORD_PATTERN.test(word) ||
           /^\([\p{L}\p{M}0-9&.'+!–-]+\)$/u.test(word) ||
           /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word)
       )
@@ -882,6 +930,7 @@ export class ExperienceStructuralParser {
     const normalizedLine = line.trim();
 
     if (/^venture$/iu.test(normalizedLine)) {
+      // Real profiles use standalone "Venture" as a role; it is too broad for POSITION_KEYWORDS.
       return true;
     }
 
@@ -1243,10 +1292,12 @@ export class ExperienceStructuralParser {
     return /^page\s+\d+\s+of\s+\d+$/i.test(line.trim());
   }
 
-  private static looksLikeDescriptionLine(
-    line: string,
-    previousLine?: string
-  ): boolean {
+  private static looksLikeDescriptionLine({
+    allLines,
+    index,
+    line,
+    previousLine,
+  }: DescriptionLineParams): boolean {
     const normalizedLine = line.trim();
     const normalizedPreviousLine = previousLine?.trim();
 
@@ -1261,7 +1312,8 @@ export class ExperienceStructuralParser {
 
     if (
       normalizedPreviousLine &&
-      this.looksLikeShortDescriptorLine(normalizedLine)
+      this.looksLikeShortDescriptorLine(normalizedLine) &&
+      !this.looksLikeShortDescriptorEntryHeader(normalizedLine, index, allLines)
     ) {
       return true;
     }
@@ -1284,6 +1336,12 @@ export class ExperienceStructuralParser {
     }
 
     if (!normalizedPreviousLine) {
+      return false;
+    }
+
+    if (
+      this.looksLikeShortDescriptorEntryHeader(normalizedLine, index, allLines)
+    ) {
       return false;
     }
 
@@ -1392,15 +1450,15 @@ export class ExperienceStructuralParser {
     // Common location patterns
     const stateCode = this.US_STATE_CODE_PATTERN.source;
     const locationPatterns = [
-      /^[A-Z][A-Za-z\s]+,\s*[A-Z]{2}$/, // City, ST
+      /^[A-Z][A-Za-z\s]+,\s*[A-Z]{2,3}$/, // City, ST/Country
       new RegExp(
         `^(?!The\\b)[A-Z][A-Za-z]+(?:\\s+[A-Z][A-Za-z]+)*\\s+${stateCode}$`,
         'u'
       ), // City ST
       /^[A-Z][A-Za-z\s]+,\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/, // City, State
-      /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*(?:[\p{Lu}]{2}|[\p{Lu}][\p{Ll}\p{M}]+(?:\s+[\p{Lu}][\p{Ll}\p{M}]+)*)$/u,
+      /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*(?:[\p{Lu}]{2,3}|[\p{Lu}][\p{Ll}\p{M}]+(?:\s+[\p{Lu}][\p{Ll}\p{M}]+)*)$/u,
       /^[\p{Lu}][\p{L}\p{M}.'\-\s]+,\s*(?:[\p{Lu}]\.){2,}$/u,
-      /^[A-Z][A-Za-z\s]+,\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*,\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/, // City, State, Country
+      /^[A-Z][A-Za-z\s]+,\s*(?:[A-Z]{2,3}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*),\s*(?:[A-Z]{2,3}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/, // City, State, Country
       /^[A-Z][A-Za-z\s]+(?:\s+[A-Z]{2})?-[A-Z][A-Za-z\s]+ Area$/,
       /^Vatican City State \(Holy See\)$/u,
       /^Greater\s+[\p{Lu}][\p{L}\p{M}.'\-\s]+(?:Area|,\s*[\p{Lu}\s]{2,})?$/u,
@@ -1769,6 +1827,10 @@ export class ExperienceStructuralParser {
       return text.trim();
     }
 
+    if (this.looksLikeWrappedOrganizationHeaderText(text.trim())) {
+      return text.trim();
+    }
+
     const cleanOrganizationName = cleanOrganizationNameText(text);
 
     if (cleanOrganizationName) {
@@ -1780,7 +1842,8 @@ export class ExperienceStructuralParser {
       .replace(/\s+/g, ' ')
       .trim();
 
-    return this.looksLikeVisualOrganizationHeaderText(normalizedText)
+    return this.looksLikeVisualOrganizationHeaderText(normalizedText) ||
+      this.looksLikeWrappedOrganizationHeaderText(normalizedText)
       ? normalizedText
       : undefined;
   }
@@ -1897,6 +1960,28 @@ export class ExperienceStructuralParser {
       !this.looksLikeDuration(normalizedLine) &&
       !this.looksLikeLocation(normalizedLine) &&
       !isSectionHeaderText(normalizedLine)
+    );
+  }
+
+  private static looksLikeShortDescriptorEntryHeader(
+    line: string,
+    index: number,
+    allLines: string[]
+  ): boolean {
+    const normalizedLine = line.trim();
+
+    if (
+      this.looksLikePosition(normalizedLine) ||
+      this.looksLikeLoosePositionTitle(normalizedLine, index, allLines)
+    ) {
+      return true;
+    }
+
+    return (
+      (looksLikeOrganizationNameText(normalizedLine) ||
+        this.looksLikeVisualOrganizationHeaderText(normalizedLine) ||
+        this.looksLikeWrappedOrganizationHeaderText(normalizedLine)) &&
+      this.looksLikeOrganizationBeforePosition(normalizedLine, index, allLines)
     );
   }
 
