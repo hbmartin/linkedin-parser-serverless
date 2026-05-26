@@ -1187,6 +1187,44 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('does not split organization suffix-only rows into fake roles', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'My Company LLC', y: 670 }),
+      textItem({ text: 'January 2021 - Present (3 years 5 months)', y: 650 }),
+      textItem({ text: 'Robert Bosch GmbH Inc', y: 620 }),
+      textItem({
+        text: 'February 2019 - December 2020 (1 year 11 months)',
+        y: 600,
+      }),
+      textItem({ text: 'Acme Agency Principal Consultant', y: 570 }),
+      textItem({ text: 'January 2015 - January 2018 (3 years)', y: 550 }),
+    ]);
+
+    const parsedOrganizationTitles = result.value.flatMap(experience =>
+      experience.positions.map(position => ({
+        organization: experience.organization,
+        title: position.title,
+      }))
+    );
+
+    expect(result.warnings).toEqual([]);
+    expect(parsedOrganizationTitles).toEqual([
+      {
+        organization: 'Acme Agency',
+        title: 'Principal Consultant',
+      },
+    ]);
+    expect(parsedOrganizationTitles).not.toContainEqual({
+      organization: 'My Company',
+      title: 'LLC',
+    });
+    expect(parsedOrganizationTitles).not.toContainEqual({
+      organization: 'Robert Bosch GmbH',
+      title: 'Inc',
+    });
+  });
+
   test('keeps Palo Alto as a location instead of a no-date First Republic role', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
