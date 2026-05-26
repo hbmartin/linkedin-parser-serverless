@@ -44,6 +44,10 @@ export class ExperienceStructuralParser {
   private static readonly MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH = 20;
   private static readonly DESCRIPTION_CONTINUATION_CONNECTOR_PATTERN =
     /\b(?:and|at|by|for|from|in|of|on|the|their|to|with)$/i;
+  private static readonly COMBINED_ORGANIZATION_TITLE_LINE_PATTERN =
+    /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?))\s+(.+)$/u;
+  private static readonly ORGANIZATION_SUFFIX_TITLE_FRAGMENT_PATTERN =
+    /^(?:Agency|AG|Company|Corp\.?|Corporation|GmbH|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?)$/iu;
   private static readonly COMMA_SEPARATED_ORGANIZATION_SUFFIXES: ReadonlySet<string> =
     new Set([
       'company',
@@ -254,7 +258,7 @@ export class ExperienceStructuralParser {
 
     const normalizedLine = line.trim();
     const match = normalizedLine.match(
-      /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?))\s+(.+)$/u
+      this.COMBINED_ORGANIZATION_TITLE_LINE_PATTERN
     );
 
     if (!match) {
@@ -266,6 +270,8 @@ export class ExperienceStructuralParser {
 
     if (
       !this.looksLikeVisualOrganizationHeaderText(organization) ||
+      this.looksLikeOrganizationSuffixTitleFragment(title) ||
+      looksLikeOrganizationNameText(title) ||
       (!this.looksLikePosition(title) &&
         !this.looksLikePotentialPositionTitleLine(title))
     ) {
@@ -276,6 +282,12 @@ export class ExperienceStructuralParser {
       organization,
       title,
     };
+  }
+
+  private static looksLikeOrganizationSuffixTitleFragment(
+    title: string
+  ): boolean {
+    return this.ORGANIZATION_SUFFIX_TITLE_FRAGMENT_PATTERN.test(title.trim());
   }
 
   private static classifyLineType({
@@ -536,7 +548,7 @@ export class ExperienceStructuralParser {
 
     if (
       normalizedLine.length > 80 ||
-      /^[-*•]/u.test(normalizedLine) ||
+      /^[-+*•]/u.test(normalizedLine) ||
       (/[.?]$/.test(normalizedLine) &&
         !/\b(?:co|corp|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
       (/^[a-z]/.test(normalizedLine) &&
@@ -642,7 +654,7 @@ export class ExperienceStructuralParser {
         !this.looksLikeLowerCamelOrganization(normalizedLine)) ||
       /[.!?]$/.test(normalizedLine) ||
       normalizedLine.includes('@') ||
-      /^[-*•]/u.test(normalizedLine) ||
+      /^[-+*•]/u.test(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikeLocation(normalizedLine)
@@ -783,7 +795,7 @@ export class ExperienceStructuralParser {
       (/[.!?]$/.test(normalizedLine) &&
         !/\b(?:co|corp|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
       normalizedLine.includes('@') ||
-      /^[-*•]/u.test(normalizedLine) ||
+      /^[-+*•]/u.test(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikeLocation(normalizedLine) ||
@@ -1294,7 +1306,7 @@ export class ExperienceStructuralParser {
       normalizedLine.split(/\s+/).length <= 4 &&
       /^[\p{Lu}0-9]/u.test(normalizedLine) &&
       !/[.!?]$/.test(normalizedLine) &&
-      !/^[-*•]/u.test(normalizedLine) &&
+      !/^[-+*•]/u.test(normalizedLine) &&
       !looksLikePositionTitleText(normalizedLine) &&
       !this.looksLikeDuration(normalizedLine) &&
       !this.looksLikeLocation(normalizedLine) &&
