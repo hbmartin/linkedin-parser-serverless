@@ -26,6 +26,7 @@ const DEFAULT_ERROR_MESSAGES: Record<LinkedInProfileParseErrorCode, string> = {
   text_extraction_failed: 'PDF appears to be empty or unreadable',
   unsupported_pdf: 'PDF uses unsupported features and cannot be parsed',
 };
+const TEXT_EXTRACTION_FAILED_MESSAGE = 'Input text could not be parsed';
 
 export class LinkedInProfileParseError extends Error {
   readonly code: LinkedInProfileParseErrorCode;
@@ -76,6 +77,7 @@ export function normalizeLinkedInProfileParseError({
   return createLinkedInProfileParseError({
     cause,
     code: 'text_extraction_failed',
+    message: TEXT_EXTRACTION_FAILED_MESSAGE,
   });
 }
 

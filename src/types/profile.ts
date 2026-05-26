@@ -1,3 +1,6 @@
+import type { WarningSection } from '../warning-sections.js';
+export type { WarningSection } from '../warning-sections.js';
+
 export interface Contact {
   email?: string;
   phone?: string;
@@ -105,20 +108,6 @@ export interface MissingProfileFieldWarning {
   field: 'profile.name' | 'profile.contact.email';
   message: string;
 }
-
-export type WarningSection =
-  | 'profile'
-  | 'contact'
-  | 'summary'
-  | 'top_skills'
-  | 'languages'
-  | 'certifications'
-  | 'volunteer_work'
-  | 'projects'
-  | 'publications'
-  | 'honors_awards'
-  | 'experience'
-  | 'education';
 
 export interface SectionParseWarning {
   code: 'section_parse_warning';

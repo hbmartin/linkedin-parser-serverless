@@ -57,7 +57,7 @@ describe('formatLinkedInProfile', () => {
     );
   });
 
-  test('formats partial contact links without undefined text', () => {
+  test('omits contact links without URLs', () => {
     expect(
       formatLinkedInProfile(
         {
@@ -80,7 +80,7 @@ describe('formatLinkedInProfile', () => {
           includeContact: true,
         }
       )
-    ).toBe(['Contact', 'Portfolio', 'https://example.com'].join('\n'));
+    ).toBe(['Contact', 'https://example.com'].join('\n'));
   });
 
   test('separates multiple experience and education entries', () => {
