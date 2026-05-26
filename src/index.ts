@@ -174,6 +174,10 @@ async function parseLinkedInPDFInternal(
   if (!text || text.length < 50) {
     throw createLinkedInProfileParseError({
       code: 'text_extraction_failed',
+      message:
+        typeof input === 'string'
+          ? 'Input text is empty or too short'
+          : undefined,
     });
   }
 

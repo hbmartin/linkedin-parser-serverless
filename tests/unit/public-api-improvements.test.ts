@@ -1,5 +1,4 @@
 import { jest } from '@jest/globals';
-import { z } from 'zod';
 import {
   LinkedInProfileParseError,
   ParseResultSchema,
@@ -28,6 +27,8 @@ describe('public parser diagnostics and typed errors', () => {
       Experience
       Principal Engineer at Fixture Co
       January 2020 - Present
+      Experience
+      This long sentence mentions Summary but is not a header because it is too long.
 
       Education
       BS Computer Science
@@ -75,6 +76,7 @@ describe('public parser diagnostics and typed errors', () => {
   test('throws typed errors for empty text input', async () => {
     await expect(parseLinkedInPDF('')).rejects.toMatchObject({
       code: 'text_extraction_failed',
+      message: 'Input text is empty or too short',
     });
     await expect(parseLinkedInPDF('')).rejects.toBeInstanceOf(
       LinkedInProfileParseError
@@ -129,12 +131,15 @@ describe('public parser diagnostics and typed errors', () => {
   });
 
   test('strict parser validates the parse result schema', async () => {
-    const schemaError = new z.ZodError([]);
+    const schemaFailure = ParseResultSchema.safeParse({});
 
-    jest.spyOn(ParseResultSchema, 'safeParse').mockReturnValue({
-      error: schemaError,
-      success: false,
-    });
+    if (schemaFailure.success) {
+      throw new Error('Expected an empty object to fail ParseResultSchema');
+    }
+
+    const schemaError = schemaFailure.error;
+
+    jest.spyOn(ParseResultSchema, 'safeParse').mockReturnValue(schemaFailure);
 
     await expect(
       parseLinkedInPDFStrict(`
@@ -169,6 +174,7 @@ describe('public parser diagnostics and typed errors', () => {
     if (!result.success) {
       expect(result.error).toBeInstanceOf(LinkedInProfileParseError);
       expect(result.error.code).toBe('text_extraction_failed');
+      expect(result.error.message).toBe('Input text is empty or too short');
     }
   });
 });
