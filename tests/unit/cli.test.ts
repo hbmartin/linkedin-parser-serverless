@@ -46,6 +46,25 @@ describe('CLI runner', () => {
     });
   });
 
+  test('reports invalid folder command arguments', async () => {
+    await expect(runCli({ args: ['write-json'] })).resolves.toEqual({
+      exitCode: 1,
+      stderr: expect.stringContaining(
+        'Error: No folder path provided for write-json'
+      ),
+      stdout: '',
+    });
+    await expect(
+      runCli({ args: ['verify-json', '/one', '/two'] })
+    ).resolves.toEqual({
+      exitCode: 1,
+      stderr: expect.stringContaining(
+        'Error: Only one folder path may be provided for verify-json'
+      ),
+      stdout: '',
+    });
+  });
+
   test('returns compact JSON for a valid PDF', async () => {
     const result = await runCli({
       args: [profilePdfPath, '--compact'],
@@ -119,6 +138,30 @@ describe('CLI runner', () => {
     expect(stdoutSpy).toHaveBeenCalledWith(
       expect.stringContaining('linkedin-pdf-parser verify-json <folder>')
     );
+  });
+
+  test('uses process argv when main is called without explicit args', async () => {
+    const originalArgv = process.argv;
+    const stderrSpy = jest
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    const stdoutSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+
+    process.argv = ['node', 'linkedin-pdf-parser', '--help'];
+
+    try {
+      const exitCode = await main();
+
+      expect(exitCode).toBe(0);
+      expect(stderrSpy).not.toHaveBeenCalled();
+      expect(stdoutSpy).toHaveBeenCalledWith(
+        expect.stringContaining('linkedin-pdf-parser <pdf-file-path>')
+      );
+    } finally {
+      process.argv = originalArgv;
+    }
   });
 
   test('writes parse output through the executable main entry point', async () => {

@@ -57,6 +57,12 @@ describe('getNodeDirectoryEntryKind', () => {
     expect(getNodeDirectoryEntryKind(directoryPath, entry)).toBe('other');
   });
 
+  test('classifies symlinks to special targets as other', () => {
+    fs.symlinkSync('/dev/null', path.join(directoryPath, 'special-link'));
+
+    expect(readEntryKind('special-link')).toBe('other');
+  });
+
   function readEntryKind(
     fileName: string
   ): ReturnType<typeof getNodeDirectoryEntryKind> {

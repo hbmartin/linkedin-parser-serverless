@@ -383,6 +383,79 @@ describe('BasicInfoParser', () => {
 
     expect(result.value.summary).toBe(longSummaryLine);
   });
+
+  test('covers contact link finalization, normalization, joining, and dedupe branches', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Test User
+      Principal Advisor
+
+      Contact
+      docs.example.com
+      api
+      https://portfolio.example.com
+      docs.example.com
+      /api
+      ?view=full
+      #section
+      docs.example.com/path-
+      continued (Other)
+      docs.example.com
+    `);
+
+    expect(result.value.contact.links).toEqual([
+      expect.objectContaining({
+        url: 'https://docs.example.com/api',
+      }),
+      expect.objectContaining({
+        url: 'https://portfolio.example.com',
+      }),
+      expect.objectContaining({
+        url: 'https://docs.example.com/api?view=full#section',
+      }),
+      expect.objectContaining({
+        label: 'Other',
+        url: 'https://docs.example.com/path-continued',
+      }),
+      expect.objectContaining({
+        url: 'https://docs.example.com',
+      }),
+    ]);
+  });
+
+  test('ignores invalid contact link drafts and empty structural summary sections', () => {
+    const links: NonNullable<ReturnType<typeof BasicInfoParser.parse>['contact']['links']> =
+      [];
+
+    BasicInfoParser['pushContactLink'](links, {
+      parts: ['not-a-link'],
+      rawLines: ['not-a-link'],
+    });
+
+    expect(links).toEqual([]);
+    expect(
+      BasicInfoParser['extractStructuralSummary']([
+        structuralLine({ column: 'right', text: 'Summary', y: 700 }),
+        structuralLine({ column: 'right', text: 'Experience', y: 690 }),
+      ])
+    ).toBeUndefined();
+  });
+
+  test('deduplicates repeated contact links', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Test User
+      Principal Advisor
+
+      Contact
+      docs.example.com
+      docs.example.com
+    `);
+
+    expect(result.value.contact.links).toEqual([
+      expect.objectContaining({
+        url: 'https://docs.example.com',
+      }),
+    ]);
+  });
 });
 
 function structuralLine({

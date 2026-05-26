@@ -209,4 +209,115 @@ describe('ExperienceParser', () => {
       }),
     ]);
   });
+
+  test('covers company, inline, location, and incomplete-position helper branches', () => {
+    expect(
+      ExperienceParser['parseInlineTitleAndCompany'](
+        'Principal Engineer @ Blue Oak Labs'
+      )
+    ).toEqual(
+      expect.objectContaining({
+        company: 'Blue Oak Labs',
+        title: 'Principal Engineer',
+      })
+    );
+    expect(
+      ExperienceParser['parseInlineTitleAndCompany'](
+        'Built platform systems at Blue Oak Labs'
+      )
+    ).toBeUndefined();
+
+    expect(
+      ExperienceParser['looksLikeCompanyName'](
+        '2020 - 2024',
+        ['2020 - 2024', 'Principal Engineer'],
+        0
+      )
+    ).toBe(false);
+    expect(
+      ExperienceParser['looksLikeCompanyName'](
+        'Blue Oak Labs',
+        ['Blue Oak Labs', 'Principal Engineer', '2020 - 2024'],
+        0
+      )
+    ).toBe(true);
+
+    expect(ExperienceParser['looksLikeDuration']('2020 - current')).toBe(true);
+    expect(ExperienceParser['looksLikeLocation']('Austin, Texas')).toBe(true);
+    expect(ExperienceParser['looksLikeLocation']('Austin, TX @ Remote')).toBe(
+      false
+    );
+    expect(
+      ExperienceParser['completeExperience']({
+        descriptionLines: ['ignored'],
+        position: {
+          company: 'Blue Oak Labs',
+          duration: '2020 - 2024',
+        },
+      })
+    ).toBeUndefined();
+    expect(
+      ExperienceParser['completeExperience']({
+        descriptionLines: [],
+        position: {
+          company: 'Blue Oak Labs',
+          title: 'Advisor',
+        },
+      })
+    ).toEqual({
+      company: 'Blue Oak Labs',
+      description: '',
+      duration: '',
+      location: undefined,
+      title: 'Advisor',
+    });
+  });
+
+  test('completes previous entries when text parsing sees new companies and titles', () => {
+    const result = ExperienceParser.parseWithWarnings(`
+      Experience
+      Blue Oak Labs
+      Principal Engineer
+      January 2020 - March 2021
+      Staff Engineer
+      April 2021 - Present
+      Northstar AI
+      3 years
+      Unmatched detail
+    `);
+
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        company: 'Blue Oak Labs',
+        duration: 'January 2020 - March 2021',
+        title: 'Principal Engineer',
+      }),
+      expect.objectContaining({
+        company: 'Blue Oak Labs',
+        duration: 'April 2021 - Present',
+        title: 'Staff Engineer',
+      }),
+    ]);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: 'entry',
+          rawText: '3 years',
+        }),
+      ])
+    );
+  });
+
+  test('recognizes company names followed only by total duration text', () => {
+    expect(
+      ExperienceParser['looksLikeCompanyName'](
+        'Northstar AI',
+        ['Northstar AI', '3 years'],
+        0
+      )
+    ).toBe(true);
+    expect(
+      ExperienceParser['looksLikeDuration']('January 2020 - March 2021')
+    ).toBe(true);
+  });
 });

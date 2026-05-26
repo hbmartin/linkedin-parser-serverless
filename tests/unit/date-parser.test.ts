@@ -175,4 +175,41 @@ describe('profile date parser', () => {
     expect(parseProfileDateRange('2020 - eventually')).toBeUndefined();
     expect(parseProfileDateRange('Present')).toBeUndefined();
   });
+
+  test('parses single chrono month and year dates after leading prose', () => {
+    expect(parseProfileDateRange('worked from January 2020')).toEqual({
+      kind: 'single',
+      originalText: 'worked from January 2020',
+      start: {
+        iso: '2020-01',
+        precision: 'month',
+        text: 'January 2020',
+      },
+    });
+    expect(parseProfileDateRange('worked from 2020')).toEqual({
+      kind: 'single',
+      originalText: 'worked from 2020',
+      start: {
+        iso: '2020',
+        precision: 'year',
+        text: '2020',
+      },
+    });
+  });
+
+  test('parses chrono ranges that use words instead of dash delimiters', () => {
+    expect(parseProfileDateRange('January 2020 through March 2021')).toEqual(
+      expect.objectContaining({
+        end: expect.objectContaining({
+          iso: '2021-03',
+          precision: 'month',
+        }),
+        kind: 'completed',
+        start: expect.objectContaining({
+          iso: '2020-01',
+          precision: 'month',
+        }),
+      })
+    );
+  });
 });

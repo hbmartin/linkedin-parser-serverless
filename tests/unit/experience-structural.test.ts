@@ -624,7 +624,7 @@ describe('ExperienceStructuralParser', () => {
     expect(experience.organization).toBe('Research Systems Group');
   });
 
-  test('extracts fallback duration text from noisy date lines', () => {
+  test('keeps noisy embedded date lines in descriptions', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
       textItem({ text: 'Research Systems Group', y: 670 }),
@@ -634,7 +634,12 @@ describe('ExperienceStructuralParser', () => {
 
     const [experience] = ExperienceStructuralParser.parseExperience(items);
 
-    expect(experience.positions[0].duration).toBe('2019 - 2021');
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        description: 'Provided support from 2019 - 2021',
+        duration: '',
+      })
+    );
   });
 
   test('uses localized section headers and accented organization names', () => {
@@ -1113,6 +1118,297 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('separates Alexandra Rossi company boundaries and keeps prose out of locations', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 900, fontSize: 16 }),
+      textItem({ text: 'MUDE', y: 870 }),
+      textItem({ text: 'Founder', y: 850, fontSize: 11.5 }),
+      textItem({ text: 'April 2025 - Present (1 year 2 months)', y: 830 }),
+      textItem({ text: 'In stealth. More information coming soon.', y: 810 }),
+      textItem({ text: 'Velocity AI', y: 780 }),
+      textItem({ text: 'Strategic Advisor', y: 760, fontSize: 11.5 }),
+      textItem({ text: 'March 2026 - Present (3 months)', y: 740 }),
+      textItem({
+        text: 'Velocity AI is building The Operating System of Human Performance™,',
+        y: 720,
+      }),
+      textItem({ text: 'HeadVantage Corporation', y: 690 }),
+      textItem({ text: 'Strategic Advisor', y: 670, fontSize: 11.5 }),
+      textItem({ text: 'March 2025 - Present (1 year 3 months)', y: 650 }),
+      textItem({
+        text: 'HeadVantage puts fans inside the helmet, delivering live, first-person athlete',
+        y: 630,
+      }),
+      textItem({
+        text: 'Comcast NBCUniversal SportsTech Accelerator, HeadVantage is redefining',
+        y: 610,
+      }),
+      textItem({ text: 'how the world experiences sport.', y: 590 }),
+      textItem({ text: 'Prescient', y: 560 }),
+      textItem({ text: 'Founding Partner + Advisor', y: 540, fontSize: 11.5 }),
+      textItem({ text: 'October 2018 - Present (7 years 8 months)', y: 520 }),
+      textItem({
+        text: 'Prescient, formerly Vybn, is a decision science platform that unifies and',
+        y: 500,
+      }),
+      textItem({
+        text: 'After securing an exclusive partnership with Warner Music, Prescient is now',
+        y: 480,
+      }),
+      textItem({
+        text: 'focused on a variety of brands, accelerating LTV in a cookieless world.',
+        y: 460,
+      }),
+      textItem({ text: 'Rasgo', y: 430 }),
+      textItem({
+        text: 'Chief of Staff + Head of Operations',
+        y: 410,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'January 2020 - January 2023 (3 years 1 month)',
+        y: 390,
+      }),
+      textItem({ text: 'New York, United States', y: 370 }),
+      textItem({
+        text: 'As the first partner to the two founders, I helped bring the vision to life',
+        y: 350,
+      }),
+    ]);
+    const byOrganization = new Map(
+      result.value.map(experience => [experience.organization, experience])
+    );
+
+    expect(result.warnings).toEqual([]);
+    expect(byOrganization.get('MUDE')?.positions[0]?.location).toBeUndefined();
+    expect(byOrganization.get('Velocity AI')?.positions[0]?.title).toBe(
+      'Strategic Advisor'
+    );
+    expect(
+      byOrganization.get('HeadVantage Corporation')?.positions[0]?.location
+    ).toBeUndefined();
+    expect(
+      byOrganization.get('HeadVantage Corporation')?.positions[0]?.description
+    ).toContain('Comcast NBCUniversal SportsTech Accelerator');
+    expect(byOrganization.get('Prescient')?.positions[0]?.location).toBeUndefined();
+    expect(byOrganization.get('Rasgo')?.positions[0]?.location).toBe(
+      'New York, United States'
+    );
+    expect(byOrganization.get('Rasgo')?.positions[0]?.description).toContain(
+      'As the first partner'
+    );
+  });
+
+  test('keeps Serhat Pala wrapped titles and Cross Ocean boundaries intact', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 900, fontSize: 16 }),
+      textItem({ text: 'Cross Ocean Ventures', y: 870 }),
+      textItem({ text: 'Co-Founder General Partner', y: 850, fontSize: 11.5 }),
+      textItem({ text: 'April 2021 - Present (5 years 2 months)', y: 830 }),
+      textItem({ text: 'San Diego Metropolitan Area', y: 810 }),
+      textItem({
+        text: 'The leading go to early-stage investor of choice for ambitious high growth',
+        y: 790,
+      }),
+      textItem({ text: 'Breakaway Partners OU', y: 760 }),
+      textItem({ text: 'Co-Founder & Partner', y: 740, fontSize: 11.5 }),
+      textItem({ text: '2021 - Present (5 years)', y: 720 }),
+      textItem({ text: 'Tallinn, Harjumaa, Estonia', y: 700 }),
+      textItem({ text: 'GBSS Group', y: 670 }),
+      textItem({
+        text: 'Co-Founder & CEO (Business Units Acquired Separately: 2006, 2010,',
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({ text: '2013)', y: 635, fontSize: 11.5 }),
+      textItem({
+        text: 'November 1999 - June 2013 (13 years 8 months)',
+        y: 615,
+      }),
+    ]);
+    const byOrganization = new Map(
+      result.value.map(experience => [experience.organization, experience])
+    );
+
+    expect(result.warnings).toEqual([]);
+    expect(byOrganization.get('Cross Ocean Ventures')?.positions).toEqual([
+      expect.objectContaining({
+        location: 'San Diego Metropolitan Area',
+        title: 'Co-Founder General Partner',
+      }),
+    ]);
+    expect(byOrganization.get('Breakaway Partners OU')?.positions).toEqual([
+      expect.objectContaining({
+        location: 'Tallinn, Harjumaa, Estonia',
+        title: 'Co-Founder & Partner',
+      }),
+    ]);
+    expect(byOrganization.get('GBSS Group')?.positions[0]?.title).toBe(
+      'Co-Founder & CEO (Business Units Acquired Separately: 2006, 2010, 2013)'
+    );
+  });
+
+  test('keeps Zachary Schlosser prose dates and wrapped Brown organization names', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 900, fontSize: 16 }),
+      textItem({ text: 'Resilient Connections', y: 870 }),
+      textItem({
+        text: 'Founding Executive Director',
+        y: 850,
+        fontSize: 11.5,
+      }),
+      textItem({ text: '2020 - 2020 (less than a year)', y: 830 }),
+      textItem({
+        text: 'Resilient Connections was a pop-up non-profit that launched in March 2020 to',
+        y: 810,
+      }),
+      textItem({
+        text: 'coordinate high potential impact grass roots COVID-19 response projects that',
+        y: 790,
+      }),
+      textItem({
+        text: 'Clinical and Affective Neuroscience Laboratory (CLANlab) at Brown',
+        y: 760,
+      }),
+      textItem({ text: 'University', y: 742 }),
+      textItem({ text: 'Research Assistant', y: 720, fontSize: 11.5 }),
+      textItem({ text: '2008 - 2010 (2 years)', y: 700 }),
+      textItem({
+        text: 'Harvard John A. Paulson School of Engineering and Applied',
+        y: 670,
+      }),
+      textItem({ text: 'Sciences', y: 652 }),
+      textItem({
+        text: 'Applied Physics Teaching Fellow',
+        y: 630,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'January 2019 - December 2019 (1 year)',
+        y: 610,
+      }),
+    ]);
+    const byOrganization = new Map(
+      result.value.map(experience => [experience.organization, experience])
+    );
+
+    expect(result.warnings).toEqual([]);
+    expect(byOrganization.get('Resilient Connections')?.positions[0]).toEqual(
+      expect.objectContaining({
+        description: expect.stringContaining('launched in March 2020 to'),
+        duration: '2020 - 2020',
+      })
+    );
+    expect(
+      byOrganization.get(
+        'Clinical and Affective Neuroscience Laboratory (CLANlab) at Brown University'
+      )?.positions[0]?.title
+    ).toBe('Research Assistant');
+    expect(
+      byOrganization.get(
+        'Harvard John A. Paulson School of Engineering and Applied Sciences'
+      )?.positions[0]?.title
+    ).toBe('Applied Physics Teaching Fellow');
+    expect(byOrganization.has('University')).toBe(false);
+    expect(byOrganization.has('Sciences')).toBe(false);
+  });
+
+  test('keeps secondary reference companies and page-break prose out of locations', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 1100, fontSize: 16 }),
+      textItem({ text: 'WeGive', y: 1070 }),
+      textItem({ text: 'Board Member', y: 1050, fontSize: 11.5 }),
+      textItem({ text: 'January 2024 - Present (2 years 5 months)', y: 1030 }),
+      textItem({ text: 'Mission Control AI', y: 1000 }),
+      textItem({ text: 'Board Member', y: 980, fontSize: 11.5 }),
+      textItem({ text: 'March 2022 - Present (4 years 3 months)', y: 960 }),
+      textItem({ text: 'Visual Machines Group', y: 930 }),
+      textItem({ text: 'Leader', y: 910, fontSize: 11.5 }),
+      textItem({ text: 'July 2018 - Present (7 years 11 months)', y: 890 }),
+      textItem({ text: 'Los Angeles CA', y: 870 }),
+      textItem({ text: 'Spatial AI', y: 850 }),
+      textItem({ text: 'Vayu Robotics', y: 820 }),
+      textItem({ text: 'Co-Founder (Acquired)', y: 800, fontSize: 11.5 }),
+      textItem({ text: 'October 2021 - August 2025 (3 years 11 months)', y: 780 }),
+      textItem({ text: 'Alerian', y: 750 }),
+      textItem({ text: '9 years 5 months', y: 730 }),
+      textItem({ text: 'Director of Data Science', y: 710, fontSize: 11.5 }),
+      textItem({ text: 'January 2013 - December 2020 (8 years)', y: 690 }),
+      textItem({ text: 'Dallas, Texas', y: 670 }),
+      textItem({
+        text: 'Over nearly a decade, I designed benchmarks and indices from concept',
+        y: 650,
+      }),
+    ]);
+    const byOrganization = new Map(
+      result.value.map(experience => [experience.organization, experience])
+    );
+
+    expect(result.warnings).toEqual([]);
+    expect(byOrganization.get('WeGive')?.positions).toHaveLength(1);
+    expect(byOrganization.get('Mission Control AI')?.positions[0]?.title).toBe(
+      'Board Member'
+    );
+    expect(byOrganization.get('Visual Machines Group')?.positions[0]).toEqual(
+      expect.objectContaining({
+        location: 'Los Angeles CA',
+      })
+    );
+    expect(
+      byOrganization.get('Visual Machines Group')?.positions[0]?.location
+    ).not.toContain('Spatial AI');
+    expect(byOrganization.has('Spatial AI')).toBe(false);
+    expect(byOrganization.get('Vayu Robotics')?.positions[0]?.title).toBe(
+      'Co-Founder (Acquired)'
+    );
+    expect(byOrganization.get('Alerian')?.positions[0]).toEqual(
+      expect.objectContaining({
+        description: expect.stringContaining('Over nearly a decade'),
+        location: 'Dallas, Texas',
+      })
+    );
+  });
+
+  test('preserves description labels used by investor and corporate-development roles', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 900, fontSize: 16 }),
+      textItem({ text: 'Global Ventures', y: 870 }),
+      textItem({ text: 'VC Investor', y: 850, fontSize: 11.5 }),
+      textItem({ text: 'June 2023 - November 2023 (6 months)', y: 830 }),
+      textItem({ text: 'IC Deal: Fuse', y: 810 }),
+      textItem({ text: 'Collide Capital', y: 780 }),
+      textItem({ text: 'VC Investor | Venture Fellow', y: 760, fontSize: 11.5 }),
+      textItem({ text: 'January 2023 - May 2023 (5 months)', y: 740 }),
+      textItem({ text: 'Sourced Investment: Coldcart', y: 720 }),
+      textItem({ text: 'Cinedigm', y: 690 }),
+      textItem({
+        text: 'VP, Corporate Development and Strategy',
+        y: 670,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'March 2012 - September 2016 (4 years 7 months)', y: 650 }),
+      textItem({ text: 'Achievements:', y: 630 }),
+      textItem({
+        text: 'Oversaw strategic and business planning of video app new business.',
+        y: 610,
+      }),
+    ]);
+    const byOrganization = new Map(
+      result.value.map(experience => [experience.organization, experience])
+    );
+
+    expect(result.warnings).toEqual([]);
+    expect(byOrganization.get('Global Ventures')?.positions[0]?.description).toBe(
+      'IC Deal: Fuse'
+    );
+    expect(byOrganization.get('Collide Capital')?.positions[0]?.description).toBe(
+      'Sourced Investment: Coldcart'
+    );
+    expect(byOrganization.get('Cinedigm')?.positions[0]?.description).toBe(
+      'Achievements: Oversaw strategic and business planning of video app new business.'
+    );
+  });
+
   test('splits Ara Goh combined organization-title rows and keeps Bosch prose', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -1183,6 +1479,52 @@ describe('ExperienceStructuralParser', () => {
       }),
       expect.objectContaining({
         organization: 'Hyundai Kefico Corporation',
+      }),
+    ]);
+  });
+
+  test('splits combined organization-title rows with lowercase and mixed-case suffixes', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Robert Bosch gmbh Business Controller', y: 670 }),
+      textItem({
+        text: 'December 2012 - August 2017 (4 years 9 months)',
+        y: 650,
+      }),
+      textItem({ text: 'Acme llC Principal Consultant', y: 620 }),
+      textItem({ text: 'January 2021 - Present (3 years 5 months)', y: 600 }),
+      textItem({ text: 'Northstar ltd Staff Engineer', y: 570 }),
+      textItem({ text: '2020 - 2022 (2 years)', y: 550 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Robert Bosch gmbh',
+        positions: [
+          expect.objectContaining({
+            duration: 'December 2012 - August 2017',
+            title: 'Business Controller',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Acme llC',
+        positions: [
+          expect.objectContaining({
+            duration: 'January 2021 - Present',
+            title: 'Principal Consultant',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Northstar ltd',
+        positions: [
+          expect.objectContaining({
+            duration: '2020 - 2022',
+            title: 'Staff Engineer',
+          }),
+        ],
       }),
     ]);
   });
@@ -2250,6 +2592,203 @@ describe('ExperienceStructuralParser', () => {
     expect(
       ExperienceStructuralParser['extractCleanDuration']('Launched in 2025')
     ).toBe('2025');
+  });
+
+  test('classifies only real location and duration lines for experience metadata', () => {
+    for (const falseLocation of [
+      'Velocity AI',
+      'Mission Control AI',
+      'Breakaway Partners OU',
+      'Spatial AI',
+      'Comcast NBCUniversal SportsTech Accelerator, HeadVantage is redefining',
+      'After securing an exclusive partnership with Warner Music, Prescient is now',
+    ]) {
+      expect(ExperienceStructuralParser['looksLikeLocation'](falseLocation)).toBe(
+        false
+      );
+    }
+
+    for (const trueLocation of [
+      'Los Angeles CA',
+      'San Diego Metropolitan Area',
+      'Tallinn, Harjumaa, Estonia',
+      'Dallas, Texas',
+      'London Area, United Kingdom',
+      'Denver, CO',
+    ]) {
+      expect(ExperienceStructuralParser['looksLikeLocation'](trueLocation)).toBe(
+        true
+      );
+    }
+
+    expect(
+      ExperienceStructuralParser['looksLikeDuration'](
+        'Resilient Connections was a pop-up non-profit that launched in March 2020 to'
+      )
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['looksLikeDuration'](
+        '2020 - 2020 (less than a year)'
+      )
+    ).toBe(true);
+  });
+
+  test('covers remaining structural classification and helper branches', () => {
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        allLines: [
+          parserLine({ index: 0, text: 'Chief Architect' }),
+          parserLine({ index: 1, text: 'AI' }),
+          parserLine({ index: 2, text: 'Remote' }),
+        ],
+        index: 1,
+        line: parserLine({ index: 1, text: 'AI' }),
+        state: 'seeking_dates',
+      })
+    ).toBe('other');
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        allLines: [
+          parserLine({ index: 0, text: 'Principal Engineer' }),
+          parserLine({ index: 1, text: '2020 - 2021' }),
+          parserLine({ index: 2, text: 'Page 1 of 2' }),
+        ],
+        index: 2,
+        line: parserLine({ index: 2, text: 'Page 1 of 2' }),
+        state: 'in_description',
+      })
+    ).toBe('other');
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        allLines: [
+          parserLine({
+            index: 0,
+            text: 'Existing detailed work context with enough words',
+          }),
+          parserLine({
+            index: 1,
+            text: 'Detailed delivery narrative that should remain prose.',
+          }),
+          parserLine({ index: 2, text: '2020 - 2021' }),
+        ],
+        index: 1,
+        line: parserLine({
+          index: 1,
+          text: 'Detailed delivery narrative that should remain prose.',
+        }),
+        state: 'in_description',
+      })
+    ).toBe('description');
+
+    expect(
+      ExperienceStructuralParser['hasTotalDurationThenPosition'](0, [
+        'Example Labs',
+        '3 years',
+        'Principal Engineer',
+      ])
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
+        'Client Sites',
+        'worked at'
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
+        'Client Sites',
+        'short'
+      )
+    ).toBe(false);
+  });
+
+  test('covers work-experience completion and warning edge branches directly', () => {
+    expect(
+      ExperienceStructuralParser['buildWorkExperiences']([
+        structuralSection({
+          text: 'Example Labs',
+          type: 'organization',
+        }),
+        structuralSection({
+          text: 'Principal Engineer',
+          type: 'position',
+        }),
+        structuralSection({
+          text: 'principal engineer',
+          type: 'position',
+        }),
+        structuralSection({
+          text: '2020 - 2021',
+          type: 'duration',
+        }),
+      ])
+    ).toEqual([
+      expect.objectContaining({
+        positions: [
+          expect.objectContaining({
+            title: 'principal engineer',
+          }),
+        ],
+      }),
+    ]);
+
+    expect(
+      ExperienceStructuralParser['completeWorkExperience']({
+        descriptionLines: [],
+        position: null,
+        workExperience: {
+          organization: 'Example Labs',
+          positions: [
+            {
+              description: '',
+              duration: '2020 - 2021',
+              title: 'Principal Engineer',
+            },
+          ],
+        },
+      })
+    ).toEqual(
+      expect.objectContaining({
+        organization: 'Example Labs',
+      })
+    );
+    expect(
+      ExperienceStructuralParser['completePosition']({
+        descriptionLines: [],
+        position: {
+          title: 'Advisor',
+        },
+      })
+    ).toEqual({
+      description: '',
+      duration: '',
+      title: 'Advisor',
+    });
+    expect(
+      ExperienceStructuralParser['createExperienceWarnings']([
+        {
+          organization: 'Empty Company',
+          positions: [],
+        },
+      ])
+    ).toEqual([
+      expect.objectContaining({
+        field: 'positions',
+        rawText: 'Empty Company',
+      }),
+    ]);
+  });
+
+  test('covers duration extraction fallbacks with embedded and compact years', () => {
+    expect(
+      ExperienceStructuralParser['extractCleanDuration'](
+        'Managed launch work in fiscal 2020 planning cycle with no range text here'
+      )
+    ).toBe('fiscal 2020');
+    expect(
+      ExperienceStructuralParser['extractCleanDuration'](
+        'FY2020 planning cycle with long text long text long text long text long text'
+      )
+    ).toBe('FY2020 planning cycle with long text long text lon');
   });
 });
 

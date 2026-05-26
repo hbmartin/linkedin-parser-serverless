@@ -1,4 +1,5 @@
 import {
+  formatErrorMessage,
   verifyJsonFixtures,
   writeJsonFixtures,
   type JsonFixtureDependencies,
@@ -361,6 +362,45 @@ describe('JSON fixture batch operations', () => {
       stderr: 'Error: Directory not found: /missing\n',
       stdout: '',
     });
+  });
+
+  test('formats non-error thrown values and diffs unequal JSON shapes', async () => {
+    const expectedResult: ParseResult = {
+      ...defaultParseResult,
+      warnings: [
+        {
+          code: 'missing_profile_field',
+          field: 'profile.name',
+          message: 'Could not extract profile name',
+        },
+      ],
+    };
+    const memoryFixtures = createMemoryJsonFixtureDependencies({
+      binaryFiles: new Map([['/baselines/Profile.pdf', new Uint8Array([1])]]),
+      directories: new Set(['/baselines']),
+      directoryEntries: new Map([
+        [
+          '/baselines',
+          [
+            { kind: 'file', name: 'Profile.pdf' },
+            { kind: 'file', name: 'Profile.json' },
+          ],
+        ],
+      ]),
+      textFiles: new Map([
+        ['/baselines/Profile.json', JSON.stringify(expectedResult)],
+      ]),
+    });
+
+    const result = await verifyJsonFixtures({
+      dependencies: memoryFixtures.dependencies,
+      folderPath: '/baselines',
+      includeRawText: false,
+    });
+
+    expect(formatErrorMessage('plain failure')).toBe('plain failure');
+    expect(result.stderr).toContain('-       "code": "missing_profile_field",');
+    expect(result.stderr).toContain('+   "warnings": []');
   });
 });
 
