@@ -257,7 +257,7 @@ function getUnsupportedFlagCommand(
   supportedFlags: string[]
 ): InvalidCommand | undefined {
   const unsupportedFlag = args.find(
-    arg => arg.startsWith('--') && !supportedFlags.includes(arg)
+    arg => isCliFlagArg(arg) && !supportedFlags.includes(arg)
   );
 
   if (!unsupportedFlag) {
@@ -274,7 +274,7 @@ function getSinglePositionalArg(
   args: string[],
   commandName: string
 ): InvalidCommand | { kind: 'valid'; value: string } {
-  const positionalArgs = args.filter(arg => !arg.startsWith('--'));
+  const positionalArgs = args.filter(arg => !isCliFlagArg(arg));
 
   if (positionalArgs.length === 0) {
     return {
@@ -294,6 +294,10 @@ function getSinglePositionalArg(
     kind: 'valid',
     value: positionalArgs[0],
   };
+}
+
+function isCliFlagArg(arg: string): boolean {
+  return arg.startsWith('-');
 }
 
 async function runParseCommand(

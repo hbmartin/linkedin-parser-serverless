@@ -228,6 +228,11 @@ describe('formatLinkedInProfile', () => {
                 url: 'HTTP://WWW.LinkedIn.com/in/ORION/',
               },
               {
+                label: 'LinkedIn',
+                rawText: 'LinkedIn',
+                url: 'www.LinkedIn.com/in/ORION/',
+              },
+              {
                 label: 'Portfolio',
                 rawText: 'Portfolio',
                 url: 'https://example.com/orion',

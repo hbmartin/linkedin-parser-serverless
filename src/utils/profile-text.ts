@@ -1,3 +1,4 @@
+import { isLikelyScoredLocationText } from './location-classifier.js';
 import { PROFILE_SECTION_HEADER_ENTRIES } from './profile-section-headers.js';
 
 const EXPERIENCE_SECTION_HEADER_TEXT = new Set([
@@ -172,26 +173,6 @@ const LOWERCASE_CONNECTOR_WORDS = new Set([
   'van',
   'von',
   'y',
-]);
-
-const SINGLE_WORD_LOCATION_TEXT = new Set([
-  'remote',
-  'hybrid',
-  'onsite',
-  'on-site',
-  'california',
-  'palo alto',
-  'texas',
-  'florida',
-  'illinois',
-  'pennsylvania',
-  'ohio',
-  'georgia',
-  'michigan',
-  'brasil',
-  'brazil',
-  'portugal',
-  'united states',
 ]);
 
 const PERSON_LIKE_ORGANIZATION_TEXT = new Set(['goldman sachs']);
@@ -444,21 +425,7 @@ function hasDistinctiveBrandWord(words: string[]): boolean {
 }
 
 export function isLikelyLocationText(text: string): boolean {
-  const normalizedText = normalizeProfileText(text);
-  const lowerText = normalizedText.toLowerCase();
-  const hasOrganizationSuffix =
-    hasCommaSeparatedOrganizationSuffix(normalizedText);
-
-  return (
-    SINGLE_WORD_LOCATION_TEXT.has(lowerText) ||
-    /^greater\s+[\p{Lu}][\p{L}\p{M}.'\-\s]+(?:area)?$/iu.test(normalizedText) ||
-    /^[\p{Lu}][\p{L}\p{M}\s]+(?:Bay|Metropolitan)\s+Area$/u.test(
-      normalizedText
-    ) ||
-    (!hasOrganizationSuffix &&
-      /^[\p{Lu}][\p{L}\s]+,\s*[\p{Lu}]{2,3}$/u.test(normalizedText)) ||
-    looksLikeCommaSeparatedLocationText(normalizedText)
-  );
+  return isLikelyScoredLocationText(normalizeProfileText(text));
 }
 
 function looksLikePersonNameWord(word: string): boolean {
@@ -492,22 +459,6 @@ function includesWholeKeyword(text: string, keyword: string): boolean {
   return pattern.test(text);
 }
 
-function looksLikeCommaSeparatedLocationText(text: string): boolean {
-  const parts = text.split(',').map(part => part.trim());
-  const hasOrganizationSuffix = hasCommaSeparatedOrganizationSuffix(text);
-
-  return (
-    !hasOrganizationSuffix &&
-    parts.length >= 2 &&
-    parts.length <= 3 &&
-    parts.every(
-      (part, index) =>
-        (index > 0 && /^[\p{Lu}]{2,3}$/u.test(part)) ||
-        looksLikeLocationNamePart(part)
-    )
-  );
-}
-
 function hasCommaSeparatedOrganizationSuffix(text: string): boolean {
   return text
     .split(',')
@@ -516,26 +467,6 @@ function hasCommaSeparatedOrganizationSuffix(text: string): boolean {
     .some(part =>
       ORGANIZATION_WORDS.has(part.toLowerCase().replace(/[.]/g, ''))
     );
-}
-
-function looksLikeLocationNamePart(text: string): boolean {
-  const words = text.split(/\s+/).filter(Boolean);
-  const hasLocationWord = words.some(
-    word =>
-      !LOWERCASE_CONNECTOR_WORDS.has(word.toLowerCase()) &&
-      /^[\p{Lu}][\p{L}\p{M}'-]+$/u.test(word) &&
-      /[\p{Ll}]/u.test(word)
-  );
-
-  return (
-    hasLocationWord &&
-    words.length > 0 &&
-    words.every(
-      word =>
-        LOWERCASE_CONNECTOR_WORDS.has(word.toLowerCase()) ||
-        (/^[\p{Lu}][\p{L}\p{M}'-]+$/u.test(word) && /[\p{Ll}]/u.test(word))
-    )
-  );
 }
 
 function escapeRegExp(text: string): string {
