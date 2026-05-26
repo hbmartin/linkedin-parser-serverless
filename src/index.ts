@@ -6,7 +6,6 @@ import { ExtraSectionParser } from './parsers/extra-sections.js';
 import { IdentityStructuralParser } from './parsers/identity-structural.js';
 import { extractLinkedInPDFSourceDebug } from './pdf-source-debug.js';
 import { cleanPDFText } from './utils/text-utils.js';
-import { createStructuralLines } from './utils/structural-lines.js';
 import type { LayoutInfo, TextItem } from './types/structural.js';
 import type {
   Contact,
@@ -18,6 +17,7 @@ import type {
   ParseWarning,
   SectionParseWarning,
 } from './types/profile.js';
+import type { StructuralLine } from './utils/structural-lines.js';
 
 export type {
   Contact,
@@ -66,8 +66,11 @@ export async function parseLinkedInPDF(
   options: ParseOptions = {}
 ): Promise<ParseResult> {
   let text: string;
-  let structuralData: { textItems: TextItem[]; layout: LayoutInfo } | null =
-    null;
+  let structuralData: {
+    layout: LayoutInfo;
+    structuralLines: StructuralLine[];
+    textItems: TextItem[];
+  } | null = null;
 
   // Handle both binary PDF data and extracted text inputs
   if (typeof input !== 'string') {
@@ -76,6 +79,7 @@ export async function parseLinkedInPDF(
 
       structuralData = {
         layout: debugArtifacts.layout,
+        structuralLines: debugArtifacts.structuralLines,
         textItems: debugArtifacts.textItems,
       };
       text = debugArtifacts.rawText;
@@ -95,12 +99,7 @@ export async function parseLinkedInPDF(
   // Clean and parse the text
   const cleanedText = cleanPDFText(text);
   const sectionWarnings: SectionParseWarning[] = [];
-  const structuralLines = structuralData
-    ? createStructuralLines({
-        layout: structuralData.layout,
-        textItems: structuralData.textItems,
-      })
-    : undefined;
+  const structuralLines = structuralData?.structuralLines;
 
   // Parse all sections using specialized parsers
   const basicInfoResult = structuralLines

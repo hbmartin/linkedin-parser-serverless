@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { extractTextItems, getDocumentProxy } from 'unpdf';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   execFileAsync,
   optionValue,
@@ -27,50 +28,62 @@ raw unpdf items, parser structural lines, rendered page PNGs, and an HTML box
 overlay. Run pnpm run build first, or use the package script that builds first.
 `;
 
-if (process.argv.includes('--help') || process.argv.includes('-h')) {
-  process.stdout.write(usageText);
-  process.exit(0);
+if (isCliEntrypoint()) {
+  await runCli();
 }
 
-const outputOption = optionValue('--output');
-const samplesOption = optionValue('--samples');
-const pdfPaths = await resolvePdfPaths();
+export async function runCli() {
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    process.stdout.write(usageText);
+    process.exit(0);
+  }
 
-if (pdfPaths.length === 0) {
-  throw new Error(`No PDF files provided.\n${usageText}`);
-}
+  const outputOption = optionValue('--output');
+  const samplesOption = optionValue('--samples');
+  const pdfPaths = await resolvePdfPaths({ samplesOption });
 
-const bundleSummaries = [];
+  if (pdfPaths.length === 0) {
+    throw new Error(`No PDF files provided.\n${usageText}`);
+  }
 
-for (const [index, pdfPath] of pdfPaths.entries()) {
-  const outputDir = resolveBundleOutputDir({
-    outputOption,
-    pdfPath,
-    totalPdfCount: pdfPaths.length,
-  });
+  const bundleSummaries = [];
+  const outputDirs = resolveBundleOutputDirs({ outputOption, pdfPaths });
 
-  bundleSummaries.push(
-    await inspectPdf({ outputDir, pdfPath, sequence: index })
+  for (const [index, pdfPath] of pdfPaths.entries()) {
+    bundleSummaries.push(
+      await inspectPdf({
+        outputDir: outputDirs[index],
+        pdfPath,
+        sequence: index,
+      })
+    );
+  }
+
+  console.log(
+    bundleSummaries
+      .map(summary => {
+        const failureText =
+          summary.failureCount === 0
+            ? 'no failures'
+            : `${summary.failureCount} failure(s)`;
+
+        return `Wrote ${summary.pdfFileName} source bundle to ${path.relative(
+          repoRoot,
+          summary.outputDir
+        )} (${failureText}).`;
+      })
+      .join('\n')
   );
 }
 
-console.log(
-  bundleSummaries
-    .map(summary => {
-      const failureText =
-        summary.failureCount === 0
-          ? 'no failures'
-          : `${summary.failureCount} failure(s)`;
+function isCliEntrypoint() {
+  return (
+    process.argv[1] !== undefined &&
+    path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  );
+}
 
-      return `Wrote ${summary.pdfFileName} source bundle to ${path.relative(
-        repoRoot,
-        summary.outputDir
-      )} (${failureText}).`;
-    })
-    .join('\n')
-);
-
-async function resolvePdfPaths() {
+async function resolvePdfPaths({ samplesOption }) {
   if (samplesOption !== undefined) {
     const samplesDir = path.resolve(repoRoot, samplesOption);
     const pdfFileNames = await readSortedPdfFileNames(
@@ -106,18 +119,32 @@ function positionalArgs() {
   return args;
 }
 
-function resolveBundleOutputDir({ outputOption, pdfPath, totalPdfCount }) {
+export function resolveBundleOutputDirs({ outputOption, pdfPaths }) {
   const outputRoot =
     outputOption === undefined
       ? path.join(repoRoot, '.debug')
       : path.resolve(repoRoot, outputOption);
-  const safeStem = safeFileStem(pdfPath);
 
-  if (outputOption !== undefined && totalPdfCount === 1) {
-    return outputRoot;
+  if (outputOption !== undefined && pdfPaths.length === 1) {
+    return [outputRoot];
   }
 
-  return path.join(outputRoot, safeStem);
+  const safeStems = pdfPaths.map(pdfPath => safeFileStem(pdfPath));
+  const stemCounts = new Map();
+
+  for (const safeStem of safeStems) {
+    stemCounts.set(safeStem, (stemCounts.get(safeStem) ?? 0) + 1);
+  }
+
+  return pdfPaths.map((pdfPath, index) => {
+    const safeStem = safeStems[index];
+    const bundleDirName =
+      stemCounts.get(safeStem) === 1
+        ? safeStem
+        : `${safeStem}-${shortPathDigest(pdfPath)}`;
+
+    return path.join(outputRoot, bundleDirName);
+  });
 }
 
 async function inspectPdf({ outputDir, pdfPath, sequence }) {
@@ -298,7 +325,7 @@ async function writeUnpdfArtifacts({ failures, files, outputDir, pdfBuffer }) {
     const { items } = await extractTextItems(pdf);
     const pages = items.map((pageItems, pageIndex) => ({
       height: pageDimensions[pageIndex]?.height,
-      items: pageItems,
+      items: pageItems.map(item => normalizeUnpdfTextItem(item)),
       pageIndex,
       pageNumber: pageIndex + 1,
       width: pageDimensions[pageIndex]?.width,
@@ -326,6 +353,28 @@ async function writeUnpdfArtifacts({ failures, files, outputDir, pdfBuffer }) {
 
     return { pages: [] };
   }
+}
+
+export function normalizeUnpdfTextItem(item) {
+  return {
+    ...item,
+    x: textItemCoordinate({ item, propertyName: 'x', transformIndex: 4 }),
+    y: textItemCoordinate({ item, propertyName: 'y', transformIndex: 5 }),
+  };
+}
+
+function textItemCoordinate({ item, propertyName, transformIndex }) {
+  const directValue = item[propertyName];
+
+  if (Number.isFinite(directValue)) {
+    return directValue;
+  }
+
+  const transformValue = Array.isArray(item.transform)
+    ? item.transform[transformIndex]
+    : undefined;
+
+  return Number.isFinite(transformValue) ? transformValue : 0;
 }
 
 async function readPageDimensions(pdf) {
@@ -617,7 +666,7 @@ ${items}
 </section>`;
 }
 
-function createItemOverlayHtml({ height, item, parserLayout }) {
+export function createItemOverlayHtml({ height, item, parserLayout }) {
   const x = item.x * renderScale;
   const y = Math.max(0, (height - item.y - item.height) * renderScale);
   const width = Math.max(1, item.width * renderScale);
@@ -696,11 +745,26 @@ async function writeFailureFile({
 }) {
   const message = unknownErrorMessage(error);
 
-  failures.push({
+  failures.push(
+    createFailureManifestEntry({
+      artifact,
+      message,
+      relativePath,
+    })
+  );
+  await fs.writeFile(path.join(outputDir, relativePath), `${message}\n`);
+}
+
+export function createFailureManifestEntry({
+  artifact,
+  message,
+  relativePath,
+}) {
+  return {
     artifact,
     message,
-  });
-  await fs.writeFile(path.join(outputDir, relativePath), `${message}\n`);
+    relativePath,
+  };
 }
 
 function replaceExtension(filePath, extension) {
@@ -708,10 +772,19 @@ function replaceExtension(filePath, extension) {
 }
 
 function safeFileStem(filePath) {
-  return path
-    .basename(filePath, path.extname(filePath))
-    .replace(/[^a-z0-9._-]+/gi, '-')
-    .replace(/^-+|-+$/g, '');
+  return (
+    path
+      .basename(filePath, path.extname(filePath))
+      .replace(/[^a-z0-9._-]+/gi, '-')
+      .replace(/^-+|-+$/g, '') || 'pdf'
+  );
+}
+
+function shortPathDigest(filePath) {
+  return createHash('sha256')
+    .update(path.relative(repoRoot, path.resolve(repoRoot, filePath)))
+    .digest('hex')
+    .slice(0, 8);
 }
 
 function formatNumber(value) {

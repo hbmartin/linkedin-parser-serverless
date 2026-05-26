@@ -19,6 +19,9 @@ them directly.
 
 ## Sample and PDF debugging scripts
 
+For the investigation workflow and artifact interpretation, use the repo-local
+skill at `.agents/skills/debug-linkedin-sample-pdfs`.
+
 | Script | Package command | What it does | Why it is useful |
 | --- | --- | --- | --- |
 | `check-sample-warnings.mjs` | `pnpm run samples:check-warnings` | Parses every PDF in `samples/` with the built parser and fails if any output contains a `section_parse_warning`. | Gives a fast regression check for section parsing against real sample PDFs. |
@@ -59,20 +62,18 @@ After that, verify sample JSON baselines:
 pnpm cli verify-json samples/
 ```
 
-When a sample PDF parses incorrectly, inspect the layout text and then run the
-completeness audit:
+When a sample PDF parses incorrectly, use the repo-local debugging skill. The
+lowest-cost command-only workflow is:
 
 ```bash
 node scripts/extract-sample-layout-text.mjs --samples samples/
 pnpm run samples:audit-coverage -- --samples samples/
 ```
 
-When a single PDF needs deeper investigation, generate a source evidence bundle
-and inspect `overlay.html`, `parser-lines.json`, `unpdf.items.json`, and the
-source coverage reports:
+For deeper single-PDF investigation, generate a source evidence bundle:
 
 ```bash
-pnpm run source:inspect -- samples/Achuta\ Kadambi.pdf
+pnpm run source:inspect -- samples/Persephone\ Kore.pdf
 ```
 
 For package-release confidence, build first and then run the artifact, package,

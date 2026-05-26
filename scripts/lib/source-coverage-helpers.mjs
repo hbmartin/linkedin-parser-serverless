@@ -23,7 +23,6 @@ const ignoredSegmentPatterns = [
   /^page\s+\d+\s+of\s+\d+$/,
   /^linkedin$/,
   /^open profile$/,
-  /^resources\/\d+-\d+\/$/,
 ];
 const headingSections = [
   ['contact', /^contact$/],
@@ -36,7 +35,7 @@ const headingSections = [
   ['projects', /^projects$/],
   ['publications', /^publications$/],
   ['honors_awards', /^honors(?:[-\s]+(?:and[-\s]+)?awards)?$/],
-  ['volunteer_work', /^volunteer(?:ing| experience)?$/],
+  ['volunteer_work', /^volunteer(?:ing)?(?: experience)?$/],
   ['recommendations', /^recommendations$/],
   ['interests', /^interests$/],
   ['causes', /^causes$/],
