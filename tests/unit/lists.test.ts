@@ -47,8 +47,8 @@ describe('ListParser', () => {
 
   test('does not treat generic experience lines as top skills', () => {
     const skills = ListParser.parseSkills(`
-      Test User
-      test@example.com
+      Apollo Helios
+      apollo@example.com
 
       Top Skills
       TypeScript

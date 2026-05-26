@@ -28,8 +28,8 @@ function line({
 describe('ExtraSectionParser', () => {
   test('extracts text fallback certifications, projects, publications, and volunteer work', () => {
     const sections = ExtraSectionParser.parseText(`
-      Test User
-      test@example.com
+      Apollo Helios
+      apollo@example.com
 
       Certifications
       Cloud Architect Professional

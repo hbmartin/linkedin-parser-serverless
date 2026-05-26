@@ -283,13 +283,16 @@ describe('ExperienceStructuralParser', () => {
         fontSize: 11.5,
       }),
       textItem({ text: 'February 2013 - April 2013 (3 months)', y: 630 }),
-      textItem({ text: 'Directed by Stanislav Aistov', y: 610 }),
+      textItem({ text: 'Directed by Apollo Phoebus', y: 610 }),
       textItem({ text: 'Feature Film', y: 590 }),
       textItem({
         text: 'Scouted to find story subjects and conducted pre-interviews for back story',
         y: 570,
       }),
-      textItem({ text: 'Discovery Communications / Fischer Productions', y: 530 }),
+      textItem({
+        text: 'Discovery Communications / Fischer Productions',
+        y: 530,
+      }),
       textItem({ text: '4 months', y: 510 }),
       textItem({
         text: "Post Production Supervisor, KING'S OF CRASH",
@@ -299,7 +302,7 @@ describe('ExperienceStructuralParser', () => {
       textItem({ text: 'November 2012 - January 2013 (3 months)', y: 470 }),
       textItem({ text: 'Park City, UT', y: 450 }),
       textItem({
-        text: 'Executive Produced by Alexander Campbell & Naomi Steinberg',
+        text: 'Executive Produced by Achilles Pelides & Circe Aeaea',
         y: 430,
       }),
       textItem({ text: 'Television Series', y: 410 }),
@@ -316,7 +319,7 @@ describe('ExperienceStructuralParser', () => {
       textItem({ text: 'October 2012 - November 2012 (2 months)', y: 310 }),
       textItem({ text: 'Park City, UT', y: 290 }),
       textItem({
-        text: 'Executive Produced by Alexander Campbell & Naomi Steinberg',
+        text: 'Executive Produced by Achilles Pelides & Circe Aeaea',
         y: 270,
       }),
       textItem({ text: 'Television Series', y: 250 }),
@@ -333,7 +336,7 @@ describe('ExperienceStructuralParser', () => {
         positions: [
           expect.objectContaining({
             description:
-              'Directed by Stanislav Aistov Feature Film Scouted to find story subjects and conducted pre-interviews for back story',
+              'Directed by Apollo Phoebus Feature Film Scouted to find story subjects and conducted pre-interviews for back story',
             title: 'Producer, “MYSTERY OF THE KUMBH MELA"',
           }),
         ],
@@ -343,12 +346,12 @@ describe('ExperienceStructuralParser', () => {
         positions: [
           expect.objectContaining({
             description:
-              'Executive Produced by Alexander Campbell & Naomi Steinberg Television Series Areas of responsibility included: • Maintenance of daily operation of the Facilis server and editor workstations',
+              'Executive Produced by Achilles Pelides & Circe Aeaea Television Series Areas of responsibility included: • Maintenance of daily operation of the Facilis server and editor workstations',
             title: "Post Production Supervisor, KING'S OF CRASH",
           }),
           expect.objectContaining({
             description:
-              'Executive Produced by Alexander Campbell & Naomi Steinberg Television Series I was a primary shooter/field producer on a fast-paced reality television series',
+              'Executive Produced by Achilles Pelides & Circe Aeaea Television Series I was a primary shooter/field producer on a fast-paced reality television series',
             title: "Producer, KING'S OF CRASH",
           }),
         ],
@@ -377,7 +380,10 @@ describe('ExperienceStructuralParser', () => {
       }),
       textItem({ text: 'RQ', y: 450 }),
       textItem({ text: 'Account Supervisor', y: 430, fontSize: 11.5 }),
-      textItem({ text: 'May 2015 - September 2017 (2 years 5 months)', y: 410 }),
+      textItem({
+        text: 'May 2015 - September 2017 (2 years 5 months)',
+        y: 410,
+      }),
       textItem({ text: 'Client: Paypal + Airbnb', y: 390 }),
       textItem({
         text: 'Meet Halfway led the co-marketing initiative.',
@@ -395,7 +401,10 @@ describe('ExperienceStructuralParser', () => {
       textItem({ text: 'Audit', y: 210 }),
       textItem({ text: 'HEC Junior Conseil', y: 170 }),
       textItem({ text: 'Consultant', y: 150, fontSize: 11.5 }),
-      textItem({ text: 'December 2001 - March 2003 (1 year 4 months)', y: 130 }),
+      textItem({
+        text: 'December 2001 - March 2003 (1 year 4 months)',
+        y: 130,
+      }),
       textItem({ text: 'Consulting', y: 110 }),
     ]);
 
@@ -455,7 +464,11 @@ describe('ExperienceStructuralParser', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
       textItem({ text: 'Hermès', y: 670 }),
-      textItem({ text: 'VP, corporate VC investments', y: 650, fontSize: 11.5 }),
+      textItem({
+        text: 'VP, corporate VC investments',
+        y: 650,
+        fontSize: 11.5,
+      }),
       textItem({ text: 'February 2019 - Present (7 years 4 months)', y: 630 }),
       textItem({ text: 'Greater Los Angeles Area', y: 610 }),
       textItem({
@@ -468,7 +481,10 @@ describe('ExperienceStructuralParser', () => {
       }),
       textItem({ text: 'Ampli & Co', y: 530 }),
       textItem({ text: 'Consultant', y: 510, fontSize: 11.5 }),
-      textItem({ text: 'February 2018 - February 2019 (1 year 1 month)', y: 490 }),
+      textItem({
+        text: 'February 2018 - February 2019 (1 year 1 month)',
+        y: 490,
+      }),
       textItem({ text: 'Greater Los Angeles Area', y: 470 }),
     ]);
 
@@ -637,7 +653,7 @@ describe('ExperienceStructuralParser', () => {
   test('does not promote likely person-name lines to organizations', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
-      textItem({ text: 'Morgan Taylor', y: 670 }),
+      textItem({ text: 'Hermes Argus', y: 670 }),
       textItem({ text: 'Software Engineer', y: 650, fontSize: 11.5 }),
       textItem({ text: '2020 - 2022', y: 630 }),
     ];
@@ -1300,7 +1316,7 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
-  test('keeps Serhat Pala description continuations under their dated roles', () => {
+  test('keeps Helios Phaethon description continuations under their dated roles', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
       textItem({ text: 'Rotary International', y: 670 }),
@@ -1390,7 +1406,7 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
-  test('separates Alexandra Rossi company boundaries and keeps prose out of locations', () => {
+  test('separates Andromeda Cassiopeia company boundaries and keeps prose out of locations', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 900, fontSize: 16 }),
       textItem({ text: 'MUDE', y: 870 }),
@@ -1462,7 +1478,9 @@ describe('ExperienceStructuralParser', () => {
     expect(
       byOrganization.get('HeadVantage Corporation')?.positions[0]?.description
     ).toContain('Comcast NBCUniversal SportsTech Accelerator');
-    expect(byOrganization.get('Prescient')?.positions[0]?.location).toBeUndefined();
+    expect(
+      byOrganization.get('Prescient')?.positions[0]?.location
+    ).toBeUndefined();
     expect(byOrganization.get('Rasgo')?.positions[0]?.location).toBe(
       'New York, United States'
     );
@@ -1471,7 +1489,7 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
-  test('keeps Serhat Pala wrapped titles and Cross Ocean boundaries intact', () => {
+  test('keeps Helios Phaethon wrapped titles and Cross Ocean boundaries intact', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 900, fontSize: 16 }),
       textItem({ text: 'Cross Ocean Ventures', y: 870 }),
@@ -1520,7 +1538,7 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
-  test('keeps Zachary Schlosser prose dates and wrapped Brown organization names', () => {
+  test('keeps Orion Lycaon prose dates and wrapped Brown organization names', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 900, fontSize: 16 }),
       textItem({ text: 'Resilient Connections', y: 870 }),
@@ -1619,7 +1637,10 @@ describe('ExperienceStructuralParser', () => {
       textItem({ text: 'Spatial AI', y: 850 }),
       textItem({ text: 'Vayu Robotics', y: 820 }),
       textItem({ text: 'Co-Founder (Acquired)', y: 800, fontSize: 11.5 }),
-      textItem({ text: 'October 2021 - August 2025 (3 years 11 months)', y: 780 }),
+      textItem({
+        text: 'October 2021 - August 2025 (3 years 11 months)',
+        y: 780,
+      }),
       textItem({ text: 'Alerian', y: 750 }),
       textItem({ text: '9 years 5 months', y: 730 }),
       textItem({ text: 'Director of Data Science', y: 710, fontSize: 11.5 }),
@@ -1667,7 +1688,11 @@ describe('ExperienceStructuralParser', () => {
       textItem({ text: 'June 2023 - November 2023 (6 months)', y: 830 }),
       textItem({ text: 'IC Deal: Fuse', y: 810 }),
       textItem({ text: 'Collide Capital', y: 780 }),
-      textItem({ text: 'VC Investor | Venture Fellow', y: 760, fontSize: 11.5 }),
+      textItem({
+        text: 'VC Investor | Venture Fellow',
+        y: 760,
+        fontSize: 11.5,
+      }),
       textItem({ text: 'January 2023 - May 2023 (5 months)', y: 740 }),
       textItem({ text: 'Sourced Investment: Coldcart', y: 720 }),
       textItem({ text: 'Cinedigm', y: 690 }),
@@ -1676,7 +1701,10 @@ describe('ExperienceStructuralParser', () => {
         y: 670,
         fontSize: 11.5,
       }),
-      textItem({ text: 'March 2012 - September 2016 (4 years 7 months)', y: 650 }),
+      textItem({
+        text: 'March 2012 - September 2016 (4 years 7 months)',
+        y: 650,
+      }),
       textItem({ text: 'Achievements:', y: 630 }),
       textItem({
         text: 'Oversaw strategic and business planning of video app new business.',
@@ -1688,18 +1716,18 @@ describe('ExperienceStructuralParser', () => {
     );
 
     expect(result.warnings).toEqual([]);
-    expect(byOrganization.get('Global Ventures')?.positions[0]?.description).toBe(
-      'IC Deal: Fuse'
-    );
-    expect(byOrganization.get('Collide Capital')?.positions[0]?.description).toBe(
-      'Sourced Investment: Coldcart'
-    );
+    expect(
+      byOrganization.get('Global Ventures')?.positions[0]?.description
+    ).toBe('IC Deal: Fuse');
+    expect(
+      byOrganization.get('Collide Capital')?.positions[0]?.description
+    ).toBe('Sourced Investment: Coldcart');
     expect(byOrganization.get('Cinedigm')?.positions[0]?.description).toBe(
       'Achievements: Oversaw strategic and business planning of video app new business.'
     );
   });
 
-  test('splits Ara Goh combined organization-title rows and keeps Bosch prose', () => {
+  test('splits Medea Colchis combined organization-title rows and keeps Bosch prose', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
       textItem({ text: 'Stealth Company', y: 670 }),
@@ -2039,7 +2067,7 @@ describe('ExperienceStructuralParser', () => {
       textItem({ text: 'November 2012 - January 2013', y: 630 }),
       textItem({ text: 'Park City, UT', y: 610 }),
       textItem({
-        text: 'Executive Produced by Alexander Campbell & Naomi Steinberg',
+        text: 'Executive Produced by Achilles Pelides & Circe Aeaea',
         y: 590,
       }),
       textItem({
@@ -2063,8 +2091,7 @@ describe('ExperienceStructuralParser', () => {
         organization: 'Discovery Communications / Fischer Productions',
         positions: [
           expect.objectContaining({
-            description:
-              'Executive Produced by Alexander Campbell & Naomi Steinberg',
+            description: 'Executive Produced by Achilles Pelides & Circe Aeaea',
             duration: 'November 2012 - January 2013',
             location: 'Park City, UT',
             title: "Post Production Supervisor, KING'S OF CRASH",
@@ -3009,9 +3036,9 @@ describe('ExperienceStructuralParser', () => {
       'Comcast NBCUniversal SportsTech Accelerator, HeadVantage is redefining',
       'After securing an exclusive partnership with Warner Music, Prescient is now',
     ]) {
-      expect(ExperienceStructuralParser['looksLikeLocation'](falseLocation)).toBe(
-        false
-      );
+      expect(
+        ExperienceStructuralParser['looksLikeLocation'](falseLocation)
+      ).toBe(false);
     }
 
     for (const trueLocation of [
@@ -3022,9 +3049,9 @@ describe('ExperienceStructuralParser', () => {
       'London Area, United Kingdom',
       'Denver, CO',
     ]) {
-      expect(ExperienceStructuralParser['looksLikeLocation'](trueLocation)).toBe(
-        true
-      );
+      expect(
+        ExperienceStructuralParser['looksLikeLocation'](trueLocation)
+      ).toBe(true);
     }
 
     expect(

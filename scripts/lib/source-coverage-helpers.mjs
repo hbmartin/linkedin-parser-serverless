@@ -82,6 +82,8 @@ export function normalizeText(value) {
     .replace(/[•·]/g, ' ')
     .replace(/\u00a0/g, ' ')
     .replace(/([a-z])\.([A-Z])/g, '$1. $2')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/([([{])\s+/g, '$1')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
@@ -166,13 +168,14 @@ export function createSourceCoverageReport({
   const sourceSegmentsBySection = groupBySection(sourceView.segments);
   const unmatchedSourceSegments = [];
   const looseSourceMatches = [];
+  const crossSectionOutputMatches = [];
   const untracedOutputValues = [];
 
-  for (const segment of sourceView.segments) {
+  for (const [index, segment] of sourceView.segments.entries()) {
     const matchingOutputValues =
       outputValuesBySection.get(segment.section) ?? [];
-    const match = bestTextMatch(
-      segment.text,
+    const match = bestSourceTextMatch(
+      sourceTextCandidatesForSegment(sourceView.segments, index),
       matchingOutputValues.map(value => value.value)
     );
 
@@ -198,6 +201,16 @@ export function createSourceCoverageReport({
     const match = bestTextMatch(outputValue.value, [combinedSourceText]);
 
     if (match.kind === 'none') {
+      const crossSectionMatch = crossSectionOutputMatch({
+        outputValue,
+        sourceSegmentsBySection,
+      });
+
+      if (crossSectionMatch !== undefined) {
+        crossSectionOutputMatches.push(crossSectionMatch);
+        continue;
+      }
+
       untracedOutputValues.push(outputValue);
     }
   }
@@ -205,6 +218,7 @@ export function createSourceCoverageReport({
   const sections = createSectionReports({
     outputValuesBySection,
     sourceSegmentsBySection,
+    crossSectionOutputMatches,
     unmatchedSourceSegments,
     untracedOutputValues,
   });
@@ -217,6 +231,8 @@ export function createSourceCoverageReport({
     unmatchedSourceSegments,
     looseSourceMatchCount: looseSourceMatches.length,
     looseSourceMatches,
+    crossSectionOutputMatchCount: crossSectionOutputMatches.length,
+    crossSectionOutputMatches,
     outputValueCount: outputValues.length,
     untracedOutputValueCount: untracedOutputValues.length,
     untracedOutputValues,
@@ -368,6 +384,106 @@ function groupBySection(items) {
   return groups;
 }
 
+function bestSourceTextMatch(sourceTexts, candidateValues) {
+  let looseMatch;
+
+  for (const sourceText of sourceTexts) {
+    const match = bestTextMatch(sourceText, candidateValues);
+
+    if (match.kind === 'exact') {
+      return match;
+    }
+
+    if (match.kind === 'loose' && looseMatch === undefined) {
+      looseMatch = match;
+    }
+  }
+
+  return looseMatch ?? { kind: 'none' };
+}
+
+function sourceTextCandidatesForSegment(segments, index) {
+  const segment = segments[index];
+  const candidates = [segment.text];
+  const previousSegment = adjacentSourceSegment({
+    direction: -1,
+    index,
+    segments,
+  });
+  const nextSegment = adjacentSourceSegment({
+    direction: 1,
+    index,
+    segments,
+  });
+  const previousText = previousSegment?.text;
+  const nextText = nextSegment?.text;
+
+  if (previousText !== undefined) {
+    candidates.push(`${previousText} ${segment.text}`);
+  }
+
+  if (nextText !== undefined) {
+    candidates.push(`${segment.text} ${nextText}`);
+  }
+
+  if (previousText !== undefined && nextText !== undefined) {
+    candidates.push(`${previousText} ${segment.text} ${nextText}`);
+  }
+
+  return candidates;
+}
+
+function adjacentSourceSegment({ direction, index, segments }) {
+  const segment = segments[index];
+
+  for (
+    let candidateIndex = index + direction;
+    candidateIndex >= 0 && candidateIndex < segments.length;
+    candidateIndex += direction
+  ) {
+    const candidate = segments[candidateIndex];
+
+    if (candidate.pageIndex !== segment.pageIndex) {
+      return undefined;
+    }
+
+    if (Math.abs(candidate.lineNumber - segment.lineNumber) > 2) {
+      return undefined;
+    }
+
+    if (candidate.column !== segment.column) {
+      continue;
+    }
+
+    return candidate.section === segment.section ? candidate : undefined;
+  }
+
+  return undefined;
+}
+
+function crossSectionOutputMatch({ outputValue, sourceSegmentsBySection }) {
+  for (const [section, sourceSegments] of sourceSegmentsBySection) {
+    if (section === outputValue.section) {
+      continue;
+    }
+
+    const combinedSourceText = sourceSegments
+      .map(segment => segment.text)
+      .join(' ');
+    const match = bestTextMatch(outputValue.value, [combinedSourceText]);
+
+    if (match.kind !== 'none') {
+      return {
+        ...outputValue,
+        matchKind: match.kind,
+        matchedSection: section,
+      };
+    }
+  }
+
+  return undefined;
+}
+
 function bestTextMatch(sourceText, candidateValues) {
   const sourceVariants = textVariants(sourceText);
   const sourceTokens = meaningfulTokens(sourceText);
@@ -451,8 +567,7 @@ function textVariants(value) {
     /^www\./,
     ''
   );
-
-  for (const variant of [
+  const baseVariants = [
     normalizedValue,
     withoutBullet,
     withoutTrailingKind,
@@ -463,11 +578,19 @@ function textVariants(value) {
     withoutSchemeAndUrlSpaces,
     withoutWww,
     withoutWwwAndUrlSpaces,
-    `https://${withoutScheme}`,
-    `https://${withoutSchemeAndUrlSpaces}`,
-    `https://www.${withoutWww}`,
-    `https://www.${withoutWwwAndUrlSpaces}`,
-  ]) {
+  ];
+  const urlVariants = [
+    withoutScheme.length > 0 ? `https://${withoutScheme}` : '',
+    withoutSchemeAndUrlSpaces.length > 0
+      ? `https://${withoutSchemeAndUrlSpaces}`
+      : '',
+    withoutWww.length > 0 ? `https://www.${withoutWww}` : '',
+    withoutWwwAndUrlSpaces.length > 0
+      ? `https://www.${withoutWwwAndUrlSpaces}`
+      : '',
+  ];
+
+  for (const variant of [...baseVariants, ...urlVariants]) {
     if (variant.length > 0) {
       variants.add(variant);
     }
@@ -486,6 +609,7 @@ function meaningfulTokens(value) {
 function createSectionReports({
   outputValuesBySection,
   sourceSegmentsBySection,
+  crossSectionOutputMatches,
   unmatchedSourceSegments,
   untracedOutputValues,
 }) {
@@ -506,6 +630,9 @@ function createSectionReports({
         segment => segment.section === section
       ).length,
       outputValueCount: outputValues.length,
+      crossSectionOutputMatchCount: crossSectionOutputMatches.filter(
+        outputValue => outputValue.section === section
+      ).length,
       untracedOutputValueCount: untracedOutputValues.filter(
         outputValue => outputValue.section === section
       ).length,

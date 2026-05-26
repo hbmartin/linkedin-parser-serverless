@@ -168,7 +168,7 @@ describe('JSON fixture batch operations', () => {
               "top_skills": [],
               "projects": [],
               "publications": [],
-              "name": "Fixture User",
+              "name": "Orion Helios",
               "location": "San Francisco, CA",
               "languages": [],
               "headline": "Fixture headline",
@@ -208,7 +208,7 @@ describe('JSON fixture batch operations', () => {
       ...defaultParseResult,
       profile: {
         ...defaultParseResult.profile,
-        name: 'Old Name',
+        name: 'Hermes Trismegistus',
       },
     };
     const memoryFixtures = createMemoryJsonFixtureDependencies({
@@ -237,8 +237,8 @@ describe('JSON fixture batch operations', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('--- expected');
     expect(result.stderr).toContain('+++ generated');
-    expect(result.stderr).toContain('-     "name": "Old Name"');
-    expect(result.stderr).toContain('+     "name": "Fixture User"');
+    expect(result.stderr).toContain('-     "name": "Hermes Trismegistus"');
+    expect(result.stderr).toContain('+     "name": "Orion Helios"');
   });
 
   test('reports invalid JSON, parse failures, and missing fixture pairs', async () => {
@@ -444,7 +444,7 @@ const defaultParseResult: ParseResult = {
     headline: 'Fixture headline',
     languages: [],
     location: 'San Francisco, CA',
-    name: 'Fixture User',
+    name: 'Orion Helios',
     projects: [],
     publications: [],
     summary: undefined,

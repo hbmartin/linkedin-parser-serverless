@@ -62,6 +62,7 @@
 		"quality:check": "pnpm run lint && pnpm run format:check && pnpm run dupes && pnpm run type-coverage && pnpm run build && pnpm run verify:artifacts && pnpm run verify:package && pnpm run knip && pnpm run publint && pnpm run types:lint && pnpm run test:coverage",
 		"samples:audit-coverage": "node scripts/sample-completeness-audit.mjs",
 		"samples:check-warnings": "pnpm run build && node scripts/check-sample-warnings.mjs",
+		"samples:verify": "node scripts/verify-samples.mjs",
 		"source:inspect": "pnpm run build && node scripts/inspect-pdf-source.mjs",
 		"size:check": "node scripts/check-size-budget.mjs",
 		"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",

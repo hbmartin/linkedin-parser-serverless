@@ -121,6 +121,10 @@ const totalUntracedOutputValueCount = fileReports.reduce(
   (total, fileReport) => total + fileReport.untracedOutputValueCount,
   0
 );
+const totalCrossSectionOutputMatchCount = fileReports.reduce(
+  (total, fileReport) => total + fileReport.crossSectionOutputMatchCount,
+  0
+);
 const totalSectionWarningCount = fileReports.reduce(
   (total, fileReport) => total + fileReport.sectionWarnings.length,
   0
@@ -133,6 +137,7 @@ const report = {
   totalRawLineCount,
   totalUnmatchedLineCount,
   totalLooseSourceMatchCount,
+  totalCrossSectionOutputMatchCount,
   totalUntracedOutputValueCount,
   totalSectionWarningCount,
   files: fileReports,
@@ -147,6 +152,7 @@ console.log(
     `Source segments: ${totalRawLineCount}.`,
     `Unmatched source segments: ${totalUnmatchedLineCount}.`,
     `Loose source matches: ${totalLooseSourceMatchCount}.`,
+    `Cross-section output matches: ${totalCrossSectionOutputMatchCount}.`,
     `Untraced output values: ${totalUntracedOutputValueCount}.`,
     `section_parse_warning count: ${totalSectionWarningCount}.`,
     `Report: ${path.relative(repoRoot, reportPath)}.`,

@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { parseLinkedInPDF } from '../dist/index.js';
 import {
   defaultSamplesDir,
+  optionValue,
   readSortedPdfFileNames,
   repoRoot,
   sampleWarningFailureDetailLines,
@@ -10,7 +11,10 @@ import {
   unknownErrorMessage,
 } from './lib/sample-script-helpers.mjs';
 
-const samplesDir = defaultSamplesDir;
+const samplesDir = path.resolve(
+  repoRoot,
+  optionValue('--samples') ?? defaultSamplesDir
+);
 const pdfFileNames = await readSortedPdfFileNames(
   samplesDir,
   `No sample PDFs found in ${samplesDir}`

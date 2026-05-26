@@ -40,7 +40,7 @@ describe('profile text heuristics', () => {
     expect(looksLikeOrganizationNameText('Engineering Manager…')).toBe(false);
     expect(
       looksLikePositionTitleText(
-        'Executive Produced by Alexander Campbell & Naomi Steinberg'
+        'Executive Produced by Achilles Pelides & Circe Aeaea'
       )
     ).toBe(false);
   });

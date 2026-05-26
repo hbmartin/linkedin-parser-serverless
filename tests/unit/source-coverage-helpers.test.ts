@@ -9,8 +9,8 @@ describe('source coverage helpers', () => {
     const sourceView = createSourceSegmentsFromLayoutText(
       [
         'Contact',
-        '                              Jane Doe',
-        'jane@example.com              Staff Engineer',
+        '                              Cassandra Troy',
+        'cassandra@example.com              Staff Engineer',
         '                              San Francisco, California',
         '',
         '                              Summary',
@@ -28,12 +28,12 @@ describe('source coverage helpers', () => {
         expect.objectContaining({
           column: 'main',
           section: 'identity',
-          text: 'Jane Doe',
+          text: 'Cassandra Troy',
         }),
         expect.objectContaining({
           column: 'sidebar',
           section: 'contact',
-          text: 'jane@example.com',
+          text: 'cassandra@example.com',
         }),
         expect.objectContaining({
           column: 'main',
@@ -83,6 +83,19 @@ describe('source coverage helpers', () => {
     ]);
   });
 
+  test('classifies volunteering experience headings as volunteer work', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      ['Volunteering Experience', 'Board Member'].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual([
+      expect.objectContaining({
+        section: 'volunteer_work',
+        text: 'Board Member',
+      }),
+    ]);
+  });
+
   test('reports token-only matches separately from exact source matches', () => {
     const report = createSourceCoverageReport({
       layoutText: ['Experience', 'Staff Engineer, ML'].join('\n'),
@@ -119,6 +132,80 @@ describe('source coverage helpers', () => {
       expect.objectContaining({
         matchedValue: 'Staff Engineer ML',
         text: 'Staff Engineer, ML',
+      }),
+    ]);
+  });
+
+  test('treats punctuation-spacing differences as exact source matches', () => {
+    const report = createSourceCoverageReport({
+      layoutText: ['Experience', 'London , England'].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        experience: [
+          {
+            location: 'London, England',
+          },
+        ],
+      }),
+      pdfFileName: 'punctuation-spacing.pdf',
+    });
+
+    expect(report.unmatchedSourceSegmentCount).toBe(0);
+    expect(report.looseSourceMatchCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+  });
+
+  test('matches wrapped adjacent same-section source segments exactly', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Languages                         Experience',
+        'Chinese (Traditional) (Limited    Manhattan Venture Partners',
+        'Working)                          Vice President',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        experience: [
+          {
+            company: 'Manhattan Venture Partners',
+            title: 'Vice President',
+          },
+        ],
+        languages: [
+          {
+            language: 'Chinese (Traditional)',
+            proficiency: 'Limited Working',
+          },
+        ],
+      }),
+      pdfFileName: 'wrapped-language.pdf',
+    });
+
+    expect(report.unmatchedSourceSegmentCount).toBe(0);
+    expect(report.looseSourceMatchCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+  });
+
+  test('traces output values found in another source section separately', () => {
+    const report = createSourceCoverageReport({
+      layoutText: ['Summary', 'Reach Cassandra at cassandra@example.com.'].join(
+        '\n'
+      ),
+      parsedJson: parsedJsonWithProfile({
+        contact: {
+          email: 'cassandra@example.com',
+        },
+        summary: 'Reach Cassandra at cassandra@example.com.',
+      }),
+      pdfFileName: 'cross-section-email.pdf',
+    });
+
+    expect(report.unmatchedSourceSegmentCount).toBe(0);
+    expect(report.looseSourceMatchCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+    expect(report.crossSectionOutputMatchCount).toBe(1);
+    expect(report.crossSectionOutputMatches).toEqual([
+      expect.objectContaining({
+        matchedSection: 'summary',
+        path: 'profile.contact.email',
+        section: 'contact',
       }),
     ]);
   });
@@ -172,7 +259,7 @@ describe('source coverage helpers', () => {
       layoutText: [
         'Contact',
         'www.linkedin.com/in/',
-        'jane-example (LinkedIn)',
+        'cassandra-troy (LinkedIn)',
       ].join('\n'),
       parsedJson: {
         profile: {
@@ -180,7 +267,7 @@ describe('source coverage helpers', () => {
           headline: '',
           location: '',
           contact: {
-            linkedin_url: 'https://linkedin.com/in/jane-example',
+            linkedin_url: 'https://linkedin.com/in/cassandra-troy',
           },
           top_skills: [],
           languages: [],
@@ -202,3 +289,27 @@ describe('source coverage helpers', () => {
     expect(report.untracedOutputValueCount).toBe(0);
   });
 });
+
+function parsedJsonWithProfile(profile: Record<string, unknown>) {
+  return {
+    profile: {
+      name: '',
+      headline: '',
+      location: '',
+      contact: {},
+      top_skills: [],
+      languages: [],
+      certifications: [],
+      volunteer_work: [],
+      projects: [],
+      publications: [],
+      honors_awards: [],
+      summary: '',
+      experience: [],
+      experience_groups: [],
+      education: [],
+      ...profile,
+    },
+    warnings: [],
+  };
+}

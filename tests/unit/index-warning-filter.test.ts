@@ -35,13 +35,13 @@ describe('parseLinkedInPDF warning filtering', () => {
   test('suppresses contact section warnings when structural identity resolves contact data', async () => {
     mockBinaryParse({
       basicInfoWarnings: [contactWarning, summaryWarning],
-      linkedinUrl: 'https://linkedin.com/in/resolved-user',
+      linkedinUrl: 'https://linkedin.com/in/daphne-laurel',
     });
 
     const result = await parseLinkedInPDF(new Uint8Array([1, 2, 3]));
 
     expect(result.profile.contact.linkedin_url).toBe(
-      'https://linkedin.com/in/resolved-user'
+      'https://linkedin.com/in/daphne-laurel'
     );
     expect(result.warnings).toEqual(
       expect.arrayContaining([expect.objectContaining(summaryWarning)])
@@ -151,7 +151,7 @@ function mockBinaryParse({
   jest
     .spyOn(StructuralParser, 'combineGroupedText')
     .mockReturnValue([
-      'Resolved User',
+      'Daphne Laurel',
       'Principal Parser',
       'Contact',
       'Available on request',
@@ -165,7 +165,7 @@ function mockBinaryParse({
       contact: basicInfoContact,
       headline: 'Principal Parser',
       location: 'Oakland, California, United States',
-      name: 'Resolved User',
+      name: 'Daphne Laurel',
     },
     warnings: basicInfoWarnings,
   });
@@ -219,7 +219,7 @@ function createTextItem(): TextItem {
     fontFamily: 'Helvetica',
     fontSize: 12,
     height: 12,
-    text: 'Resolved User',
+    text: 'Daphne Laurel',
     width: 80,
     x: 220,
     y: 700,
