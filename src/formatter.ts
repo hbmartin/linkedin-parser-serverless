@@ -58,11 +58,11 @@ function createContactSection(contact: Contact): SectionDraft | undefined {
       const label = cleanValue(link.label);
       const url = cleanValue(link.url);
 
-      if (label && url) {
-        return `${label}: ${url}`;
+      if (!url) {
+        return undefined;
       }
 
-      return url ?? label;
+      return label ? `${label}: ${url}` : url;
     }) ?? [];
   const lines = cleanValues([
     contact.email ? `Email: ${contact.email}` : undefined,
@@ -101,9 +101,7 @@ function createSingleValueSection(
 function createExperienceSection(
   experience: Experience[]
 ): SectionDraft | undefined {
-  const lines = separateEntryLines(
-    experience.map(item => formatExperience(item))
-  );
+  const lines = separateEntryLines(experience.map(formatExperience));
 
   if (lines.length === 0) {
     return undefined;
@@ -118,9 +116,7 @@ function createExperienceSection(
 function createEducationSection(
   education: Education[]
 ): SectionDraft | undefined {
-  const lines = separateEntryLines(
-    education.map(item => formatEducation(item))
-  );
+  const lines = separateEntryLines(education.map(formatEducation));
 
   if (lines.length === 0) {
     return undefined;

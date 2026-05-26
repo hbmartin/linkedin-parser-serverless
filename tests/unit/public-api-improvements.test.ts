@@ -92,6 +92,22 @@ describe('public parser diagnostics and typed errors', () => {
     );
   });
 
+  test('throws typed errors when PDF extraction returns too little text', async () => {
+    jest.spyOn(StructuralParser, 'extractStructuredText').mockResolvedValue({
+      layout: {
+        type: 'single-column',
+      },
+      textItems: [],
+    });
+
+    await expect(parseLinkedInPDF(new Uint8Array([1, 2, 3]))).rejects.toEqual(
+      expect.objectContaining({
+        code: 'text_extraction_failed',
+        message: 'PDF appears to be empty or unreadable',
+      })
+    );
+  });
+
   test('classifies encrypted PDF extraction failures', async () => {
     jest
       .spyOn(StructuralParser, 'extractStructuredText')
@@ -126,6 +142,7 @@ describe('public parser diagnostics and typed errors', () => {
       expect.objectContaining({
         cause: 'plain text failure',
         code: 'text_extraction_failed',
+        message: 'Input text could not be parsed',
       })
     );
   });

@@ -5,6 +5,7 @@ import {
   ParseResultSchema,
   ParseWarningSchema,
 } from '../../src/index.js';
+import { WARNING_SECTIONS } from '../../src/warning-sections.js';
 
 describe('exported Zod schemas', () => {
   test('validates profile and result shapes', () => {
@@ -113,5 +114,26 @@ describe('exported Zod schemas', () => {
         section: 'experience',
       })
     );
+  });
+
+  test('uses the same section values for warnings and diagnostics', () => {
+    for (const section of WARNING_SECTIONS) {
+      expect(
+        ParseWarningSchema.safeParse({
+          code: 'section_parse_warning',
+          field: 'section',
+          message: 'Could not parse section',
+          section,
+        }).success
+      ).toBe(true);
+      expect(
+        ParseDiagnosticsSchema.safeParse({
+          confidence: 0.5,
+          isEmpty: false,
+          isLikelyLinkedInExport: true,
+          sectionsFound: [section],
+        }).success
+      ).toBe(true);
+    }
   });
 });

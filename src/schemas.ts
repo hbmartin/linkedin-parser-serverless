@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { WARNING_SECTIONS } from './warning-sections.js';
 
 export const ContactLinkSchema = z.object({
   label: z.string().optional(),
@@ -98,26 +99,15 @@ const MissingProfileFieldWarningSchema = z.object({
   message: z.string(),
 });
 
+const WarningSectionSchema = z.enum(WARNING_SECTIONS);
+
 const SectionParseWarningSchema = z.object({
   code: z.literal('section_parse_warning'),
   entry: z.number().int().nonnegative().optional(),
   field: z.string(),
   message: z.string(),
   rawText: z.string().optional(),
-  section: z.enum([
-    'profile',
-    'contact',
-    'summary',
-    'top_skills',
-    'languages',
-    'certifications',
-    'volunteer_work',
-    'projects',
-    'publications',
-    'honors_awards',
-    'experience',
-    'education',
-  ]),
+  section: WarningSectionSchema,
 });
 
 export const ParseWarningSchema = z.union([
@@ -129,22 +119,7 @@ export const ParseDiagnosticsSchema = z.object({
   confidence: z.number().min(0).max(1),
   isEmpty: z.boolean(),
   isLikelyLinkedInExport: z.boolean(),
-  sectionsFound: z.array(
-    z.enum([
-      'profile',
-      'contact',
-      'summary',
-      'top_skills',
-      'languages',
-      'certifications',
-      'volunteer_work',
-      'projects',
-      'publications',
-      'honors_awards',
-      'experience',
-      'education',
-    ])
-  ),
+  sectionsFound: z.array(WarningSectionSchema),
 });
 
 export const ParseResultSchema = z.object({
