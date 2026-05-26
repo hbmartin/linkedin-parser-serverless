@@ -530,6 +530,46 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('starts a new same-organization role when a page footer splits title and dates', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Carta', y: 670 }),
+      textItem({ text: 'Tech Lead Manager', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'July 2019 - October 2021', y: 630 }),
+      textItem({ text: 'Palo Alto, CA', y: 610 }),
+      textItem({
+        text: 'Provided technical leadership and mentored engineers.',
+        y: 590,
+      }),
+      textItem({
+        text: 'Senior Software Engineer',
+        y: 560,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'Page 2 of 7', y: 540, fontSize: 9 }),
+      textItem({ text: 'October 2017 - June 2019', y: -9300 }),
+      textItem({ text: 'Rio de Janeiro', y: -9320 }),
+    ]);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'Carta',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Provided technical leadership and mentored engineers.',
+            title: 'Tech Lead Manager',
+          }),
+          expect.objectContaining({
+            duration: 'October 2017 - June 2019',
+            location: 'Rio de Janeiro',
+            title: 'Senior Software Engineer',
+          }),
+        ],
+      })
+    );
+  });
+
   test('detects generic organizations without a source allowlist', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -780,6 +820,439 @@ describe('ExperienceStructuralParser', () => {
         location: 'New York, NY',
       })
     );
+  });
+
+  test('keeps RQ client campaign lines in the dated role description', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'RQ', y: 670 }),
+      textItem({ text: 'Associate Director', y: 650, fontSize: 11.5 }),
+      textItem({
+        text: 'September 2017 - June 2018 (10 months)',
+        y: 630,
+      }),
+      textItem({
+        text: 'Los Angeles, California, United States',
+        y: 610,
+      }),
+      textItem({ text: 'Client: YouTube', y: 590 }),
+      textItem({
+        text: 'Creative strategy, planning, and event activation for influencer campaigns for',
+        y: 570,
+      }),
+      textItem({ text: 'YouTube Originals + YouTube TV:', y: 550 }),
+      textItem({
+        text: '+ YouTube x Getty Studio Sundance Photo Studio',
+        y: 530,
+      }),
+      textItem({
+        text: '+ World Series Partner Programming 2018',
+        y: 510,
+      }),
+      textItem({ text: 'Account Supervisor', y: 480, fontSize: 11.5 }),
+      textItem({
+        text: 'May 2015 - September 2017 (2 years 5 months)',
+        y: 460,
+      }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'RQ',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Client: YouTube Creative strategy, planning, and event activation for influencer campaigns for YouTube Originals + YouTube TV: + YouTube x Getty Studio Sundance Photo Studio + World Series Partner Programming 2018',
+            duration: 'September 2017 - June 2018',
+            title: 'Associate Director',
+          }),
+          expect.objectContaining({
+            duration: 'May 2015 - September 2017',
+            title: 'Account Supervisor',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps no-date Future US prose as description and starts the next organization', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'The Future US', y: 670 }),
+      textItem({
+        text: 'Member of the Board of Advisors',
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'January 2023 - February 2025 (2 years 2 months)',
+        y: 630,
+      }),
+      textItem({ text: 'Washington DC-Baltimore Area', y: 610 }),
+      textItem({
+        text: 'Non-profit organization and catalytic, post-partisan policy accelerator.',
+        y: 590,
+      }),
+      textItem({ text: 'Venture Partner', y: 560, fontSize: 11.5 }),
+      textItem({
+        text: 'March 2023 - March 2024 (1 year 1 month)',
+        y: 540,
+      }),
+      textItem({ text: 'New York City Metropolitan Area', y: 520 }),
+      textItem({
+        text: "Seed Stage Venture Capital Program hosted by Canada's Trade",
+        y: 500,
+      }),
+      textItem({ text: 'Commissioner Service.', y: 480 }),
+      textItem({ text: 'SurveyMonkey', y: 450 }),
+      textItem({
+        text: 'Strategic Finance & Business Operation Lead',
+        y: 430,
+        fontSize: 11.5,
+      }),
+      textItem({ text: '2020 - 2021 (1 year)', y: 410 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'The Future US',
+        positions: [
+          expect.objectContaining({
+            title: 'Member of the Board of Advisors',
+          }),
+          expect.objectContaining({
+            description:
+              "Seed Stage Venture Capital Program hosted by Canada's Trade Commissioner Service.",
+            duration: 'March 2023 - March 2024',
+            title: 'Venture Partner',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'SurveyMonkey',
+        positions: [
+          expect.objectContaining({
+            duration: '2020 - 2021',
+            title: 'Strategic Finance & Business Operation Lead',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('does not let J.P. Morgan description text swallow Goldman Sachs', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'J.P. Morgan', y: 670 }),
+      textItem({ text: 'Investment Banking', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2015 - 2016 (1 year)', y: 630 }),
+      textItem({ text: 'New York, New York, United States', y: 610 }),
+      textItem({ text: 'Mergers & Acquisitions Group (M&A)', y: 590 }),
+      textItem({ text: 'Goldman Sachs', y: 560 }),
+      textItem({ text: 'Investment Banking', y: 540, fontSize: 11.5 }),
+      textItem({ text: '2014 - 2015 (1 year)', y: 520 }),
+      textItem({ text: 'New York, New York, United States', y: 500 }),
+      textItem({ text: 'Financial Institutions Group (FIG)', y: 480 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'J.P. Morgan',
+        positions: [
+          expect.objectContaining({
+            description: 'Mergers & Acquisitions Group (M&A)',
+            duration: '2015 - 2016',
+            title: 'Investment Banking',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Goldman Sachs',
+        positions: [
+          expect.objectContaining({
+            description: 'Financial Institutions Group (FIG)',
+            duration: '2014 - 2015',
+            title: 'Investment Banking',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps CAA founder detail as Creative Artists Agency description', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Creative Artists Agency', y: 670 }),
+      textItem({
+        text: 'Member of Management Committee / Senior Talent Agent',
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({ text: '1986 - 1995 (9 years)', y: 630 }),
+      textItem({
+        text: 'Founder CAA Corporate Advisory Group in 1987.',
+        y: 610,
+      }),
+      textItem({ text: 'MGM', y: 580 }),
+      textItem({
+        text: 'Executive Positions in Productions and Distribution',
+        y: 560,
+        fontSize: 11.5,
+      }),
+      textItem({ text: '1979 - 1985 (6 years)', y: 540 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Creative Artists Agency',
+        positions: [
+          expect.objectContaining({
+            description: 'Founder CAA Corporate Advisory Group in 1987.',
+            duration: '1986 - 1995',
+            title: 'Member of Management Committee / Senior Talent Agent',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'MGM',
+      }),
+    ]);
+  });
+
+  test('keeps Serhat Pala description continuations under their dated roles', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Rotary International', y: 670 }),
+      textItem({ text: 'Angel Investor', y: 650, fontSize: 11.5 }),
+      textItem({
+        text: 'January 2014 - January 2024 (10 years 1 month)',
+        y: 630,
+      }),
+      textItem({
+        text: 'Invest in early stage companies in B2B SaaS, Digital Health, Cybersecurity,',
+        y: 610,
+      }),
+      textItem({
+        text: 'Diagnostics, Medical Device, IoT, Future of Work, HRtech, Adtech, AR/VR,',
+        y: 590,
+      }),
+      textItem({
+        text: 'Mental Health. Also invest as Limited Partner in Emerging Funds in the US.',
+        y: 570,
+      }),
+      textItem({ text: '500 Global', y: 540 }),
+      textItem({ text: 'Mentor', y: 520, fontSize: 11.5 }),
+      textItem({
+        text: 'December 2021 - November 2023 (2 years)',
+        y: 500,
+      }),
+      textItem({ text: 'GBSS Group', y: 460 }),
+      textItem({
+        text: 'Co-Founder & CEO (Business Units Acquired Separately: 2006, 2010, 2013)',
+        y: 440,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'November 1999 - June 2013 (13 years 8 months)',
+        y: 420,
+      }),
+      textItem({ text: 'San Diego, California, United States', y: 400 }),
+      textItem({
+        text: 'A group of ecommerce and technology companies in the office supplies,',
+        y: 380,
+      }),
+      textItem({
+        text: 'Successfully spin-off three business units that lead to three different exits.',
+        y: 360,
+      }),
+      textItem({ text: 'Interbank Turkiye', y: 330 }),
+      textItem({
+        text: 'Product Manager / Strategic Planning Manager',
+        y: 310,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'June 1996 - August 1998 (2 years 3 months)',
+        y: 290,
+      }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Rotary International',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Invest in early stage companies in B2B SaaS, Digital Health, Cybersecurity, Diagnostics, Medical Device, IoT, Future of Work, HRtech, Adtech, AR/VR, Mental Health. Also invest as Limited Partner in Emerging Funds in the US.',
+            title: 'Angel Investor',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: '500 Global',
+      }),
+      expect.objectContaining({
+        organization: 'GBSS Group',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Agroup of ecommerce and technology companies in the office supplies, Successfully spin-off three business units that lead to three different exits.',
+            title:
+              'Co-Founder & CEO (Business Units Acquired Separately: 2006, 2010, 2013)',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Interbank Turkiye',
+      }),
+    ]);
+  });
+
+  test('splits Ara Goh combined organization-title rows and keeps Bosch prose', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Stealth Company', y: 670 }),
+      textItem({ text: 'Managing Partner', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'December 2024 - Present (1 year 6 months)', y: 630 }),
+      textItem({ text: 'United States', y: 610 }),
+      textItem({ text: 'Bookbinders Design', y: 580 }),
+      textItem({
+        text: 'Sales & Merchandising Manager (Fixed-term consulting)',
+        y: 560,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'May 2018 - June 2018 (2 months)', y: 540 }),
+      textItem({
+        text: 'Requested to provide training and process improvement.',
+        y: 520,
+      }),
+      textItem({ text: 'Robert Bosch GmbH Business Controller', y: 490 }),
+      textItem({
+        text: 'December 2012 - August 2017 (4 years 9 months)',
+        y: 470,
+      }),
+      textItem({ text: 'Yongin, Gyeonggi-do, Korea', y: 450 }),
+      textItem({
+        text: 'Stimulated organizational change and summarized best practice articles for',
+        y: 430,
+      }),
+      textItem({ text: 'Bosch intranet homepage', y: 410 }),
+      textItem({ text: 'Hyundai Kefico Corporation', y: 380 }),
+      textItem({ text: 'Business Controller', y: 360, fontSize: 11.5 }),
+      textItem({
+        text: 'January 2012 - November 2012 (11 months)',
+        y: 340,
+      }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Stealth Company',
+        positions: [
+          expect.objectContaining({
+            duration: 'December 2024 - Present',
+            title: 'Managing Partner',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Bookbinders Design',
+        positions: [
+          expect.objectContaining({
+            duration: 'May 2018 - June 2018',
+            title: 'Sales & Merchandising Manager (Fixed-term consulting)',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Robert Bosch GmbH',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Stimulated organizational change and summarized best practice articles for Bosch intranet homepage',
+            duration: 'December 2012 - August 2017',
+            title: 'Business Controller',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Hyundai Kefico Corporation',
+      }),
+    ]);
+  });
+
+  test('keeps Palo Alto as a location instead of a no-date First Republic role', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'First Republic Bank', y: 670 }),
+      textItem({ text: '12 years 1 month', y: 650 }),
+      textItem({
+        text: 'Deputy Regional Managing Director',
+        y: 630,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'April 2017 - June 2023 (6 years 3 months)',
+        y: 610,
+      }),
+      textItem({
+        text: 'Senior Managing Director',
+        y: 580,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'February 2017 - June 2023 (6 years 5 months)',
+        y: 560,
+      }),
+      textItem({ text: 'Palo Alto, California', y: 540 }),
+      textItem({ text: 'Managing Director', y: 510, fontSize: 11.5 }),
+      textItem({
+        text: 'June 2011 - February 2017 (5 years 9 months)',
+        y: 490,
+      }),
+      textItem({ text: 'Palo Alto', y: 470 }),
+      textItem({ text: 'HSBC', y: 440 }),
+      textItem({ text: '6 years', y: 420 }),
+      textItem({
+        text: 'Vice President- Bay Area',
+        y: 400,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'August 2008 - June 2011 (2 years 11 months)',
+        y: 380,
+      }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'First Republic Bank',
+        totalDuration: '12 years 1 month',
+        positions: [
+          expect.objectContaining({
+            title: 'Deputy Regional Managing Director',
+          }),
+          expect.objectContaining({
+            location: 'Palo Alto, California',
+            title: 'Senior Managing Director',
+          }),
+          expect.objectContaining({
+            location: 'Palo Alto',
+            title: 'Managing Director',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'HSBC',
+      }),
+    ]);
   });
 
   test('exposes warnings through the structural parser result API', () => {

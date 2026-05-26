@@ -43,9 +43,11 @@ const ORGANIZATION_WORDS = new Set([
   'foundation',
   'fund',
   'group',
+  'gmbh',
   'inc',
   'industries',
   'institute',
+  'international',
   'labs',
   'llc',
   'llp',
@@ -177,6 +179,7 @@ const SINGLE_WORD_LOCATION_TEXT = new Set([
   'onsite',
   'on-site',
   'california',
+  'palo alto',
   'texas',
   'florida',
   'illinois',
@@ -245,6 +248,7 @@ export function looksLikePositionTitleText(text: string): boolean {
     /^[^()]+ \((?:acquired|contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\)$/iu.test(
       normalizedText
     ) ||
+    /^[^()]+ \(fixed[-\s]?term(?:\s+consulting)?\)$/iu.test(normalizedText) ||
     /^[^()]+ \([\p{Lu}\s]{2,30}\)$/u.test(normalizedText);
   const hasValidTitleFormat =
     normalizedText.length >= 2 &&
