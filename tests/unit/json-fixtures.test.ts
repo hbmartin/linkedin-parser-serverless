@@ -162,12 +162,19 @@ describe('JSON fixture batch operations', () => {
         [
           '/baselines/Profile.json',
           `{
+            "diagnostics": {
+              "confidence": 0.7,
+              "isEmpty": false,
+              "isLikelyLinkedInExport": true,
+              "sectionsFound": ["experience"]
+            },
             "warnings": [],
             "profile": {
               "volunteer_work": [],
               "top_skills": [],
               "projects": [],
               "publications": [],
+              "honors_awards": [],
               "name": "Orion Helios",
               "location": "San Francisco, CA",
               "languages": [],
@@ -177,6 +184,17 @@ describe('JSON fixture batch operations', () => {
                   "title": "Fixture Role",
                   "duration": "January 2020 - Present",
                   "company": "Fixture Co"
+                }
+              ],
+              "experience_groups": [
+                {
+                  "company": "Fixture Co",
+                  "positions": [
+                    {
+                      "title": "Fixture Role",
+                      "duration": "January 2020 - Present"
+                    }
+                  ]
                 }
               ],
               "education": [],
@@ -427,6 +445,12 @@ interface MemoryJsonFixtureDependencies {
 }
 
 const defaultParseResult: ParseResult = {
+  diagnostics: {
+    confidence: 0.7,
+    isEmpty: false,
+    isLikelyLinkedInExport: true,
+    sectionsFound: ['experience'],
+  },
   profile: {
     certifications: [],
     contact: {
@@ -441,7 +465,20 @@ const defaultParseResult: ParseResult = {
         title: 'Fixture Role',
       },
     ],
+    experience_groups: [
+      {
+        company: 'Fixture Co',
+        positions: [
+          {
+            duration: 'January 2020 - Present',
+            location: undefined,
+            title: 'Fixture Role',
+          },
+        ],
+      },
+    ],
     headline: 'Fixture headline',
+    honors_awards: [],
     languages: [],
     location: 'San Francisco, CA',
     name: 'Orion Helios',

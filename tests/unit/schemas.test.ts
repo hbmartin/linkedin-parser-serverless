@@ -1,6 +1,7 @@
 import {
   ExperienceSchema,
   LinkedInProfileSchema,
+  ParseDiagnosticsSchema,
   ParseResultSchema,
   ParseWarningSchema,
 } from '../../src/index.js';
@@ -54,6 +55,12 @@ describe('exported Zod schemas', () => {
     expect(profile.experience[0].dates?.start?.iso).toBe('2020');
     expect(
       ParseResultSchema.safeParse({
+        diagnostics: {
+          confidence: 0.82,
+          isEmpty: false,
+          isLikelyLinkedInExport: true,
+          sectionsFound: ['experience', 'education'],
+        },
         profile,
         warnings: [],
       }).success
@@ -67,6 +74,14 @@ describe('exported Zod schemas', () => {
     expect(ParseWarningSchema.safeParse({ code: 'unknown' }).success).toBe(
       false
     );
+    expect(
+      ParseDiagnosticsSchema.safeParse({
+        confidence: 1.2,
+        isEmpty: false,
+        isLikelyLinkedInExport: true,
+        sectionsFound: [],
+      }).success
+    ).toBe(false);
     expect(
       ExperienceSchema.safeParse({
         title: 'Engineer',

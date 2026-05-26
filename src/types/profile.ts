@@ -93,6 +93,13 @@ export interface ParseOptions {
   includeRawText?: boolean;
 }
 
+export interface ParseDiagnostics {
+  confidence: number;
+  isEmpty: boolean;
+  isLikelyLinkedInExport: boolean;
+  sectionsFound: WarningSection[];
+}
+
 export interface MissingProfileFieldWarning {
   code: 'missing_profile_field';
   field: 'profile.name' | 'profile.contact.email';
@@ -127,6 +134,7 @@ export type ParseWarning = MissingProfileFieldWarning | SectionParseWarning;
 export interface ParseResult {
   profile: LinkedInProfile;
   warnings: ParseWarning[];
+  diagnostics: ParseDiagnostics;
   rawText?: string;
 }
 

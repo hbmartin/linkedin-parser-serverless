@@ -1,6 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseLinkedInPDF } from '../../src/index.js';
+import {
+  LinkedInProfileParseError,
+  parseLinkedInPDF,
+} from '../../src/index.js';
 import type { LinkedInProfile } from '../../src/index.js';
 import { expectedTestResumeProfile } from '../fixtures/expected-test-resume-profile.js';
 
@@ -167,21 +170,27 @@ describe('LinkedIn PDF Parser Library', () => {
 
   describe('Error Handling', () => {
     test('should throw error for empty buffer', async () => {
-      await expect(parseLinkedInPDF(Buffer.alloc(0))).rejects.toThrow(
-        'PDF appears to be empty or unreadable'
+      await expect(parseLinkedInPDF(Buffer.alloc(0))).rejects.toBeInstanceOf(
+        LinkedInProfileParseError
       );
+      await expect(parseLinkedInPDF(Buffer.alloc(0))).rejects.toMatchObject({
+        code: 'invalid_pdf',
+      });
     });
 
     test('should throw error for empty string', async () => {
-      await expect(parseLinkedInPDF('')).rejects.toThrow(
-        'PDF appears to be empty or unreadable'
+      await expect(parseLinkedInPDF('')).rejects.toBeInstanceOf(
+        LinkedInProfileParseError
       );
+      await expect(parseLinkedInPDF('')).rejects.toMatchObject({
+        code: 'text_extraction_failed',
+      });
     });
 
     test('should throw error for short text', async () => {
-      await expect(parseLinkedInPDF('short')).rejects.toThrow(
-        'PDF appears to be empty or unreadable'
-      );
+      await expect(parseLinkedInPDF('short')).rejects.toMatchObject({
+        code: 'text_extraction_failed',
+      });
     });
   });
 

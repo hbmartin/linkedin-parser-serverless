@@ -109,16 +109,21 @@ linkedin-pdf-parser resume.pdf | jq '.profile.experience[].company'
 ## 🚀 Quick Start
 
 ```typescript
-import { parseLinkedInPDF } from 'linkedin-parser-serverless';
+import {
+  formatLinkedInProfile,
+  parseLinkedInPDF
+} from 'linkedin-parser-serverless';
 import fs from 'fs';
 
 const pdfBuffer = fs.readFileSync('resume.pdf');
-const { profile } = await parseLinkedInPDF(pdfBuffer);
+const { diagnostics, profile } = await parseLinkedInPDF(pdfBuffer);
 
 console.log(`Name: ${profile.name}`);
 console.log(`Email: ${profile.contact.email ?? 'not found'}`);
 console.log(`Skills: ${profile.top_skills.join(', ')}`);
 console.log(`Experience: ${profile.experience.length} positions`);
+console.log(`Likely LinkedIn export: ${diagnostics.isLikelyLinkedInExport}`);
+console.log(formatLinkedInProfile(profile));
 ```
 
 ### Sample Output
@@ -166,7 +171,13 @@ console.log(`Experience: ${profile.experience.length} positions`);
       }
     ]
   },
-  "warnings": []
+  "warnings": [],
+  "diagnostics": {
+    "sectionsFound": ["summary", "experience", "education", "top_skills"],
+    "confidence": 0.94,
+    "isLikelyLinkedInExport": true,
+    "isEmpty": false
+  }
 }
 ```
 
@@ -236,6 +247,10 @@ const result = await parseLinkedInPDF(extractedText);
 ```typescript
 const result = await parseLinkedInPDF(pdfData);
 
+if (!result.diagnostics.isLikelyLinkedInExport) {
+  console.warn('Input parsed, but does not look like a LinkedIn export.');
+}
+
 for (const warning of result.warnings) {
   console.warn(`${warning.field}: ${warning.message}`);
 }
@@ -247,6 +262,50 @@ if (result.profile.contact.email) {
 
 The parser throws only for fatal input failures such as empty or unreadable PDFs.
 Missing profile fields are returned as partial results with structured warnings.
+
+### Plain-Text Profile Summary
+
+```typescript
+import { formatLinkedInProfile, parseLinkedInPDF } from "linkedin-parser-serverless";
+
+const { profile } = await parseLinkedInPDF(pdfData);
+const notes = formatLinkedInProfile(profile, {
+  includeContact: false
+});
+```
+
+`formatLinkedInProfile` emits stable plain text with section headings and
+normalized whitespace. Pass `includeContact: true` to include email, phone,
+LinkedIn URL, and profile links.
+
+### Strict and Safe Parsing
+
+```typescript
+import {
+  LinkedInProfileParseError,
+  parseLinkedInPDFStrict,
+  safeParseLinkedInPDF
+} from "linkedin-parser-serverless";
+
+try {
+  const result = await parseLinkedInPDFStrict(pdfData);
+  console.log(result.diagnostics.confidence);
+} catch (error) {
+  if (error instanceof LinkedInProfileParseError) {
+    console.warn(error.code);
+  }
+}
+
+const safeResult = await safeParseLinkedInPDF(pdfData);
+if (!safeResult.success) {
+  console.warn(safeResult.error.code);
+}
+```
+
+`parseLinkedInPDF` is lenient and does not throw for readable non-LinkedIn
+input; inspect `diagnostics.isLikelyLinkedInExport` instead. `parseLinkedInPDFStrict`
+adds runtime `ParseResultSchema` validation and throws `schema_validation_failed`
+if the successful parse result does not match the public schema.
 
 ## 📖 API Reference
 
@@ -271,6 +330,33 @@ Parses a LinkedIn PDF resume and extracts structured profile data.
 const result = await parseLinkedInPDF(pdfData, { includeRawText: true });
 ```
 
+### `parseLinkedInPDFStrict(input, options?)`
+
+Parses the input with `parseLinkedInPDF`, then validates the successful result
+with `ParseResultSchema`. Fatal parse errors and schema failures are thrown as
+`LinkedInProfileParseError`.
+
+### `safeParseLinkedInPDF(input, options?)`
+
+Returns a discriminated result:
+
+```typescript
+type SafeParseLinkedInPDFResult =
+  | { success: true; data: ParseResult }
+  | { success: false; error: LinkedInProfileParseError };
+```
+
+### `formatLinkedInProfile(profile, options?)`
+
+Formats a parsed `LinkedInProfile` as plain text with stable section
+headings and whitespace cleanup.
+
+```typescript
+interface FormatLinkedInProfileOptions {
+  includeContact?: boolean;
+}
+```
+
 ## 🏗️ TypeScript Interfaces
 
 <details>
@@ -288,7 +374,9 @@ interface LinkedInProfile {
   volunteer_work: string[];
   projects: string[];
   publications: string[];
+  honors_awards: string[];
   summary?: string;
+  experience_groups: ExperienceGroup[];
   experience: Experience[];
   education: Education[];
 }
@@ -419,6 +507,7 @@ interface SectionParseWarning {
     | 'volunteer_work'
     | 'projects'
     | 'publications'
+    | 'honors_awards'
     | 'experience'
     | 'education';
   entry?: number;
@@ -431,14 +520,48 @@ type ParseWarning = MissingProfileFieldWarning | SectionParseWarning;
 ```
 </details>
 
-### Zod Schemas
-
-The main entrypoint also exports named Zod schemas for runtime validation:
+<details>
+<summary><strong>ParseDiagnostics</strong></summary>
 
 ```typescript
-import { LinkedInProfileSchema, ParseResultSchema, parseLinkedInPDF } from "linkedin-parser-serverless";
+interface ParseDiagnostics {
+  sectionsFound: WarningSection[];
+  confidence: number;
+  isLikelyLinkedInExport: boolean;
+  isEmpty: boolean;
+}
+```
+</details>
 
-const result = ParseResultSchema.parse(await parseLinkedInPDF(pdfData));
+<details>
+<summary><strong>LinkedInProfileParseError</strong></summary>
+
+```typescript
+type LinkedInProfileParseErrorCode =
+  | 'invalid_pdf'
+  | 'encrypted_pdf'
+  | 'unsupported_pdf'
+  | 'not_linkedin_profile'
+  | 'text_extraction_failed'
+  | 'schema_validation_failed';
+
+class LinkedInProfileParseError extends Error {
+  code: LinkedInProfileParseErrorCode;
+  cause?: unknown;
+}
+```
+</details>
+
+### Zod Schemas
+
+The main entrypoint also exports named Zod schemas for runtime validation.
+`parseLinkedInPDFStrict` validates successful results with `ParseResultSchema`;
+plain `parseLinkedInPDF` returns the typed result without the extra validation step.
+
+```typescript
+import { LinkedInProfileSchema, ParseResultSchema, parseLinkedInPDFStrict } from "linkedin-parser-serverless";
+
+const result = await parseLinkedInPDFStrict(pdfData);
 const profile = LinkedInProfileSchema.parse(result.profile);
 ```
 
@@ -449,6 +572,7 @@ const profile = LinkedInProfileSchema.parse(result.profile);
 interface ParseResult {
   profile: LinkedInProfile;
   warnings: ParseWarning[];
+  diagnostics: ParseDiagnostics;
   rawText?: string;
 }
 ```

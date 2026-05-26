@@ -8,6 +8,48 @@ This document explains how the parser treats LinkedIn work experience entries wh
 - **Organization/Company**: The employer entity, such as "TechCorp" or "DataSystems Inc".
 - **Position/Role**: The job title within that work experience period, such as "Engineering Manager" or "Senior Developer".
 
+## JSON Output Shapes
+
+The parser emits work history in two shapes:
+
+- **`experience_groups`**: the canonical grouped representation. Each entry is one continuous work experience at an organization and contains a `positions` array. Use this when preserving LinkedIn's company grouping, multi-role progressions, or organization-level total duration matters.
+- **`experience`**: a flattened compatibility representation. Each entry is one position and repeats the company name on that position. Use this when callers need a simple list of roles and do not need organization grouping.
+
+Both shapes represent the same parsed work history. `experience_groups` preserves the parser's work-experience model, while `experience` is derived from those groups for consumers that already expect the older flat schema.
+
+```json
+{
+  "experience_groups": [
+    {
+      "company": "TechCorp",
+      "totalDuration": "5 yrs",
+      "positions": [
+        {
+          "title": "Engineering Manager",
+          "duration": "2022 - Present"
+        },
+        {
+          "title": "Senior Developer",
+          "duration": "2019 - 2022"
+        }
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "company": "TechCorp",
+      "title": "Engineering Manager",
+      "duration": "2022 - Present"
+    },
+    {
+      "company": "TechCorp",
+      "title": "Senior Developer",
+      "duration": "2019 - 2022"
+    }
+  ]
+}
+```
+
 ## Single Organization, Multiple Positions
 
 When a person holds multiple consecutive roles at the same organization, those roles belong to one continuous work experience period.

@@ -1,0 +1,222 @@
+import type {
+  Contact,
+  Education,
+  Experience,
+  Language,
+  LinkedInProfile,
+} from './types/profile.js';
+
+export interface FormatLinkedInProfileOptions {
+  includeContact?: boolean;
+}
+
+interface SectionDraft {
+  lines: string[];
+  title: string;
+}
+
+export function formatLinkedInProfile(
+  profile: LinkedInProfile,
+  options: FormatLinkedInProfileOptions = {}
+): string {
+  const sections = [
+    createIdentitySection(profile),
+    options.includeContact ? createContactSection(profile.contact) : undefined,
+    createSingleValueSection('Summary', profile.summary),
+    createExperienceSection(profile.experience),
+    createEducationSection(profile.education),
+    createListSection('Top Skills', profile.top_skills),
+    createLanguageSection(profile.languages),
+    createListSection('Certifications', profile.certifications),
+    createListSection('Volunteer Work', profile.volunteer_work),
+    createListSection('Projects', profile.projects),
+    createListSection('Publications', profile.publications),
+    createListSection('Honors & Awards', profile.honors_awards),
+  ].filter((section): section is SectionDraft => section !== undefined);
+
+  return sections.map(formatSection).join('\n\n').trim();
+}
+
+function createIdentitySection(
+  profile: LinkedInProfile
+): SectionDraft | undefined {
+  const lines = cleanValues([profile.name, profile.headline, profile.location]);
+
+  if (lines.length === 0) {
+    return undefined;
+  }
+
+  return {
+    lines,
+    title: '',
+  };
+}
+
+function createContactSection(contact: Contact): SectionDraft | undefined {
+  const linkLines =
+    contact.links?.map(link =>
+      cleanValue(link.label)
+        ? `${cleanValue(link.label)}: ${cleanValue(link.url)}`
+        : cleanValue(link.url)
+    ) ?? [];
+  const lines = cleanValues([
+    contact.email ? `Email: ${contact.email}` : undefined,
+    contact.phone ? `Phone: ${contact.phone}` : undefined,
+    contact.linkedin_url ? `LinkedIn: ${contact.linkedin_url}` : undefined,
+    contact.location ? `Location: ${contact.location}` : undefined,
+    ...linkLines,
+  ]);
+
+  if (lines.length === 0) {
+    return undefined;
+  }
+
+  return {
+    lines,
+    title: 'Contact',
+  };
+}
+
+function createSingleValueSection(
+  title: string,
+  value: string | undefined
+): SectionDraft | undefined {
+  const cleanedValue = cleanValue(value);
+
+  if (!cleanedValue) {
+    return undefined;
+  }
+
+  return {
+    lines: [cleanedValue],
+    title,
+  };
+}
+
+function createExperienceSection(
+  experience: Experience[]
+): SectionDraft | undefined {
+  const lines = experience.flatMap(formatExperience);
+
+  if (lines.length === 0) {
+    return undefined;
+  }
+
+  return {
+    lines,
+    title: 'Experience',
+  };
+}
+
+function createEducationSection(
+  education: Education[]
+): SectionDraft | undefined {
+  const lines = education.flatMap(formatEducation);
+
+  if (lines.length === 0) {
+    return undefined;
+  }
+
+  return {
+    lines,
+    title: 'Education',
+  };
+}
+
+function createListSection(
+  title: string,
+  values: string[]
+): SectionDraft | undefined {
+  const lines = cleanValues(values).map(value => `- ${value}`);
+
+  if (lines.length === 0) {
+    return undefined;
+  }
+
+  return {
+    lines,
+    title,
+  };
+}
+
+function createLanguageSection(
+  languages: Language[]
+): SectionDraft | undefined {
+  const lines = languages
+    .map(language => {
+      const languageName = cleanValue(language.language);
+      const proficiency = cleanValue(language.proficiency);
+
+      if (!languageName) {
+        return undefined;
+      }
+
+      return proficiency && proficiency !== 'Unknown'
+        ? `- ${languageName} (${proficiency})`
+        : `- ${languageName}`;
+    })
+    .filter((line): line is string => line !== undefined);
+
+  if (lines.length === 0) {
+    return undefined;
+  }
+
+  return {
+    lines,
+    title: 'Languages',
+  };
+}
+
+function formatExperience(experience: Experience): string[] {
+  const title = cleanValue(experience.title);
+  const company = cleanValue(experience.company);
+  const headline =
+    title && company
+      ? `${title} at ${company}`
+      : (title ?? company ?? undefined);
+  const detailLines = cleanValues([
+    experience.duration,
+    experience.location,
+    experience.description,
+  ]);
+
+  return cleanValues([headline, ...detailLines]);
+}
+
+function formatEducation(education: Education): string[] {
+  const degree = cleanValue(education.degree);
+  const institution = cleanValue(education.institution);
+  const headline =
+    degree && institution
+      ? `${degree}, ${institution}`
+      : (degree ?? institution ?? undefined);
+  const detailLines = cleanValues([
+    education.year,
+    education.location,
+    education.description,
+  ]);
+
+  return cleanValues([headline, ...detailLines]);
+}
+
+function formatSection(section: SectionDraft): string {
+  return section.title
+    ? [section.title, ...section.lines].join('\n')
+    : section.lines.join('\n');
+}
+
+function cleanValues(values: Array<string | undefined>): string[] {
+  return values
+    .map(value => cleanValue(value))
+    .filter((value): value is string => value !== undefined);
+}
+
+function cleanValue(value: string | undefined): string | undefined {
+  const cleanedValue = value
+    ?.replace(/[\uE000-\uF8FF]/g, ' ')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return cleanedValue && cleanedValue.length > 0 ? cleanedValue : undefined;
+}
