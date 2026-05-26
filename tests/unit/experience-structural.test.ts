@@ -2685,6 +2685,11 @@ describe('ExperienceStructuralParser', () => {
       ', U.S.A.',
       ' U S',
       ' US.',
+      ' US,',
+      ' U.S.,',
+      ' USA ',
+      ' U.S.A. ',
+      ' U.S., ',
     ]) {
       const [experience] = ExperienceStructuralParser.parseExperience([
         textItem({ text: 'Experience', y: 700, fontSize: 16 }),

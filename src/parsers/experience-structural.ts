@@ -72,7 +72,19 @@ interface DescriptionLineParams {
   previousLine?: string;
 }
 
+interface ExperienceHeaderCandidate {
+  durationLine: NormalizedParserLine;
+  locationLine?: NormalizedParserLine;
+  organizationLine: NormalizedParserLine;
+  score: number;
+  titleLine: NormalizedParserLine;
+  totalDurationLine?: NormalizedParserLine;
+}
+
 export class ExperienceStructuralParser {
+  private static readonly EXPERIENCE_HEADER_ALIGNMENT_TOLERANCE = 12;
+  private static readonly EXPERIENCE_HEADER_ACCEPTANCE_SCORE = 4;
+  private static readonly EXPERIENCE_HEADER_DESCRIPTION_LOOKAHEAD = 3;
   private static readonly MIN_DESCRIPTION_LINE_LENGTH = 30;
   private static readonly MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH = 20;
   private static readonly DESCRIPTION_CONTINUATION_CONNECTOR_PATTERN =
@@ -217,6 +229,8 @@ export class ExperienceStructuralParser {
     const expandedParserLines = this.expandCombinedOrganizationTitleLines(
       normalizedParserLines
     );
+    const canonicalHeaderLineTypes =
+      this.createCanonicalHeaderLineTypes(expandedParserLines);
     let state: ExperienceLineState = 'seeking_company';
 
     for (let index = 0; index < expandedParserLines.length; index++) {
@@ -236,12 +250,14 @@ export class ExperienceStructuralParser {
         confidence: 0,
       };
 
-      section.type = this.classifyLineType({
-        allLines: expandedParserLines,
-        index,
-        line: parserLine,
-        state,
-      });
+      section.type =
+        canonicalHeaderLineTypes.get(index) ??
+        this.classifyLineType({
+          allLines: expandedParserLines,
+          index,
+          line: parserLine,
+          state,
+        });
       state = this.nextState(state, section.type);
       section.confidence = this.calculateConfidence(
         line,
@@ -1535,7 +1551,7 @@ export class ExperienceStructuralParser {
     return text
       .replace(/\bY\s+ork\b/g, 'York')
       .replace(
-        /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))[,\s]*(?:U\.?\s*S\.?(?:\.?A\.?)?|USA\.?)$/iu,
+        /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))[,\s]*(?:U\.?\s*S\.?(?:\.?A\.?)?|USA\.?)[,\s]*$/iu,
         '$1'
       )
       .replace(/,\s*([A-Z])\s+([A-Z])$/g, ', $1$2')
