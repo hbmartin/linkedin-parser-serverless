@@ -111,7 +111,6 @@ export class ExperienceStructuralParser {
       'technology',
       'ventures',
     ]);
-
   static parseExperience(
     textItems: TextItem[],
     experienceStartY?: number,
@@ -567,7 +566,10 @@ export class ExperienceStructuralParser {
           return 'duration';
         }
 
-        if (this.looksLikeLocation(text)) {
+        if (
+          this.looksLikeLocation(text) ||
+          this.looksLikeStandaloneLocationAfterDuration(text, index, lineTexts)
+        ) {
           return 'location';
         }
 
@@ -1427,7 +1429,7 @@ export class ExperienceStructuralParser {
   }
 
   private static looksLikeLocation(line: string): boolean {
-    const normalizedLine = this.normalizeLocationText(line);
+    const normalizedLine = this.normalizeCompletedLocationText(line);
     const isAddressLocation = this.looksLikeAddressLocationText(normalizedLine);
 
     if (
@@ -1516,12 +1518,60 @@ export class ExperienceStructuralParser {
     );
   }
 
+  private static looksLikeStandalonePlaceNameShape(line: string): boolean {
+    const words = line
+      .split(/\s+/u)
+      .map(word => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}.]+$/gu, ''))
+      .filter(Boolean);
+
+    if (words.length < 2 || words.length > 4) {
+      return false;
+    }
+
+    return words.every((word, index) => {
+      const normalizedWord = word.toLowerCase().replace(/[.]+$/u, '');
+
+      if (
+        this.COMMA_SEPARATED_ORGANIZATION_SUFFIXES.has(normalizedWord) ||
+        looksLikePositionTitleText(word) ||
+        (index > 0 && /^[A-Z]{2,}$/u.test(word))
+      ) {
+        return false;
+      }
+
+      return (
+        /^[\p{Lu}][\p{L}\p{M}'-]+\.?$/u.test(word) ||
+        /^(?:da|das|de|del|do|dos|y)$/iu.test(word)
+      );
+    });
+  }
+
+  private static looksLikeStandaloneLocationAfterDuration(
+    line: string,
+    index: number,
+    allLines: string[]
+  ): boolean {
+    const previousLine = allLines[index - 1];
+
+    return (
+      previousLine !== undefined &&
+      this.looksLikeDuration(previousLine) &&
+      this.looksLikeStandalonePlaceNameShape(line)
+    );
+  }
+
   private static normalizeLocationText(text: string): string {
     return text
       .replace(/\bY\s+ork\b/g, 'York')
       .replace(/,\s*([A-Z])\s+([A-Z])$/g, ', $1$2')
       .replace(/\s+,/g, ',')
       .replace(/,\s*/g, ', ')
+      .trim();
+  }
+
+  private static normalizeCompletedLocationText(text: string): string {
+    return this.normalizeLocationText(text)
+      .replace(/,+\s*$/u, '')
       .trim();
   }
 
@@ -1760,7 +1810,7 @@ export class ExperienceStructuralParser {
       title: position.title,
       duration: position.duration ?? '',
       ...(position.location
-        ? { location: this.normalizeLocationText(position.location) }
+        ? { location: this.normalizeCompletedLocationText(position.location) }
         : {}),
       description: descriptionLines.join(' ').trim(),
     };

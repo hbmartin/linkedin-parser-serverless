@@ -65,6 +65,10 @@ const LOWERCASE_NAME_CONNECTORS = new Set([
   'y',
 ]);
 
+const EMAIL_SEARCH_LINE_PATTERN = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}$/i;
+const LABELED_EMAIL_SEARCH_LINE_PATTERN =
+  /^(?:e-?mail|mail)(?:\s*[:-]\s*|\s+)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}$/i;
+
 interface ContactLinkDraft {
   label?: string;
   parts: string[];
@@ -347,7 +351,7 @@ export class BasicInfoParser {
     });
     const sectionLines = contactSection.lines.map(line => line.text);
 
-    if (!contactSection.hasSection) {
+    if (!contactSection.hasSection || sectionLines.length === 0) {
       return this.extractContact(text);
     }
 
@@ -582,14 +586,11 @@ export class BasicInfoParser {
 
   private static isEmailSearchLine(line: string): boolean {
     const normalizedLine = line.trim().replace(/\s*@\s*/g, '@');
-    const emailPattern = '[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,63}';
 
     return (
       normalizedLine.length <= 120 &&
-      (new RegExp(`^${emailPattern}$`, 'i').test(normalizedLine) ||
-        new RegExp(`^(?:e-?mail|mail)\\s*[:-]\\s*${emailPattern}$`, 'i').test(
-          normalizedLine
-        ))
+      (EMAIL_SEARCH_LINE_PATTERN.test(normalizedLine) ||
+        LABELED_EMAIL_SEARCH_LINE_PATTERN.test(normalizedLine))
     );
   }
 
