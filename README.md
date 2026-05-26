@@ -263,20 +263,21 @@ if (result.profile.contact.email) {
 The parser throws only for fatal input failures such as empty or unreadable PDFs.
 Missing profile fields are returned as partial results with structured warnings.
 
-### Plain-Text Profile Summary
+### Formatted Profile Summary
 
 ```typescript
 import { formatLinkedInProfile, parseLinkedInPDF } from "linkedin-parser-serverless";
 
 const { profile } = await parseLinkedInPDF(pdfData);
 const notes = formatLinkedInProfile(profile, {
-  includeContact: false
+  includeContact: false,
+  outputFormat: "markdown"
 });
 ```
 
-`formatLinkedInProfile` emits stable plain text with section headings and
-normalized whitespace. Pass `includeContact: true` to include email, phone,
-LinkedIn URL, and profile links.
+`formatLinkedInProfile` emits stable plain text by default, or Markdown when
+`outputFormat: "markdown"` is set. Pass `includeContact: true` to include email,
+phone, LinkedIn URL, and profile links.
 
 ### Strict and Safe Parsing
 
@@ -348,12 +349,15 @@ type SafeParseLinkedInPDFResult =
 
 ### `formatLinkedInProfile(profile, options?)`
 
-Formats a parsed `LinkedInProfile` as plain text with stable section
+Formats a parsed `LinkedInProfile` as plain text or Markdown with stable section
 headings and whitespace cleanup.
 
 ```typescript
+type LinkedInProfileOutputFormat = "plainText" | "markdown";
+
 interface FormatLinkedInProfileOptions {
   includeContact?: boolean;
+  outputFormat?: LinkedInProfileOutputFormat;
 }
 ```
 

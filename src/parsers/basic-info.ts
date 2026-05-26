@@ -327,49 +327,37 @@ export class BasicInfoParser {
   }
 
   private static extractContact(text: string): Contact {
-    const allLines = splitLines(text).map(line => normalizeWhitespace(line));
-    const textContactLines = this.extractTextContactLines(allLines);
+    const parserLines = createTextParserLines(text);
+    const textContactLines = this.extractTextContactLines(parserLines);
     const searchableLines =
       textContactLines.length > 0
         ? textContactLines
-        : allLines.slice(0, Math.min(50, allLines.length));
+        : this.extractHeaderContactLines(parserLines);
 
-    return this.extractContactFromLines({
-      fallbackText: text,
-      lines: searchableLines,
-    });
+    return this.extractContactFromLines(searchableLines);
   }
 
   private static extractStructuralContact(
     text: string,
     structuralLines: StructuralLine[]
   ): Contact {
-    const sectionLines = extractStructuralSectionLines({
+    const contactSection = extractStructuralSectionLines({
       section: 'contact',
       structuralLines,
-    }).lines.map(line => line.text);
+    });
+    const sectionLines = contactSection.lines.map(line => line.text);
 
-    if (sectionLines.length === 0) {
+    if (!contactSection.hasSection) {
       return this.extractContact(text);
     }
 
-    return this.extractContactFromLines({
-      fallbackText: text,
-      lines: sectionLines,
-    });
+    return this.extractContactFromLines(sectionLines);
   }
 
-  private static extractContactFromLines({
-    fallbackText,
-    lines,
-  }: {
-    fallbackText: string;
-    lines: string[];
-  }): Contact {
+  private static extractContactFromLines(lines: string[]): Contact {
     const contact: Contact = {};
     const contactText = lines.join('\n');
-    const email =
-      this.extractEmail(contactText) ?? this.extractEmail(fallbackText);
+    const email = this.extractEmail(contactText);
     const links = this.extractContactLinks(lines);
     const linkedInUrl =
       links.find(link => /linkedin\.com\/in\//i.test(link.url))?.url ??
@@ -395,13 +383,25 @@ export class BasicInfoParser {
     return contact;
   }
 
-  private static extractTextContactLines(lines: string[]): string[] {
-    const parserLines = createTextParserLines(lines.join('\n'));
-
+  private static extractTextContactLines(
+    parserLines: NormalizedParserLine[]
+  ): string[] {
     return parserLines
       .filter(line => line.section === 'contact')
       .map(line => line.text)
       .filter(line => line.length > 0);
+  }
+
+  private static extractHeaderContactLines(
+    parserLines: NormalizedParserLine[]
+  ): string[] {
+    const headerEndIndex = Math.min(parserLines.length, 50);
+
+    return parserLines
+      .slice(0, headerEndIndex)
+      .filter(line => line.section === 'identity')
+      .map(line => line.text)
+      .filter(line => this.isHeaderContactSearchLine(line));
   }
 
   private static extractContactLinks(lines: string[]): ContactLink[] {
@@ -569,6 +569,27 @@ export class BasicInfoParser {
       ) &&
       (/\b(?:mobile|phone|tel)\b/i.test(normalizedLine) ||
         /^[+\d\s().-]+$/.test(normalizedLine))
+    );
+  }
+
+  private static isHeaderContactSearchLine(line: string): boolean {
+    return (
+      this.isEmailSearchLine(line) ||
+      this.isPhoneSearchLine(line) ||
+      this.looksLikeContactLinkStart(line)
+    );
+  }
+
+  private static isEmailSearchLine(line: string): boolean {
+    const normalizedLine = line.trim().replace(/\s*@\s*/g, '@');
+    const emailPattern = '[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,63}';
+
+    return (
+      normalizedLine.length <= 120 &&
+      (new RegExp(`^${emailPattern}$`, 'i').test(normalizedLine) ||
+        new RegExp(`^(?:e-?mail|mail)\\s*[:-]\\s*${emailPattern}$`, 'i').test(
+          normalizedLine
+        ))
     );
   }
 

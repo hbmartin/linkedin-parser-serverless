@@ -8,9 +8,21 @@ import type {
 
 export interface FormatLinkedInProfileOptions {
   includeContact?: boolean;
+  outputFormat?: LinkedInProfileOutputFormat;
 }
 
-interface SectionDraft {
+export type LinkedInProfileOutputFormat = 'plainText' | 'markdown';
+
+type SectionDraft = IdentitySectionDraft | TitledSectionDraft;
+
+interface IdentitySectionDraft {
+  hasProfileName: boolean;
+  kind: 'identity';
+  lines: string[];
+}
+
+interface TitledSectionDraft {
+  kind: 'titled';
   lines: string[];
   title: string;
 }
@@ -19,6 +31,7 @@ export function formatLinkedInProfile(
   profile: LinkedInProfile,
   options: FormatLinkedInProfileOptions = {}
 ): string {
+  const outputFormat = options.outputFormat ?? 'plainText';
   const sections = [
     createIdentitySection(profile),
     options.includeContact ? createContactSection(profile.contact) : undefined,
@@ -34,21 +47,30 @@ export function formatLinkedInProfile(
     createListSection('Honors & Awards', profile.honors_awards),
   ].filter((section): section is SectionDraft => section !== undefined);
 
-  return sections.map(formatSection).join('\n\n').trim();
+  return sections
+    .map(section =>
+      outputFormat === 'markdown'
+        ? formatMarkdownSection(section)
+        : formatPlainTextSection(section)
+    )
+    .join('\n\n')
+    .trim();
 }
 
 function createIdentitySection(
   profile: LinkedInProfile
 ): SectionDraft | undefined {
-  const lines = cleanValues([profile.name, profile.headline, profile.location]);
+  const name = cleanValue(profile.name);
+  const lines = cleanValues([name, profile.headline, profile.location]);
 
   if (lines.length === 0) {
     return undefined;
   }
 
   return {
+    hasProfileName: name !== undefined,
+    kind: 'identity',
     lines,
-    title: '',
   };
 }
 
@@ -81,6 +103,7 @@ function createContactSection(contact: Contact): SectionDraft | undefined {
   }
 
   return {
+    kind: 'titled',
     lines,
     title: 'Contact',
   };
@@ -97,6 +120,7 @@ function createSingleValueSection(
   }
 
   return {
+    kind: 'titled',
     lines: [cleanedValue],
     title,
   };
@@ -112,6 +136,7 @@ function createExperienceSection(
   }
 
   return {
+    kind: 'titled',
     lines,
     title: 'Experience',
   };
@@ -127,6 +152,7 @@ function createEducationSection(
   }
 
   return {
+    kind: 'titled',
     lines,
     title: 'Education',
   };
@@ -143,6 +169,7 @@ function createListSection(
   }
 
   return {
+    kind: 'titled',
     lines,
     title,
   };
@@ -171,6 +198,7 @@ function createLanguageSection(
   }
 
   return {
+    kind: 'titled',
     lines,
     title: 'Languages',
   };
@@ -208,10 +236,24 @@ function formatEducation(education: Education): string[] {
   return cleanValues([headline, ...detailLines]);
 }
 
-function formatSection(section: SectionDraft): string {
-  return section.title
+function formatPlainTextSection(section: SectionDraft): string {
+  return section.kind === 'titled'
     ? [section.title, ...section.lines].join('\n')
     : section.lines.join('\n');
+}
+
+function formatMarkdownSection(section: SectionDraft): string {
+  if (section.kind === 'titled') {
+    return [`## ${section.title}`, ...section.lines].join('\n');
+  }
+
+  if (!section.hasProfileName) {
+    return section.lines.join('\n');
+  }
+
+  const [name, ...details] = section.lines;
+
+  return [`# ${name}`, ...details].join('\n');
 }
 
 function cleanValues(values: Array<string | undefined>): string[] {

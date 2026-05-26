@@ -47,7 +47,10 @@ export type {
   SectionParseWarning,
   WarningSection,
 } from './types/profile.js';
-export type { FormatLinkedInProfileOptions } from './formatter.js';
+export type {
+  FormatLinkedInProfileOptions,
+  LinkedInProfileOutputFormat,
+} from './formatter.js';
 export type { LinkedInProfileParseErrorCode } from './errors.js';
 export {
   LinkedInProfileParseError,

@@ -38,6 +38,52 @@ describe('formatLinkedInProfile', () => {
     );
   });
 
+  test('formats a stable plain-text profile when explicitly requested', () => {
+    expect(
+      formatLinkedInProfile(createProfile(), {
+        outputFormat: 'plainText',
+      })
+    ).toBe(formatLinkedInProfile(createProfile()));
+  });
+
+  test('formats a stable markdown profile without contact', () => {
+    expect(
+      formatLinkedInProfile(createProfile(), {
+        outputFormat: 'markdown',
+      })
+    ).toBe(
+      [
+        '# Orion Helios',
+        'Principal Engineer',
+        'San Francisco, CA',
+        '',
+        '## Summary',
+        'Builds reliable parsing systems.',
+        '',
+        '## Experience',
+        'Principal Engineer at Fixture Co',
+        'January 2020 - Present',
+        'San Francisco, CA',
+        'Leads platform work.',
+        '',
+        '## Education',
+        'BS Computer Science, Example University',
+        '2012',
+        '',
+        '## Top Skills',
+        '- TypeScript',
+        '- Parsing',
+        '',
+        '## Languages',
+        '- English (Native)',
+        '- French',
+        '',
+        '## Projects',
+        '- Parser Toolkit',
+      ].join('\n')
+    );
+  });
+
   test('includes contact details only when requested', () => {
     const profile = createProfile();
 
@@ -49,6 +95,30 @@ describe('formatLinkedInProfile', () => {
     ).toContain(
       [
         'Contact',
+        'Email: orion@example.com',
+        'Phone: +1 555 123 4567',
+        'LinkedIn: https://linkedin.com/in/orion',
+        'Portfolio: https://example.com/orion',
+      ].join('\n')
+    );
+  });
+
+  test('includes contact details in markdown only when requested', () => {
+    const profile = createProfile();
+
+    expect(
+      formatLinkedInProfile(profile, {
+        outputFormat: 'markdown',
+      })
+    ).not.toContain('## Contact');
+    expect(
+      formatLinkedInProfile(profile, {
+        includeContact: true,
+        outputFormat: 'markdown',
+      })
+    ).toContain(
+      [
+        '## Contact',
         'Email: orion@example.com',
         'Phone: +1 555 123 4567',
         'LinkedIn: https://linkedin.com/in/orion',
@@ -109,6 +179,47 @@ describe('formatLinkedInProfile', () => {
         includeContact: true,
       })
     ).toBe(['Contact', 'Portfolio: https://example.com'].join('\n'));
+  });
+
+  test('normalizes whitespace and skips malformed contact links in markdown', () => {
+    const profileWithMalformedLinks = JSON.parse(
+      JSON.stringify({
+        ...createEmptyProfile(),
+        contact: {
+          links: [
+            null,
+            {
+              label: '  Portfolio  ',
+              rawText: 'Portfolio',
+              url: '  https://example.com  ',
+            },
+            {
+              label: 'No URL',
+              rawText: 'No URL',
+            },
+          ],
+        },
+        name: '  Cassandra   Troy ',
+        summary: 'Builds\n\ncareful\tinterfaces.',
+      })
+    );
+
+    expect(
+      formatLinkedInProfile(profileWithMalformedLinks, {
+        includeContact: true,
+        outputFormat: 'markdown',
+      })
+    ).toBe(
+      [
+        '# Cassandra Troy',
+        '',
+        '## Contact',
+        'Portfolio: https://example.com',
+        '',
+        '## Summary',
+        'Builds careful interfaces.',
+      ].join('\n')
+    );
   });
 
   test('separates multiple experience and education entries', () => {
@@ -179,6 +290,15 @@ describe('formatLinkedInProfile', () => {
     expect(
       formatLinkedInProfile(createEmptyProfile(), {
         includeContact: true,
+      })
+    ).toBe('');
+  });
+
+  test('returns an empty string for markdown when every section is empty', () => {
+    expect(
+      formatLinkedInProfile(createEmptyProfile(), {
+        includeContact: true,
+        outputFormat: 'markdown',
       })
     ).toBe('');
   });

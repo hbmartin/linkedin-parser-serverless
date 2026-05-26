@@ -298,6 +298,60 @@ describe('BasicInfoParser', () => {
     ]);
   });
 
+  test('does not extract structural contact email from summary text', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      [
+        'Contact',
+        'www.linkedin.com/in/jd-example',
+        'Summary',
+        'JD can be reached at jd@example.com.',
+        'Experience',
+      ].join('\n'),
+      [
+        structuralLine({ column: 'left', text: 'Contact', y: 760 }),
+        structuralLine({
+          column: 'left',
+          text: 'www.linkedin.com/in/jd-example',
+          y: 740,
+        }),
+        structuralLine({ column: 'right', text: 'Summary', y: 720 }),
+        structuralLine({
+          column: 'right',
+          text: 'JD can be reached at jd@example.com.',
+          y: 700,
+        }),
+        structuralLine({ column: 'right', text: 'Experience', y: 680 }),
+      ]
+    );
+
+    expect(result.value.contact.email).toBeUndefined();
+    expect(result.value.contact.linkedin_url).toBe(
+      'https://linkedin.com/in/jd-example'
+    );
+    expect(result.value.summary).toBe(
+      'JD can be reached at jd@example.com.'
+    );
+  });
+
+  test('does not extract text contact email from summary sections', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Cassandra Troy
+      Principal Advisor
+      Los Angeles, California, United States
+
+      Summary
+      Cassandra can be reached at cassandra@example.com.
+
+      Experience
+      Example Labs
+    `);
+
+    expect(result.value.contact.email).toBeUndefined();
+    expect(result.value.summary).toBe(
+      'Cassandra can be reached at cassandra@example.com.'
+    );
+  });
+
   test('keeps adjacent contact links separate and allows colon continuations', () => {
     const result = BasicInfoParser.parseWithWarnings(`
       Apollo Helios
