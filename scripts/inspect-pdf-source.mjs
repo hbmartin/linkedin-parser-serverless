@@ -91,6 +91,10 @@ export async function resolvePdfPaths({
   positionalPdfPaths = positionalArgs(),
   samplesOption,
 } = {}) {
+  if (samplesOption !== undefined && positionalPdfPaths.length > 0) {
+    throw new Error('Cannot specify both --samples and positional PDF paths.');
+  }
+
   if (samplesOption !== undefined || positionalPdfPaths.length === 0) {
     const samplesDir = path.resolve(
       repoRoot,

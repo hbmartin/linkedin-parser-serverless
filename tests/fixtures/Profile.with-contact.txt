@@ -1,0 +1,61 @@
+Harold Martin
+CTO @ SVRN
+Los Angeles, California, United States
+
+Contact
+Email: harold.martin@gmail.com
+LinkedIn: https://linkedin.com/in/harold-martin-98526971
+LinkedIn: https://linkedin.com/in/harold-martin-98526971
+
+Experience
+Chief Technology Officer at SVRN
+November 2025 - Present
+
+Mobile and AI Consultant at Self-employed
+January 2024 - December 2025
+
+Mobile Lead at Jump
+December 2022 - November 2023
+Los Angeles, California, United States
+
+Senior Android Engineer at AllTrails
+November 2021 - December 2022
+
+Senior Android Engineer at Tinder, Inc.
+July 2017 - November 2021
+Greater Los Angeles Area
+
+Lead Engineer at WikiRealty
+January 2015 - January 2016
+Santa Monica, CA
+
+Technical Manager at Whisper
+May 2014 - January 2015
+Venice, CA
+
+Software Engineer at OpenX
+June 2012 - May 2014
+Pasadena, CA
+
+Undergraduate Researcher at California Institute of Technology
+June 2011 - September 2011
+Pasadena, CA
+Designed an ARM microprocessor based self-configuring controller for mobile experiments. Selected computing architecture, constructed electronics, and programmed a/d interfaces. Performed literature review of available algorithms, optimized and implemented for chosen platform. Created friendly device interface for real time monitoring and reconfiguring. Analyzed performance results.
+
+Platform Engineer Intern at Intel Corporation
+June 2007 - September 2007
+Dupont, WA
+
+Education
+BS, Chemical Engineering, California Institute of Technology
+2006 - 2012
+
+Top Skills
+- Python
+- Amazon Web Services (AWS)
+- ElasticSearch
+
+Certifications
+- MITx 14.310Fx: Data Analysis in Social Science
+- Certificate of Completion - 23 hours of Android development training
+- MITx 6.431x: Probability - The Science of Uncertainty and Data
