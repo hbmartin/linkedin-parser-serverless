@@ -1,4 +1,7 @@
 interface:
   display_name: 'Debug LinkedIn Sample PDFs'
-  short_description: 'Debug sample LinkedIn PDF extraction'
-  default_prompt: 'Use $debug-linkedin-sample-pdfs to inspect the repo-local samples/ directory by default. If I provide a specific PDF path, sample directory, or parser symptom, focus on that instead.'
+  short_description: 'Debug PDF and parser JSON output'
+  default_prompt: 'Use $debug-linkedin-sample-pdfs when I mention a specific PDF file, sample directory, parser symptom, or generated JSON output.'
+
+policy:
+  allow_implicit_invocation: true

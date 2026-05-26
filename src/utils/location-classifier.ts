@@ -483,7 +483,7 @@ function hardReject(signals: readonly LocationSignal[]): boolean {
 
 function looksLikeDurationText(text: string): boolean {
   return (
-    /\b\d{4}\s*[-–—−]\s*(?:\d{4}|present|current)\b/iu.test(text) ||
+    /\b\d{4}\s*[\p{Pd}−]\s*(?:\d{4}|present|current)\b/iu.test(text) ||
     /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}/iu.test(
       text
     ) ||

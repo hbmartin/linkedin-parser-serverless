@@ -663,6 +663,48 @@ describe('ExperienceStructuralParser', () => {
     expect(experiences).toEqual([]);
   });
 
+  test('recognizes angel network names before title and duration without a location', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Nordic Angels', y: 670 }),
+      textItem({ text: 'Investor', y: 650, fontSize: 11.5 }),
+      textItem({
+        text: 'August 2024 - Present (1 year 10 months)',
+        y: 630,
+      }),
+      textItem({
+        text: 'Recommended and accepted as a member and investor of the private social',
+        y: 610,
+      }),
+      textItem({
+        text: 'investor network Nordic Angels. Nordic Angels is the largest angel investor',
+        y: 590,
+      }),
+      textItem({
+        text: 'network in the Nordics and mobilizes business angels through a combination',
+        y: 570,
+      }),
+      textItem({
+        text: 'of digital platforms and curated in-person events.',
+        y: 550,
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Nordic Angels',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Recommended and accepted as a member and investor of the private social investor network Nordic Angels. Nordic Angels is the largest angel investor network in the Nordics and mobilizes business angels through a combination of digital platforms and curated in-person events.',
+            duration: 'August 2024 - Present',
+            title: 'Investor',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('starts a new visual organization for person-shaped brand names after descriptions', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -2636,20 +2678,25 @@ describe('ExperienceStructuralParser', () => {
   });
 
   test('normalizes trailing country codes on greater-area locations', () => {
-    const [experience] = ExperienceStructuralParser.parseExperience([
-      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
-      textItem({ text: 'Example Co', y: 670 }),
-      textItem({ text: 'Director', y: 650, fontSize: 11.5 }),
-      textItem({ text: 'January 2020 - Present', y: 630 }),
-      textItem({ text: 'Greater Los Angeles Area US', y: 610 }),
-    ]);
+    for (const countryCode of ['US', 'U.S.', 'USA', 'U.S.A.']) {
+      const [experience] = ExperienceStructuralParser.parseExperience([
+        textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+        textItem({ text: 'Example Co', y: 670 }),
+        textItem({ text: 'Director', y: 650, fontSize: 11.5 }),
+        textItem({ text: 'January 2020 - Present', y: 630 }),
+        textItem({
+          text: `Greater Los Angeles Area ${countryCode}`,
+          y: 610,
+        }),
+      ]);
 
-    expect(experience.positions[0]).toEqual(
-      expect.objectContaining({
-        location: 'Greater Los Angeles Area',
-        title: 'Director',
-      })
-    );
+      expect(experience.positions[0]).toEqual(
+        expect.objectContaining({
+          location: 'Greater Los Angeles Area',
+          title: 'Director',
+        })
+      );
+    }
   });
 
   test('parses page-break descriptions, fellow roles, and greater area locations', () => {
