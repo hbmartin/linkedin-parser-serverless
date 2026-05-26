@@ -63,8 +63,10 @@ report/
 # Yarn Integrity file
 .yarn-integrity
 
-# parcel-bundler cache (https://parceljs.org/)
-.cache
+# Generated cache/debug directories
+.cache/
+.debug/
+.debug-dist/
 .parcel-cache
 
 # temporary files

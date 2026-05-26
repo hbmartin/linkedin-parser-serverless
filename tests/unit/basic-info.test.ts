@@ -163,6 +163,26 @@ describe('BasicInfoParser', () => {
     );
   });
 
+  test('keeps short structural summary continuation lines', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      ['Summary', 'Long enough summary line', 'my life.', 'Experience'].join(
+        '\n'
+      ),
+      [
+        structuralLine({ column: 'right', text: 'Summary', y: 700 }),
+        structuralLine({
+          column: 'right',
+          text: 'Long enough summary line',
+          y: 680,
+        }),
+        structuralLine({ column: 'right', text: 'my life.', y: 660 }),
+        structuralLine({ column: 'right', text: 'Experience', y: 640 }),
+      ]
+    );
+
+    expect(result.value.summary).toBe('Long enough summary line my life.');
+  });
+
   test('covers fallback headline and summary branch outcomes directly', () => {
     expect(
       BasicInfoParser['extractHeadline'](

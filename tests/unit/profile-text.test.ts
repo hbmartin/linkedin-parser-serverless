@@ -12,7 +12,6 @@ describe('profile text heuristics', () => {
     expect(looksLikePositionTitleText('Contributing Writer')).toBe(true);
     expect(looksLikePositionTitleText('Managing Partner')).toBe(true);
     expect(looksLikePositionTitleText('Mentor')).toBe(true);
-    expect(looksLikePositionTitleText('Venture')).toBe(true);
     expect(looksLikePositionTitleText('Business & Technology Executive')).toBe(
       true
     );
@@ -58,6 +57,7 @@ describe('profile text heuristics', () => {
     expect(looksLikeOrganizationNameText('Ação Labs')).toBe(true);
     expect(looksLikeOrganizationNameText('Ampli & Co')).toBe(true);
     expect(looksLikeOrganizationNameText('Fulldome Film Society')).toBe(true);
+    expect(looksLikeOrganizationNameText('Stage Venture Partners')).toBe(true);
     expect(looksLikeOrganizationNameText('São Paulo Tech')).toBe(true);
     expect(looksLikeOrganizationNameText('Remote')).toBe(false);
   });
@@ -82,5 +82,10 @@ describe('profile text heuristics', () => {
     expect(isLikelyLocationText('Greater Minneapolis-St. Paul Area')).toBe(
       true
     );
+  });
+
+  test('recognizes comma-separated locations with 3-letter country codes', () => {
+    expect(isLikelyLocationText('San Francisco, CA, USA')).toBe(true);
+    expect(isLikelyLocationText('Toronto, ON, CAN')).toBe(true);
   });
 });

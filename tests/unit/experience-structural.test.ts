@@ -497,6 +497,54 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('merges wrapped bilingual organization headings', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({
+        text: 'Consulate General of Canada in New York | Consulat général du',
+        y: 670,
+      }),
+      textItem({ text: 'Canada à New York', y: 652 }),
+      textItem({ text: 'Venture Partner', y: 630, fontSize: 11.5 }),
+      textItem({ text: 'March 2023 - March 2024 (1 year 1 month)', y: 610 }),
+      textItem({ text: 'New York City Metropolitan Area', y: 590 }),
+      textItem({
+        text: "Seed Stage Venture Capital Program hosted by Canada's Trade Commissioner Service.",
+        y: 570,
+      }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization:
+          'Consulate General of Canada in New York | Consulat général du Canada à New York',
+        positions: [
+          expect.objectContaining({
+            description:
+              "Seed Stage Venture Capital Program hosted by Canada's Trade Commissioner Service.",
+            duration: 'March 2023 - March 2024',
+            location: 'New York City Metropolitan Area',
+            title: 'Venture Partner',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('preserves hyphenated organization taglines', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'WhereTo - Business Travel Reimagined', y: 670 }),
+      textItem({ text: 'Board Member', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'April 2017 - February 2018 (11 months)', y: 630 }),
+    ]);
+
+    expect(experience.organization).toBe(
+      'WhereTo - Business Travel Reimagined'
+    );
+  });
+
   test('parses board-advisor organization names with lowercase connectors', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -1511,6 +1559,20 @@ describe('ExperienceStructuralParser', () => {
         text: 'January 2019 - December 2019 (1 year)',
         y: 610,
       }),
+      textItem({
+        text: 'University de',
+        y: 580,
+      }),
+      textItem({ text: 'Paris', y: 562 }),
+      textItem({
+        text: 'Research Fellow',
+        y: 540,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'September 2011 - June 2012 (10 months)',
+        y: 520,
+      }),
     ]);
     const byOrganization = new Map(
       result.value.map(experience => [experience.organization, experience])
@@ -1533,8 +1595,12 @@ describe('ExperienceStructuralParser', () => {
         'Harvard John A. Paulson School of Engineering and Applied Sciences'
       )?.positions[0]?.title
     ).toBe('Applied Physics Teaching Fellow');
+    expect(byOrganization.get('University de Paris')?.positions[0]?.title).toBe(
+      'Research Fellow'
+    );
     expect(byOrganization.has('University')).toBe(false);
     expect(byOrganization.has('Sciences')).toBe(false);
+    expect(byOrganization.has('Paris')).toBe(false);
   });
 
   test('keeps secondary reference companies and page-break prose out of locations', () => {
@@ -1710,7 +1776,7 @@ describe('ExperienceStructuralParser', () => {
   test('splits combined organization-title rows with lowercase and mixed-case suffixes', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
-      textItem({ text: 'Robert Bosch gmbh Business Controller', y: 670 }),
+      textItem({ text: 'Robert Bosch GmbH. Business Controller', y: 670 }),
       textItem({
         text: 'December 2012 - August 2017 (4 years 9 months)',
         y: 650,
@@ -1724,7 +1790,7 @@ describe('ExperienceStructuralParser', () => {
     expect(result.warnings).toEqual([]);
     expect(result.value).toEqual([
       expect.objectContaining({
-        organization: 'Robert Bosch gmbh',
+        organization: 'Robert Bosch GmbH.',
         positions: [
           expect.objectContaining({
             duration: 'December 2012 - August 2017',
@@ -1763,6 +1829,11 @@ describe('ExperienceStructuralParser', () => {
         text: 'February 2019 - December 2020 (1 year 11 months)',
         y: 600,
       }),
+      textItem({ text: 'Bosch Company GmbH.', y: 590 }),
+      textItem({
+        text: 'February 2018 - December 2018 (11 months)',
+        y: 580,
+      }),
       textItem({ text: 'Acme Agency Principal Consultant', y: 570 }),
       textItem({ text: 'January 2015 - January 2018 (3 years)', y: 550 }),
     ]);
@@ -1788,6 +1859,10 @@ describe('ExperienceStructuralParser', () => {
     expect(parsedOrganizationTitles).not.toContainEqual({
       organization: 'Robert Bosch GmbH',
       title: 'Inc',
+    });
+    expect(parsedOrganizationTitles).not.toContainEqual({
+      organization: 'Bosch Company',
+      title: 'GmbH.',
     });
   });
 
@@ -2028,6 +2103,43 @@ describe('ExperienceStructuralParser', () => {
         description: 'Built internal systems for support teams.',
         location: 'Denver, CO',
         title: 'Staff Engineer',
+      }),
+    ]);
+  });
+
+  test('classifies 3-letter country codes as location suffixes', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Acme Labs', y: 670 }),
+      textItem({ text: 'Staff Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2022', y: 630 }),
+      textItem({ text: 'San Francisco, CA, USA', y: 610 }),
+      textItem({ text: 'Maple Systems', y: 580 }),
+      textItem({ text: 'Engineering Manager', y: 560, fontSize: 11.5 }),
+      textItem({ text: '2018 - 2020', y: 540 }),
+      textItem({ text: 'Toronto, ON, CAN', y: 520 }),
+    ];
+
+    const experiences = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Acme Labs',
+        positions: [
+          expect.objectContaining({
+            location: 'San Francisco, CA, USA',
+            title: 'Staff Engineer',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Maple Systems',
+        positions: [
+          expect.objectContaining({
+            location: 'Toronto, ON, CAN',
+            title: 'Engineering Manager',
+          }),
+        ],
       }),
     ]);
   });
@@ -2632,16 +2744,48 @@ describe('ExperienceStructuralParser', () => {
     ).toBe('other');
   });
 
-  test('covers description continuation helpers directly', () => {
-    expect(ExperienceStructuralParser['looksLikeDescriptionLine']('Tiny')).toBe(
-      false
-    );
+  test('classifies standalone Venture as a position title', () => {
+    const ventureLine = parserLine({ text: 'Venture' });
+
     expect(
-      ExperienceStructuralParser['looksLikeDescriptionLine'](
-        'Migration rollout',
-        'Owned migration planning for'
-      )
+      ExperienceStructuralParser['classifyLineType']({
+        allLines: [ventureLine],
+        index: 0,
+        line: ventureLine,
+        state: 'seeking_title',
+      })
+    ).toBe('position');
+  });
+
+  test('covers description continuation helpers directly', () => {
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionLine']({
+        allLines: ['Tiny'],
+        index: 0,
+        line: 'Tiny',
+      })
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionLine']({
+        allLines: ['Owned migration planning for', 'Migration rollout'],
+        index: 1,
+        line: 'Migration rollout',
+        previousLine: 'Owned migration planning for',
+      })
     ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionLine']({
+        allLines: [
+          'Owned migration planning for',
+          'Blue Oak Labs',
+          'Staff Engineer',
+          'January 2020 - Present',
+        ],
+        index: 1,
+        line: 'Blue Oak Labs',
+        previousLine: 'Owned migration planning for',
+      })
+    ).toBe(false);
     expect(
       ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
         'continued rollout'
