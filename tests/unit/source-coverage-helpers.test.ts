@@ -259,6 +259,39 @@ describe('source coverage helpers', () => {
     ).toEqual(expect.objectContaining({ fieldMismatchOutputMatchCount: 1 }));
   });
 
+  test('reports single-word whitelisted locations misclassified into experience descriptions', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Experience',
+        'Example Co',
+        'Principal Engineer',
+        'January 2020 - Present',
+        'London',
+        'Built durable client tools.',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        experience: [
+          {
+            company: 'Example Co',
+            title: 'Principal Engineer',
+            duration: 'January 2020 - Present',
+            description: 'London Built durable client tools.',
+          },
+        ],
+      }),
+      pdfFileName: 'single-word-location-description-mismatch.pdf',
+    });
+
+    expect(report.fieldMismatchOutputMatches).toEqual([
+      expect.objectContaining({
+        outputFieldRole: 'description',
+        path: 'profile.experience[0].description',
+        sourceFieldRole: 'location',
+        sourceText: 'London',
+      }),
+    ]);
+  });
+
   test('accepts standalone experience locations when they remain in location fields', () => {
     const report = createSourceCoverageReport({
       layoutText: [
@@ -284,6 +317,72 @@ describe('source coverage helpers', () => {
     });
 
     expect(report.fieldMismatchOutputMatchCount).toBe(0);
+  });
+
+  test('classifies abbreviated standalone experience locations with periods', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Example Co',
+        'Principal Engineer',
+        'January 2020 - Present',
+        'St. Louis',
+        'Built durable client tools.',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'St. Louis',
+        }),
+      ])
+    );
+  });
+
+  test('classifies longer standalone area locations with country tokens', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Example Co',
+        'Principal Engineer',
+        'January 2020 - Present',
+        'Greater Los Angeles Area, United States',
+        'Built durable client tools.',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'Greater Los Angeles Area, United States',
+        }),
+      ])
+    );
+  });
+
+  test('does not classify comma phrases as locations without geo evidence', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Example Co',
+        'Operations Lead',
+        'January 2020 - Present',
+        'Strategy, Operations',
+        'Led durable programs.',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'description',
+          text: 'Strategy, Operations',
+        }),
+      ])
+    );
   });
 
   test('uses experience ordinals when identical locations appear in multiple entries', () => {

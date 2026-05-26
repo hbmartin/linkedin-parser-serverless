@@ -215,6 +215,40 @@ describe('formatLinkedInProfile', () => {
     );
   });
 
+  test('omits LinkedIn contact links with common URL variations', () => {
+    expect(
+      formatLinkedInProfile(
+        {
+          ...createEmptyProfile(),
+          contact: {
+            links: [
+              {
+                label: 'LinkedIn',
+                rawText: 'LinkedIn',
+                url: 'HTTP://WWW.LinkedIn.com/in/ORION/',
+              },
+              {
+                label: 'Portfolio',
+                rawText: 'Portfolio',
+                url: 'https://example.com/orion',
+              },
+            ],
+            linkedin_url: 'https://linkedin.com/in/orion',
+          },
+        },
+        {
+          includeContact: true,
+        }
+      )
+    ).toBe(
+      [
+        'Contact',
+        'LinkedIn: https://linkedin.com/in/orion',
+        'Portfolio: https://example.com/orion',
+      ].join('\n')
+    );
+  });
+
   test('normalizes whitespace and skips malformed contact links in markdown', () => {
     const profileWithMalformedLinks = JSON.parse(
       JSON.stringify({

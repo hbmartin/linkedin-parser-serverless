@@ -620,7 +620,10 @@ export class ExperienceStructuralParser {
           return 'duration';
         }
 
-        if (this.looksLikeLocation(text)) {
+        if (
+          this.looksLikeLocation(text) ||
+          this.looksLikeStandaloneLocationAfterDuration(text, index, lineTexts)
+        ) {
           return 'location';
         }
 
@@ -1519,6 +1522,10 @@ export class ExperienceStructuralParser {
   }
 
   private static looksLikeStandalonePlaceNameShape(line: string): boolean {
+    if (/[:+$&/]/u.test(line)) {
+      return false;
+    }
+
     const words = line
       .split(/\s+/u)
       .map(word => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}.]+$/gu, ''))

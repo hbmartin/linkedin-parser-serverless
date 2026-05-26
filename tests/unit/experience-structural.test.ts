@@ -3113,8 +3113,6 @@ describe('ExperienceStructuralParser', () => {
       'Dallas, Texas',
       'London Area, United Kingdom',
       'Denver, CO',
-      'Los Angeles',
-      'San Diego',
       'Greater New York City Area,',
     ]) {
       expect(

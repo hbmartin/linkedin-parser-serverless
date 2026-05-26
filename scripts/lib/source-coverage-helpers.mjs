@@ -481,7 +481,7 @@ function looksLikeLocationWords(value) {
     .filter(word => word.length > 0);
 
   return (
-    words.length >= 2 &&
+    words.length >= 1 &&
     words.length <= 7 &&
     words.every(
       word =>
