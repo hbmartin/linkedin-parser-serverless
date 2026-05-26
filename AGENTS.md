@@ -6,11 +6,8 @@
 - Fix any pnpm format issues (even if they are unrelated)
 - Whenever there is any confusion or errors, automatically add a guideline to AGENTS.md
 - When verification fails on unrelated dirty-worktree changes, report the exact failing command and failures instead of modifying unrelated code.
-- When you are investigating a bug or analyzing PDFs, use or write helper scripts in .debug/
-- When trying to understand PDF content, use pdfplumber (uvx tool) and the poppler family of cli utils (ask the user to install if not present)
-- When debugging PDF extraction, generate a source evidence bundle with `pnpm run source:inspect -- <pdf>` and cite the source artifacts (`poppler.layout.txt`, `unpdf.items.json`, `pdfplumber.words.json`, `parser-lines.json`, or `overlay.html`) instead of treating parser JSON as the source of truth.
-- Use `.debug/` for ad hoc investigation scripts and per-PDF source evidence bundles; use `.debug-dist/` for reproducible generated outputs from repository scripts.
-- Use the section-aware sample coverage audit (`pnpm run samples:audit-coverage -- --samples samples/`) to find unmatched source segments and untraced output values, but treat its findings as review prompts because source-section inference is heuristic.
+- When debugging sample PDF extraction, use the repo-local skill at `.agents/skills/debug-linkedin-sample-pdfs`.
+- When skill-creator helper scripts are not executable, invoke them with `python3 <script-path> ...`.
 
 # TypeScript
 

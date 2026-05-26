@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Debug LinkedIn Sample PDFs'
+  short_description: 'Debug sample LinkedIn PDF extraction'
+  default_prompt: 'Use $debug-linkedin-sample-pdfs to investigate why a sample LinkedIn PDF parses incorrectly.'

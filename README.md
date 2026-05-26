@@ -126,12 +126,12 @@ console.log(`Experience: ${profile.experience.length} positions`);
 ```json
 {
   "profile": {
-    "name": "John Silva",
+    "name": "Orion Helios",
     "headline": "Senior Backend Engineer at DataFlow Inc",
     "location": "Austin, Texas, United States",
     "contact": {
-      "email": "john.silva@email.com",
-      "linkedin_url": "https://www.linkedin.com/in/john-silva"
+      "email": "orion.helios@example.com",
+      "linkedin_url": "https://www.linkedin.com/in/orion-helios"
     },
     "top_skills": ["TypeScript", "Node.js", "AWS"],
     "certifications": ["AWS Certified Solutions Architect"],
@@ -227,7 +227,7 @@ curl -F "resume=@linkedin-resume.pdf" https://your-app.vercel.app/api/parse-link
 
 ```typescript
 // If you already have extracted text from PDF
-const extractedText = "John Silva\nSoftware Engineer...";
+const extractedText = "Orion Helios\nSoftware Engineer...";
 const result = await parseLinkedInPDF(extractedText);
 ```
 
@@ -476,6 +476,24 @@ pnpm run test:coverage
 # Clean build artifacts
 pnpm run clean
 ```
+
+### Codex PDF Debugging Skill
+
+This repo includes a Codex skill for investigating sample PDF extraction issues:
+
+```text
+.agents/skills/debug-linkedin-sample-pdfs
+```
+
+Use it when parser output may be wrong and the original PDF needs to be treated as the source of truth.
+
+In the Codex CLI, start from the repository root and ask Codex to use the skill explicitly:
+
+```text
+Use $debug-linkedin-sample-pdfs to investigate why samples/Persephone Kore.pdf parses incorrectly.
+```
+
+In the Codex app, use the same `$debug-linkedin-sample-pdfs` mention in the chat. The skill directs Codex to generate source evidence bundles with `pnpm run source:inspect -- <pdf>`, compare Poppler/pdfplumber/unpdf artifacts, and use the section-aware sample audit before changing parser code.
 
 ### Developing and Testing the CLI
 

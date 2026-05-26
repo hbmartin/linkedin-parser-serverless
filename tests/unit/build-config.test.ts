@@ -171,6 +171,18 @@ describe('build config contract', () => {
     );
   });
 
+  test('reuses source-debug structural lines in the binary parse path', () => {
+    const indexSource = fs.readFileSync(repoFilePath('src/index.ts'), 'utf8');
+
+    expect(indexSource).toContain(
+      'structuralLines: debugArtifacts.structuralLines'
+    );
+    expect(indexSource).toContain(
+      'const structuralLines = structuralData?.structuralLines'
+    );
+    expect(indexSource).not.toMatch(/import\s+\{\s*createStructuralLines\s*\}/);
+  });
+
   test('keeps package verification scripts present in the repo', () => {
     for (const scriptPath of REQUIRED_PACKAGE_SCRIPT_FILES) {
       expect(fs.existsSync(repoFilePath(scriptPath))).toBe(true);
