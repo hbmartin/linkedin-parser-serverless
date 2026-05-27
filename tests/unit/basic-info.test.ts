@@ -267,6 +267,18 @@ describe('BasicInfoParser', () => {
     expect(profile.contact.email).toBe('apollo@example.com');
   });
 
+  test('extracts wrapped email continuations up to the DNS TLD limit', () => {
+    const longTld = 'abcdefghijklmnopqrstuvwxy';
+    const profile = BasicInfoParser.parse(`
+      Apollo Helios
+      Principal Advisor
+      apollo@example.
+      ${longTld}
+    `);
+
+    expect(profile.contact.email).toBe(`apollo@example.${longTld}`);
+  });
+
   test('extracts structural contact links while ignoring URL path digits as phones', () => {
     const result = BasicInfoParser.parseStructuralWithWarnings(
       [
@@ -395,6 +407,30 @@ describe('BasicInfoParser', () => {
     expect(result.value.contact.linkedin_url).toBe(
       'https://linkedin.com/in/stephan-agerman'
     );
+  });
+
+  test('keeps wrapped email fragments out of split contact link drafts', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Apollo Helios
+      Principal Advisor
+
+      Contact
+      www.linkedin.com/in/stephan-
+      stephan.agerman@slvventure.
+      com
+      agerman (LinkedIn)
+    `);
+
+    expect(result.value.contact.email).toBe('stephan.agerman@slvventure.com');
+    expect(result.value.contact.linkedin_url).toBe(
+      'https://linkedin.com/in/stephan-agerman'
+    );
+    expect(result.value.contact.links).toEqual([
+      expect.objectContaining({
+        label: 'LinkedIn',
+        url: 'https://linkedin.com/in/stephan-agerman',
+      }),
+    ]);
   });
 
   test('falls back to header contact lines for empty structural contact sections', () => {

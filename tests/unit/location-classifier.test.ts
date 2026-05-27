@@ -169,6 +169,8 @@ describe('location classifier', () => {
       'Keidanren (Japan Business Federation)',
       'schools that generate meaningful results for families in New York',
       'built, IN',
+      'built, ME',
+      'built, OR',
     ]) {
       const result = classifyLocationText({
         context: { structuralContext: 'after-duration' },
@@ -180,6 +182,7 @@ describe('location classifier', () => {
 
       expect(result.isLocation).toBe(false);
       expect(hasRegionCodeSignal).toBe(false);
+      expect(result.signals).not.toContain('comma-region');
     }
   });
 });

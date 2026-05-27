@@ -624,7 +624,7 @@ function hasCommaSeparatedRegionEvidence(text: string): boolean {
     .slice(1)
     .some(
       part =>
-        regionCodes.has(part) ||
+        (regionCodes.has(part) && !ambiguousRegionCodes.has(part)) ||
         countryAndRegionNames.has(part) ||
         adminRegionNames.has(part)
     );
