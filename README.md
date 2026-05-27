@@ -694,10 +694,34 @@ node bin/cli.js tests/fixtures/Profile.pdf | jq '.profile.experience[0]'
 
 ## 📊 Performance
 
-- **Processing time**: ~70ms average for typical LinkedIn PDF
-- **Memory usage**: Minimal memory footprint (~8MB)
-- **Bundle size**: Ultra-lightweight at 3.0kB gzipped
+Measure performance against the checked-in fixtures with the built package:
 
+```bash
+pnpm run perf:measure -- --iterations 25 --warmup 5
+```
+
+A local run on Node v24.16.0 (`darwin/arm64`) produced:
+
+| Input | Kind | Size | Average | Median | p95 | Max heap delta |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `Profile.pdf` | PDF | 49.25 KiB | 31.0ms | 30.8ms | 32.8ms | 12.43 MiB |
+| `test_resume.pdf` | PDF | 81.30 KiB | 103.8ms | 102.9ms | 109.0ms | 51.45 MiB |
+| `Profile.txt` | text | 1.54 KiB | 1.7ms | 1.7ms | 1.9ms | 1.27 MiB |
+| `test_resume.txt` | text | 12.60 KiB | 8.1ms | 8.1ms | 8.7ms | 5.35 MiB |
+
+PDF timings include `unpdf` extraction plus structural parsing. Text timings
+start after text extraction. Heap deltas are the maximum heap growth observed
+during a single measured parse; expect them to vary by Node version, platform,
+fixture shape, and garbage-collection timing.
+
+The package keeps runtime dependencies external. Current built artifact sizes:
+
+| Artifact | Raw | Gzip |
+| --- | ---: | ---: |
+| `dist/index.js` | 236.05 KiB | 44.52 KiB |
+| `dist/index.cjs` | 237.64 KiB | 44.80 KiB |
+| `dist/index.min.js` | 103.77 KiB | 28.27 KiB |
+| `dist/cli.js` | 28.83 KiB | 5.77 KiB |
 
 ## 🤝 Contributing
 

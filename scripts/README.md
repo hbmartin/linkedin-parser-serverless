@@ -13,6 +13,7 @@ Run commands from the repository root unless noted otherwise.
 | `verify-artifacts.mjs` | `pnpm run verify:artifacts` | Confirms the expected `dist/` and `bin/` files exist, validates `package.json` entrypoints, verifies external dependencies stay external, imports ESM/CJS/minified bundles, and exercises the CLI entrypoint. | Catches broken builds, export-map regressions, missing declarations, and CLI packaging mistakes before publish. |
 | `verify-packed-package.mjs` | `pnpm run verify:package` | Runs `npm pack`, installs the packed archive into a temporary consumer project, then verifies ESM import, CJS require, TypeScript types, and the installed CLI. | Tests the package the way downstream users consume it, not just the local workspace files. |
 | `check-size-budget.mjs` | `pnpm run size:check` | Checks raw and gzip size budgets for generated JavaScript artifacts and ensures the minified bundle is smaller than the regular bundle. | Prevents accidental bundle growth and catches minification or bundling regressions. |
+| `measure-performance.mjs` | `pnpm run perf:measure` | Builds the package, measures parse latency for checked-in PDF and text fixtures, reports per-parse heap growth with `--expose-gc`, and prints raw/gzip sizes for built artifacts. | Keeps README performance numbers grounded in a repeatable local measurement instead of stale guesses. |
 
 These scripts assume `dist/` exists. Run `pnpm run build` first when invoking
 them directly.
@@ -85,4 +86,10 @@ pnpm run build
 pnpm run verify:artifacts
 pnpm run verify:package
 pnpm run size:check
+```
+
+To refresh the README performance table, run:
+
+```bash
+pnpm run perf:measure -- --iterations 25 --warmup 5
 ```
