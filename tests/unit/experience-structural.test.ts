@@ -5,6 +5,10 @@ import type {
 } from '../../src/types/structural.js';
 import type { NormalizedParserLine } from '../../src/utils/parser-lines.js';
 
+type HeaderCandidate = Parameters<
+  (typeof ExperienceStructuralParser)['compareExperienceHeaderCandidates']
+>[0];
+
 function textItem({
   text,
   y,
@@ -4130,6 +4134,47 @@ describe('ExperienceStructuralParser', () => {
     ).toBe('FY2020 planning cycle with long text long text lon');
   });
 
+  test('marks canonical header provenance explicitly', () => {
+    const sections = ExperienceStructuralParser['classifyLines']([
+      parserLine({ index: 0, text: 'Northstar Labs' }),
+      parserLine({ index: 1, text: 'Principal Engineer' }),
+      parserLine({ index: 2, text: '2020 - 2021' }),
+      parserLine({
+        index: 3,
+        text: 'Shipped reliable platform upgrades for customer teams.',
+      }),
+    ]);
+
+    expect(
+      sections.map(section => ({
+        headerProvenance: section.headerProvenance,
+        text: section.text,
+        type: section.type,
+      }))
+    ).toEqual([
+      {
+        headerProvenance: 'canonical_anchor',
+        text: 'Northstar Labs',
+        type: 'organization',
+      },
+      {
+        headerProvenance: 'canonical_anchor',
+        text: 'Principal Engineer',
+        type: 'position',
+      },
+      {
+        headerProvenance: 'canonical_anchor',
+        text: '2020 - 2021',
+        type: 'duration',
+      },
+      {
+        headerProvenance: 'inferred',
+        text: 'Shipped reliable platform upgrades for customer teams.',
+        type: 'description',
+      },
+    ]);
+  });
+
   test('scores overlapping candidate titles that start stronger headers lower', () => {
     const parserLines = [
       parserLine({ fontSize: 10.5, index: 0, text: 'Research Group' }),
@@ -4142,23 +4187,26 @@ describe('ExperienceStructuralParser', () => {
         text: 'July 2024 - Present (1 year 11 months)',
       }),
     ];
-    const competingCandidate = {
+    const lineTexts = parserLines.map(line => line.text);
+    const competingCandidate: HeaderCandidate = {
       durationLine: parserLines[2],
       organizationLine: parserLines[0],
       score: 0,
       titleLine: parserLines[1],
     };
+    const minimumAcceptedHeaderScore = 4;
 
     expect(
       ExperienceStructuralParser['scoreExperienceHeaderCandidate'](
         competingCandidate,
-        parserLines
+        parserLines,
+        lineTexts
       )
-    ).toBeLessThan(4);
+    ).toBeLessThan(minimumAcceptedHeaderScore);
   });
 
   test('orders same-score header candidates by organization font prominence', () => {
-    const smallerOrganizationCandidate = {
+    const smallerOrganizationCandidate: HeaderCandidate = {
       durationLine: parserLine({ index: 2, text: '2020 - 2021' }),
       organizationLine: parserLine({
         fontSize: 10,
@@ -4168,7 +4216,7 @@ describe('ExperienceStructuralParser', () => {
       score: 5,
       titleLine: parserLine({ index: 1, text: 'Principal Engineer' }),
     };
-    const largerOrganizationCandidate = {
+    const largerOrganizationCandidate: HeaderCandidate = {
       durationLine: parserLine({ index: 12, text: '2022 - Present' }),
       organizationLine: parserLine({
         fontSize: 12,
@@ -4242,6 +4290,7 @@ function structuralSection({
   return {
     confidence: 1,
     fontSize: 12,
+    headerProvenance: 'inferred',
     text,
     type,
     y: 0,

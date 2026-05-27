@@ -94,8 +94,14 @@ interface InferredLineTypeParams {
   state: ExperienceLineState;
 }
 
+interface NextContentLineStartsCanonicalHeaderParams {
+  allLines: NormalizedParserLine[];
+  canonicalHeaders: CanonicalHeaderLineTypes;
+  index: number;
+}
+
 interface ExtractCleanOrganizationNameOptions {
-  allowAnchoredHeaderText: boolean;
+  mode: 'anchored_header' | 'standard';
 }
 
 export class ExperienceStructuralParser {
@@ -266,16 +272,8 @@ export class ExperienceStructuralParser {
       const fontSize = parserLine.fontSize ?? 0;
       const y = parserLine.y ?? 0;
 
-      const section: StructuralSection = {
-        type: 'other',
-        text: line.trim(),
-        fontSize,
-        y,
-        confidence: 0,
-      };
-
       const anchoredLineType = canonicalHeaders.lineTypes.get(index);
-      section.type =
+      const sectionType =
         anchoredLineType ??
         this.refineInferredLineType({
           allLines: expandedParserLines,
@@ -289,13 +287,16 @@ export class ExperienceStructuralParser {
           }),
           state,
         });
-      section.isHeaderAnchor = anchoredLineType !== undefined;
+      const section: StructuralSection = {
+        confidence: this.calculateConfidence(line, sectionType, fontSize),
+        fontSize,
+        headerProvenance:
+          anchoredLineType !== undefined ? 'canonical_anchor' : 'inferred',
+        text: line.trim(),
+        type: sectionType,
+        y,
+      };
       state = this.nextState(state, section.type);
-      section.confidence = this.calculateConfidence(
-        line,
-        section.type,
-        fontSize
-      );
 
       sections.push(section);
     }
@@ -329,11 +330,7 @@ export class ExperienceStructuralParser {
     allLines,
     canonicalHeaders,
     index,
-  }: {
-    allLines: NormalizedParserLine[];
-    canonicalHeaders: CanonicalHeaderLineTypes;
-    index: number;
-  }): boolean {
+  }: NextContentLineStartsCanonicalHeaderParams): boolean {
     const nextLine = this.nextContentLine(allLines, index + 1);
 
     return nextLine
@@ -673,10 +670,10 @@ export class ExperienceStructuralParser {
     left: ExperienceHeaderCandidate,
     right: ExperienceHeaderCandidate
   ): boolean {
-    const rightIndexes = new Set(this.headerCandidateLineIndexes(right));
+    const rightIndexes = this.headerCandidateLineIndexes(right);
 
     return this.headerCandidateLineIndexes(left).some(index =>
-      rightIndexes.has(index)
+      rightIndexes.includes(index)
     );
   }
 
@@ -767,7 +764,11 @@ export class ExperienceStructuralParser {
 
     return {
       ...candidate,
-      score: this.scoreExperienceHeaderCandidate(candidate, parserLines),
+      score: this.scoreExperienceHeaderCandidate(
+        candidate,
+        parserLines,
+        lineTexts
+      ),
     };
   }
 
@@ -816,7 +817,11 @@ export class ExperienceStructuralParser {
 
     return {
       ...candidate,
-      score: this.scoreExperienceHeaderCandidate(candidate, parserLines),
+      score: this.scoreExperienceHeaderCandidate(
+        candidate,
+        parserLines,
+        lineTexts
+      ),
     };
   }
 
@@ -951,7 +956,8 @@ export class ExperienceStructuralParser {
 
   private static scoreExperienceHeaderCandidate(
     candidate: ExperienceHeaderCandidate,
-    parserLines: NormalizedParserLine[]
+    parserLines: NormalizedParserLine[],
+    lineTexts: string[]
   ): number {
     const organizationText = candidate.organizationLine.text.trim();
     // Canonical construction is already high-confidence; scoring starts at the
@@ -979,7 +985,7 @@ export class ExperienceStructuralParser {
       score -= 2;
     }
 
-    if (this.titleLineStartsCompetingHeader(candidate, parserLines)) {
+    if (this.titleLineStartsCompetingHeader(candidate, lineTexts)) {
       score -= 4;
     }
 
@@ -1008,9 +1014,8 @@ export class ExperienceStructuralParser {
 
   private static titleLineStartsCompetingHeader(
     candidate: ExperienceHeaderCandidate,
-    parserLines: NormalizedParserLine[]
+    lineTexts: string[]
   ): boolean {
-    const lineTexts = parserLines.map(line => line.text);
     const titleLine = candidate.titleLine;
 
     return (
@@ -2352,7 +2357,10 @@ export class ExperienceStructuralParser {
             const cleanOrgName = this.extractCleanOrganizationName(
               section.text,
               {
-                allowAnchoredHeaderText: section.isHeaderAnchor === true,
+                mode:
+                  section.headerProvenance === 'canonical_anchor'
+                    ? 'anchored_header'
+                    : 'standard',
               }
             );
 
@@ -2568,7 +2576,7 @@ export class ExperienceStructuralParser {
   private static extractCleanOrganizationName(
     text: string,
     options: ExtractCleanOrganizationNameOptions = {
-      allowAnchoredHeaderText: false,
+      mode: 'standard',
     }
   ): string | undefined {
     if (this.looksLikeKnownLowercaseOrganization(text)) {
@@ -2618,7 +2626,7 @@ export class ExperienceStructuralParser {
       .trim();
 
     if (
-      options.allowAnchoredHeaderText &&
+      options.mode === 'anchored_header' &&
       this.looksLikeAnchoredOrganizationHeaderText(normalizedText)
     ) {
       return normalizedText;
