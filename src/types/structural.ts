@@ -42,6 +42,8 @@ export interface Position {
   description?: string;
 }
 
+type StructuralHeaderProvenance = 'canonical_anchor' | 'inferred';
+
 export interface StructuralSection {
   type:
     | 'organization'
@@ -54,5 +56,5 @@ export interface StructuralSection {
   fontSize: number;
   y: number;
   confidence: number;
-  isHeaderAnchor?: boolean;
+  headerProvenance: StructuralHeaderProvenance;
 }

@@ -5,6 +5,10 @@ import type {
 } from '../../src/types/structural.js';
 import type { NormalizedParserLine } from '../../src/utils/parser-lines.js';
 
+type HeaderCandidate = Parameters<
+  (typeof ExperienceStructuralParser)['compareExperienceHeaderCandidates']
+>[0];
+
 function textItem({
   text,
   y,
@@ -641,6 +645,79 @@ describe('ExperienceStructuralParser', () => {
             duration: 'February 2018 - February 2019',
             location: 'Greater Los Angeles Area',
             title: 'Consultant',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps sentence-ending parenthetical descriptions before same-company roles', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Mindshare', y: 730 }),
+      textItem({ text: '2 years 8 months', y: 710 }),
+      textItem({
+        text: 'Digital Senior Associate - Facebook, ampm/ARCO',
+        y: 690,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'June 2017 - May 2018 (1 year)', y: 670 }),
+      textItem({
+        text: 'Planned and executed year-long campaigns for seasonal products.',
+        y: 650,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Increased customer engagement and conversion rates by 33%. (ampm)',
+        y: 630,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Digital Associate',
+        y: 590,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'October 2015 - May 2017 (1 year 8 months)',
+        y: 570,
+      }),
+      textItem({ text: 'Greater Los Angeles Area', y: 550 }),
+      textItem({
+        text: 'Monitored ongoing campaigns and coordinated vendor meetings.',
+        y: 530,
+      }),
+      textItem({ text: 'Thakoon', y: 490 }),
+      textItem({ text: 'Design Intern', y: 470, fontSize: 11.5 }),
+      textItem({ text: 'September 2014 - December 2014 (4 months)', y: 450 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Mindshare',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Planned and executed year-long campaigns for seasonal products. Increased customer engagement and conversion rates by 33%. (ampm)',
+            duration: 'June 2017 - May 2018',
+            title: 'Digital Senior Associate - Facebook, ampm/ARCO',
+          }),
+          expect.objectContaining({
+            description:
+              'Monitored ongoing campaigns and coordinated vendor meetings.',
+            duration: 'October 2015 - May 2017',
+            location: 'Greater Los Angeles Area',
+            title: 'Digital Associate',
+          }),
+        ],
+        totalDuration: '2 years 8 months',
+      }),
+      expect.objectContaining({
+        organization: 'Thakoon',
+        positions: [
+          expect.objectContaining({
+            duration: 'September 2014 - December 2014',
+            title: 'Design Intern',
           }),
         ],
       }),
@@ -4057,6 +4134,47 @@ describe('ExperienceStructuralParser', () => {
     ).toBe('FY2020 planning cycle with long text long text lon');
   });
 
+  test('marks canonical header provenance explicitly', () => {
+    const sections = ExperienceStructuralParser['classifyLines']([
+      parserLine({ index: 0, text: 'Northstar Labs' }),
+      parserLine({ index: 1, text: 'Principal Engineer' }),
+      parserLine({ index: 2, text: '2020 - 2021' }),
+      parserLine({
+        index: 3,
+        text: 'Shipped reliable platform upgrades for customer teams.',
+      }),
+    ]);
+
+    expect(
+      sections.map(section => ({
+        headerProvenance: section.headerProvenance,
+        text: section.text,
+        type: section.type,
+      }))
+    ).toEqual([
+      {
+        headerProvenance: 'canonical_anchor',
+        text: 'Northstar Labs',
+        type: 'organization',
+      },
+      {
+        headerProvenance: 'canonical_anchor',
+        text: 'Principal Engineer',
+        type: 'position',
+      },
+      {
+        headerProvenance: 'canonical_anchor',
+        text: '2020 - 2021',
+        type: 'duration',
+      },
+      {
+        headerProvenance: 'inferred',
+        text: 'Shipped reliable platform upgrades for customer teams.',
+        type: 'description',
+      },
+    ]);
+  });
+
   test('scores overlapping candidate titles that start stronger headers lower', () => {
     const parserLines = [
       parserLine({ fontSize: 10.5, index: 0, text: 'Research Group' }),
@@ -4069,23 +4187,26 @@ describe('ExperienceStructuralParser', () => {
         text: 'July 2024 - Present (1 year 11 months)',
       }),
     ];
-    const competingCandidate = {
+    const lineTexts = parserLines.map(line => line.text);
+    const competingCandidate: HeaderCandidate = {
       durationLine: parserLines[2],
       organizationLine: parserLines[0],
       score: 0,
       titleLine: parserLines[1],
     };
+    const minimumAcceptedHeaderScore = 4;
 
     expect(
       ExperienceStructuralParser['scoreExperienceHeaderCandidate'](
         competingCandidate,
-        parserLines
+        parserLines,
+        lineTexts
       )
-    ).toBeLessThan(4);
+    ).toBeLessThan(minimumAcceptedHeaderScore);
   });
 
   test('orders same-score header candidates by organization font prominence', () => {
-    const smallerOrganizationCandidate = {
+    const smallerOrganizationCandidate: HeaderCandidate = {
       durationLine: parserLine({ index: 2, text: '2020 - 2021' }),
       organizationLine: parserLine({
         fontSize: 10,
@@ -4095,7 +4216,7 @@ describe('ExperienceStructuralParser', () => {
       score: 5,
       titleLine: parserLine({ index: 1, text: 'Principal Engineer' }),
     };
-    const largerOrganizationCandidate = {
+    const largerOrganizationCandidate: HeaderCandidate = {
       durationLine: parserLine({ index: 12, text: '2022 - Present' }),
       organizationLine: parserLine({
         fontSize: 12,
@@ -4169,6 +4290,7 @@ function structuralSection({
   return {
     confidence: 1,
     fontSize: 12,
+    headerProvenance: 'inferred',
     text,
     type,
     y: 0,
