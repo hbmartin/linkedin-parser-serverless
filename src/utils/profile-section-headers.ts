@@ -8,6 +8,8 @@ export type ProfileSectionKey =
   | 'volunteer_work'
   | 'projects'
   | 'publications'
+  | 'patents'
+  | 'organizations'
   | 'experience'
   | 'education';
 
@@ -46,6 +48,12 @@ export const PROFILE_SECTION_HEADER_ENTRIES: ReadonlyArray<
   ['projects', 'projects'],
   ['projetos', 'projects'],
   ['publications', 'publications'],
+  ['patents', 'patents'],
+  ['patent', 'patents'],
+  ['organizations', 'organizations'],
+  ['organisations', 'organizations'],
+  ['memberships', 'organizations'],
+  ['membership', 'organizations'],
   ['volunteer experience', 'volunteer_work'],
   ['volunteer work', 'volunteer_work'],
   ['volunteering', 'volunteer_work'],

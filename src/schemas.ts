@@ -86,6 +86,8 @@ export const LinkedInProfileSchema = z.object({
   languages: z.array(LanguageSchema),
   location: z.string().optional(),
   name: z.string().optional(),
+  organizations: z.array(z.string()),
+  patents: z.array(z.string()),
   projects: z.array(z.string()),
   publications: z.array(z.string()),
   summary: z.string().optional(),

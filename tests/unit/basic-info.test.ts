@@ -267,8 +267,8 @@ describe('BasicInfoParser', () => {
     expect(profile.contact.email).toBe('apollo@example.com');
   });
 
-  test('extracts wrapped email continuations up to the DNS TLD limit', () => {
-    const longTld = 'abcdefghijklmnopqrstuvwxy';
+  test('extracts wrapped email continuations up to the practical TLD limit', () => {
+    const longTld = 'abcdefghijklmnopqrstuvwx';
     const profile = BasicInfoParser.parse(`
       Apollo Helios
       Principal Advisor
@@ -277,6 +277,18 @@ describe('BasicInfoParser', () => {
     `);
 
     expect(profile.contact.email).toBe(`apollo@example.${longTld}`);
+  });
+
+  test('does not stitch overly long wrapped email continuations', () => {
+    const overlongTld = 'abcdefghijklmnopqrstuvwxy';
+    const profile = BasicInfoParser.parse(`
+      Apollo Helios
+      Principal Advisor
+      apollo@example.
+      ${overlongTld}
+    `);
+
+    expect(profile.contact.email).toBeUndefined();
   });
 
   test('extracts structural contact links while ignoring URL path digits as phones', () => {
@@ -327,6 +339,70 @@ describe('BasicInfoParser', () => {
       expect.objectContaining({
         label: 'Other',
         url: 'https://siteresources.worldbank.org/INTPSD/Resources/336195-1092412588749/Algeria--ICA~3.pdf',
+      }),
+    ]);
+  });
+
+  test('extracts generalized structural contact link labels and wrapped URL fragments', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      [
+        'Contact',
+        'www.tiagotc.com (Personal)',
+        'www.crunchbase.com/person/',
+        'alextishakov (Portfolio)',
+        'club.forbes.ru/forbesclub/kak-',
+        'bolshie-dannye-pomogajut-pobedit-',
+        'rak (Personal)',
+        'Top Skills',
+      ].join('\n'),
+      [
+        structuralLine({ column: 'left', text: 'Contact', y: 760 }),
+        structuralLine({
+          column: 'left',
+          text: 'www.tiagotc.com (Personal)',
+          y: 740,
+        }),
+        structuralLine({
+          column: 'left',
+          text: 'www.crunchbase.com/person/',
+          y: 720,
+        }),
+        structuralLine({
+          column: 'left',
+          text: 'alextishakov (Portfolio)',
+          y: 700,
+        }),
+        structuralLine({
+          column: 'left',
+          text: 'club.forbes.ru/forbesclub/kak-',
+          y: 680,
+        }),
+        structuralLine({
+          column: 'left',
+          text: 'bolshie-dannye-pomogajut-pobedit-',
+          y: 660,
+        }),
+        structuralLine({
+          column: 'left',
+          text: 'rak (Personal)',
+          y: 640,
+        }),
+        structuralLine({ column: 'left', text: 'Top Skills', y: 620 }),
+      ]
+    );
+
+    expect(result.value.contact.links).toEqual([
+      expect.objectContaining({
+        label: 'Personal',
+        url: 'https://www.tiagotc.com',
+      }),
+      expect.objectContaining({
+        label: 'Portfolio',
+        url: 'https://www.crunchbase.com/person/alextishakov',
+      }),
+      expect.objectContaining({
+        label: 'Personal',
+        url: 'https://club.forbes.ru/forbesclub/kak-bolshie-dannye-pomogajut-pobedit-rak',
       }),
     ]);
   });
@@ -521,6 +597,26 @@ describe('BasicInfoParser', () => {
     );
 
     expect(result.value.contact.phone).toBe('+1 720-520-5329');
+  });
+
+  test('extracts compact and international phone contact lines', () => {
+    const compactPhone = BasicInfoParser.parse(`
+      Apollo Helios
+      Advisor
+
+      Contact
+      +1(415)988 8877 (Work)
+    `);
+    const internationalPhone = BasicInfoParser.parse(`
+      Apollo Helios
+      Advisor
+
+      Contact
+      +971 (55) 693-40-33 (Mobile)
+    `);
+
+    expect(compactPhone.contact.phone).toBe('+1(415)988 8877');
+    expect(internationalPhone.contact.phone).toBe('+971 (55) 693-40-33');
   });
 
   test('extracts eight digit local phone numbers', () => {

@@ -15,6 +15,7 @@ import {
   isLikelyLocationText,
   isSectionHeaderText,
 } from '../utils/profile-text.js';
+import { classifyLocationText } from '../utils/location-classifier.js';
 
 type EducationLineState =
   | 'seeking_institution'
@@ -316,9 +317,16 @@ export class EducationParser {
   }
 
   private static looksLikeLocation(line: string): boolean {
+    const locationClassification = classifyLocationText({
+      context: { structuralContext: 'metadata' },
+      text: line,
+    });
     const hasLocationShape =
       isLikelyLocationText(line) ||
-      (line.includes(',') && this.LOCATION_PATTERN.test(line));
+      locationClassification.isLocation ||
+      (locationClassification.score >= 4 &&
+        line.includes(',') &&
+        this.LOCATION_PATTERN.test(line));
 
     return (
       line.length > 2 &&

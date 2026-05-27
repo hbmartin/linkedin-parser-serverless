@@ -85,6 +85,8 @@ export interface LinkedInProfile {
   volunteer_work: string[];
   projects: string[];
   publications: string[];
+  patents: string[];
+  organizations: string[];
   honors_awards: string[];
   summary?: string;
   experience_groups: ExperienceGroup[];

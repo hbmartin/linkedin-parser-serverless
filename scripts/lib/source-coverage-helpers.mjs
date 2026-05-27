@@ -10,6 +10,8 @@ export const sourceCoverageSections = [
   'volunteer_work',
   'projects',
   'publications',
+  'patents',
+  'organizations',
   'honors_awards',
   'recommendations',
   'interests',
@@ -34,6 +36,9 @@ const headingSections = [
   ['education', /^education$/],
   ['projects', /^projects$/],
   ['publications', /^publications$/],
+  ['patents', /^patents?$/],
+  ['organizations', /^organi[sz]ations$/],
+  ['organizations', /^memberships?$/],
   ['honors_awards', /^honors(?:[-\s]+(?:and[-\s]+)?awards)?$/],
   ['volunteer_work', /^volunteer(?:ing)?(?: experience)?$/],
   ['recommendations', /^recommendations$/],
@@ -50,6 +55,8 @@ const profileSectionByKey = new Map([
   ['volunteer_work', 'volunteer_work'],
   ['projects', 'projects'],
   ['publications', 'publications'],
+  ['patents', 'patents'],
+  ['organizations', 'organizations'],
   ['honors_awards', 'honors_awards'],
   ['summary', 'summary'],
   ['experience_groups', 'experience'],
@@ -441,10 +448,12 @@ function isDurationText(value) {
     /(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{4})\s*-\s*(?:present|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{4}))/u.test(
       normalizedValue
     ) ||
-    /^\d+\s+(?:year|years|yr|yrs|month|months|mo|mos)\b(?:\s+\d+\s+(?:month|months|mo|mos)\b)?/u.test(
+    /^\d+\s+(?:year|years|yr|yrs|month|months|mo|mos)\b(?:\s+\d+\s+(?:month|months|mo|mos)\b)?$/u.test(
       normalizedValue
     ) ||
-    /\(\d+\s+(?:year|years|yr|yrs|month|months|mo|mos)\b/u.test(normalizedValue)
+    /^\(\d+\s+(?:year|years|yr|yrs|month|months|mo|mos)\b[^)]*\)$/u.test(
+      normalizedValue
+    )
   );
 }
 

@@ -65,6 +65,8 @@ describe('source coverage helpers', () => {
           volunteer_work: [],
           projects: [],
           publications: [],
+          patents: [],
+          organizations: [],
           honors_awards: [],
           summary: 'Engineer',
           experience: [],
@@ -97,6 +99,37 @@ describe('source coverage helpers', () => {
     ]);
   });
 
+  test('classifies patents and memberships headings through source coverage', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Patents',
+        'Systems and methods for profile parsing',
+        'Memberships',
+        'YPO',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        organizations: ['YPO'],
+        patents: ['Systems and methods for profile parsing'],
+      }),
+      pdfFileName: 'extra-sections.pdf',
+    });
+
+    expect(report.unmatchedSourceSegmentCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+    expect(report.sections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          section: 'patents',
+          sourceSegmentCount: 1,
+        }),
+        expect.objectContaining({
+          section: 'organizations',
+          sourceSegmentCount: 1,
+        }),
+      ])
+    );
+  });
+
   test('reports token-only matches separately from exact source matches', () => {
     const report = createSourceCoverageReport({
       layoutText: ['Experience', 'Staff Engineer, ML'].join('\n'),
@@ -112,6 +145,8 @@ describe('source coverage helpers', () => {
           volunteer_work: [],
           projects: [],
           publications: [],
+          patents: [],
+          organizations: [],
           honors_awards: [],
           summary: '',
           experience: [
@@ -557,6 +592,33 @@ describe('source coverage helpers', () => {
     expect(report.untracedOutputValueCount).toBe(0);
   });
 
+  test('keeps descriptive duration phrases from becoming field mismatches', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Experience',
+        'Warner Music Group',
+        'Board Observer',
+        'January 2020 - Present',
+        'A 50 years old company still building new catalog analytics.',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        experience: [
+          {
+            company: 'Warner Music Group',
+            title: 'Board Observer',
+            duration: 'January 2020 - Present',
+            description:
+              'A 50 years old company still building new catalog analytics.',
+          },
+        ],
+      }),
+      pdfFileName: 'duration-prose-description.pdf',
+    });
+
+    expect(report.fieldMismatchOutputMatchCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+  });
+
   test('keeps place-word organization names out of location field roles', () => {
     const sourceView = createSourceSegmentsFromLayoutText(
       [
@@ -854,6 +916,8 @@ describe('source coverage helpers', () => {
           volunteer_work: [],
           projects: [],
           publications: [],
+          patents: [],
+          organizations: [],
           honors_awards: [],
           summary: '',
           experience: [],
@@ -882,6 +946,8 @@ function parsedJsonWithProfile(profile: Record<string, unknown>) {
       volunteer_work: [],
       projects: [],
       publications: [],
+      patents: [],
+      organizations: [],
       honors_awards: [],
       summary: '',
       experience: [],

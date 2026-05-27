@@ -224,7 +224,15 @@ export class ListParser {
       }
     }
 
-    if (line.length > 1 && line.length < 20 && /^[\p{L}.+-]+$/u.test(line)) {
+    if (
+      line.length > 1 &&
+      line.length < 30 &&
+      /^[\p{L}][\p{L}\s.+-]*$/u.test(line) &&
+      !startsWithLanguageProficiencyWord(line) &&
+      !endsWithUnsupportedLanguageProficiencyWord(line) &&
+      (!looksLikeOrganizationNameText(line) ||
+        looksLikeShortLanguageLabel(line))
+    ) {
       return {
         language: line,
         proficiency: 'Unknown',
@@ -339,5 +347,50 @@ function looksLikeLanguageBaseWithoutProficiency(text: string): boolean {
   return (
     !REGEX_PATTERNS.LANGUAGE_PROFICIENCY.test(text) &&
     /^[\p{L}\s.+-]+(?:\s*\([\p{L}\s.+-]+\))?$/u.test(text)
+  );
+}
+
+function looksLikeShortLanguageLabel(text: string): boolean {
+  const normalizedText = normalizeWhitespace(text);
+  const words = normalizedText
+    .split(/\s+|-/u)
+    .map(word => word.trim())
+    .filter(word => word.length > 0);
+  const firstWord = words[0]?.toLowerCase();
+
+  if (
+    firstWord &&
+    /^(?:bilingual|elementary|fluent|limited|native|professional|working)$/u.test(
+      firstWord
+    )
+  ) {
+    return false;
+  }
+
+  return (
+    words.length >= 1 &&
+    words.length <= 3 &&
+    words.every(word => /^[\p{Lu}][\p{L}\p{M}.+]*$/u.test(word))
+  );
+}
+
+function startsWithLanguageProficiencyWord(text: string): boolean {
+  const firstWord = normalizeWhitespace(text).split(/\s+/u)[0]?.toLowerCase();
+
+  return (
+    firstWord !== undefined &&
+    /^(?:bilingual|elementary|fluent|limited|native|professional|working)$/u.test(
+      firstWord
+    )
+  );
+}
+
+function endsWithUnsupportedLanguageProficiencyWord(text: string): boolean {
+  const words = normalizeWhitespace(text).split(/\s+/u);
+  const lastWord = words.at(-1)?.toLowerCase();
+
+  return (
+    lastWord !== undefined &&
+    /^(?:advanced|beginner|intermediate)$/u.test(lastWord)
   );
 }

@@ -359,6 +359,25 @@ describe('formatLinkedInProfile', () => {
     );
   });
 
+  test('formats patents and organizations when present', () => {
+    expect(
+      formatLinkedInProfile({
+        ...createEmptyProfile(),
+        organizations: ['YPO', 'IEEE Computer Society'],
+        patents: ['Systems and methods for profile parsing'],
+      })
+    ).toBe(
+      [
+        'Patents',
+        '- Systems and methods for profile parsing',
+        '',
+        'Organizations',
+        '- YPO',
+        '- IEEE Computer Society',
+      ].join('\n')
+    );
+  });
+
   test('returns an empty string when every section is empty', () => {
     expect(
       formatLinkedInProfile(createEmptyProfile(), {
@@ -481,6 +500,8 @@ function createProfile(): LinkedInProfile {
     ],
     location: 'San Francisco, CA',
     name: 'Orion Helios',
+    organizations: [],
+    patents: [],
     projects: ['Parser Toolkit'],
     publications: [],
     summary: 'Builds reliable parsing systems.',
@@ -498,6 +519,8 @@ function createEmptyProfile(): LinkedInProfile {
     experience_groups: [],
     honors_awards: [],
     languages: [],
+    organizations: [],
+    patents: [],
     projects: [],
     publications: [],
     top_skills: [],

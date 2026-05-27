@@ -371,9 +371,19 @@ export function classifyLocationText({
     normalizedText,
   });
   const hasCommaRegion = hasCommaSeparatedRegionEvidence(normalizedText);
+  const hasAfterDurationCommaLocation =
+    context?.structuralContext === 'after-duration' &&
+    hasProperCommaLocationShape(normalizedText, words) &&
+    !hasBlockedDomainWord;
+  const hasStandaloneQualifiedProperArea =
+    looksLikeQualifiedProperArea(lookupWords, words) && !hasBlockedDomainWord;
   const hasQualifiedArea =
     hasGenericLocationQualifier(lookupWords) &&
-    (hasKnownPlace || hasCountryOrRegion || hasAdminRegion || hasRegionCode);
+    (hasKnownPlace ||
+      hasCountryOrRegion ||
+      hasAdminRegion ||
+      hasRegionCode ||
+      hasStandaloneQualifiedProperArea);
   const hasProperShape = looksLikeProperLocationShape(words);
 
   if (hasRelationalConnector && hasKnownPlace && hasCountryOrRegion) {
@@ -398,12 +408,12 @@ export function classifyLocationText({
     add('region-code', 2);
   }
 
-  if (hasCommaRegion) {
+  if (hasCommaRegion || hasAfterDurationCommaLocation) {
     add('comma-region', 2);
   }
 
   if (hasQualifiedArea) {
-    add('qualified-area', 2);
+    add('qualified-area', hasStandaloneQualifiedProperArea ? 3 : 2);
   }
 
   if (hasProperShape) {
@@ -632,6 +642,40 @@ function hasCommaSeparatedRegionEvidence(text: string): boolean {
 
 function hasGenericLocationQualifier(words: readonly string[]): boolean {
   return words.some(word => genericLocationQualifiers.has(word));
+}
+
+function hasProperCommaLocationShape(
+  text: string,
+  words: readonly string[]
+): boolean {
+  const parts = text
+    .split(',')
+    .map(part => part.trim())
+    .filter(part => part.length > 0);
+
+  return (
+    parts.length >= 2 &&
+    parts.length <= 3 &&
+    looksLikeProperLocationShape(words) &&
+    parts.every(part => visibleWords(part).length <= 4)
+  );
+}
+
+function looksLikeQualifiedProperArea(
+  lookupWords: readonly string[],
+  words: readonly string[]
+): boolean {
+  const hasAreaShapeQualifier = lookupWords.some(word =>
+    ['area', 'metropolitan', 'metro'].includes(word)
+  );
+
+  return (
+    hasAreaShapeQualifier &&
+    words.length >= 2 &&
+    words.length <= 6 &&
+    looksLikeProperLocationShape(words) &&
+    lookupWords.some(word => genericLocationQualifiers.has(word))
+  );
 }
 
 function looksLikeProperLocationShape(words: readonly string[]): boolean {

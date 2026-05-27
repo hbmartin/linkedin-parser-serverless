@@ -20,8 +20,6 @@ const SECTION_HEADER_TEXT = new Set([
   'courses',
   'honors-awards',
   'honours-awards',
-  'organizations',
-  'patents',
   'recommendations',
   'interests',
 ]);

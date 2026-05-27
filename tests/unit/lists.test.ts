@@ -348,6 +348,29 @@ describe('ListParser', () => {
       warnings: [],
     });
   });
+
+  test('accepts short hyphenated language variants without proficiencies', () => {
+    const result = ListParser.parseStructuralLanguagesWithWarnings([
+      structuralLine({ column: 'left', text: 'Languages', y: 700 }),
+      structuralLine({ column: 'left', text: 'Chinese - Cantonese', y: 680 }),
+      structuralLine({ column: 'left', text: 'Chinese - Mandarin', y: 660 }),
+      structuralLine({ column: 'left', text: 'Experience', y: 640 }),
+    ]);
+
+    expect(result).toEqual({
+      value: [
+        {
+          language: 'Chinese - Cantonese',
+          proficiency: 'Unknown',
+        },
+        {
+          language: 'Chinese - Mandarin',
+          proficiency: 'Unknown',
+        },
+      ],
+      warnings: [],
+    });
+  });
 });
 
 function structuralLine({

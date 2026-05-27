@@ -118,6 +118,34 @@ describe('location classifier', () => {
     }
   });
 
+  test('recognizes proper qualified area and after-duration comma location shapes', () => {
+    for (const location of [
+      'Salt Lake City Metropolitan Area',
+      'Greater Pittsburgh Area',
+      'Jakarta, Indonesia',
+      'Taipei City, Taiwan',
+      'Riyadh, Saudi Arabia',
+      'Doha, Qatar',
+    ]) {
+      expect(
+        classifyLocationText({
+          context: { structuralContext: 'after-duration' },
+          text: location,
+        }).isLocation
+      ).toBe(true);
+    }
+  });
+
+  test('rejects academic program details that look comma-separated but lack location evidence', () => {
+    const result = classifyLocationText({
+      context: { structuralContext: 'metadata' },
+      text: 'YPO Academy, CIBE',
+    });
+
+    expect(result.isLocation).toBe(false);
+    expect(result.signals).not.toContain('comma-region');
+  });
+
   test('recognizes standard ZIP+4 postal codes', () => {
     expect(classifyLocationText({ text: '12345-6789' })).toEqual(
       expect.objectContaining({

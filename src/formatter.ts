@@ -44,6 +44,8 @@ export function formatLinkedInProfile(
     createListSection('Volunteer Work', profile.volunteer_work),
     createListSection('Projects', profile.projects),
     createListSection('Publications', profile.publications),
+    createListSection('Patents', profile.patents),
+    createListSection('Organizations', profile.organizations),
     createListSection('Honors & Awards', profile.honors_awards),
   ].filter((section): section is SectionDraft => section !== undefined);
 

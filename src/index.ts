@@ -321,6 +321,8 @@ async function parseLinkedInPDFInternal(
     volunteer_work: extraSections.volunteer_work,
     projects: extraSections.projects,
     publications: extraSections.publications,
+    patents: extraSections.patents,
+    organizations: extraSections.organizations,
     honors_awards: extraSections.honors_awards,
     summary: basicInfo.summary,
     experience_groups: experienceGroups,
