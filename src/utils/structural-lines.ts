@@ -68,13 +68,13 @@ function groupItemsByY(
   });
   const groups: TextItem[][] = [];
   let currentGroup: TextItem[] = [];
+  let currentGroupYTotal = 0;
 
   for (const item of sortedItems) {
     const referenceY =
       currentGroup.length === 0
         ? item.y
-        : currentGroup.reduce((sum, groupedItem) => sum + groupedItem.y, 0) /
-          currentGroup.length;
+        : currentGroupYTotal / currentGroup.length;
 
     if (
       currentGroup.length > 0 &&
@@ -82,9 +82,11 @@ function groupItemsByY(
     ) {
       groups.push(currentGroup);
       currentGroup = [];
+      currentGroupYTotal = 0;
     }
 
     currentGroup.push(item);
+    currentGroupYTotal += item.y;
   }
 
   if (currentGroup.length > 0) {
@@ -107,25 +109,37 @@ function createStructuralLine(
       .replace(/\u00A0/g, ' ')
       .replace(/\b([\p{Lu}])\s+([\p{Lu}])\b/gu, '$1$2')
   );
-  const xValues = sortedGroup.map(item => item.x);
-  const yValues = sortedGroup.map(item => item.y);
-  const fontSizes = sortedGroup.map(item => item.fontSize);
-  const heights = sortedGroup.map(item => item.height);
-  const pageIndexes = sortedGroup
-    .map(item => item.pageIndex)
-    .filter((pageIndex): pageIndex is number => pageIndex !== undefined);
+  let minX = Number.POSITIVE_INFINITY;
+  let yTotal = 0;
+  let minPageIndex: number | undefined;
+  let fontSizeTotal = 0;
+  let maxRight = Number.NEGATIVE_INFINITY;
+  let maxHeight = Number.NEGATIVE_INFINITY;
+
+  for (const item of sortedGroup) {
+    minX = Math.min(minX, item.x);
+    yTotal += item.y;
+
+    if (item.pageIndex !== undefined) {
+      minPageIndex =
+        minPageIndex === undefined
+          ? item.pageIndex
+          : Math.min(minPageIndex, item.pageIndex);
+    }
+
+    fontSizeTotal += item.fontSize;
+    maxRight = Math.max(maxRight, item.x + item.width);
+    maxHeight = Math.max(maxHeight, item.height);
+  }
 
   return {
     text,
-    x: Math.min(...xValues),
-    y: yValues.reduce((sum, y) => sum + y, 0) / yValues.length,
-    ...(pageIndexes.length > 0 ? { pageIndex: Math.min(...pageIndexes) } : {}),
-    fontSize:
-      fontSizes.reduce((sum, fontSize) => sum + fontSize, 0) / fontSizes.length,
-    width: Math.max(
-      ...sortedGroup.map(item => item.x + item.width - Math.min(...xValues))
-    ),
-    height: Math.max(...heights),
+    x: minX,
+    y: yTotal / sortedGroup.length,
+    ...(minPageIndex !== undefined ? { pageIndex: minPageIndex } : {}),
+    fontSize: fontSizeTotal / sortedGroup.length,
+    width: maxRight - minX,
+    height: maxHeight,
     column,
   };
 }

@@ -1,9 +1,11 @@
 import { ExperienceStructuralParser } from '../../src/parsers/experience-structural.js';
 import type {
+  LayoutInfo,
   StructuralSection,
   TextItem,
 } from '../../src/types/structural.js';
 import type { NormalizedParserLine } from '../../src/utils/parser-lines.js';
+import type { StructuralLine } from '../../src/utils/structural-lines.js';
 
 type HeaderCandidate = Parameters<
   (typeof ExperienceStructuralParser)['compareExperienceHeaderCandidates']
@@ -28,6 +30,30 @@ function textItem({
     fontFamily: 'Helvetica',
     width: text.length * 5,
     height: fontSize,
+  };
+}
+
+function structuralLine({
+  column = 'right',
+  fontSize = 12,
+  text,
+  x = 220,
+  y,
+}: {
+  column?: StructuralLine['column'];
+  fontSize?: number;
+  text: string;
+  x?: number;
+  y: number;
+}): StructuralLine {
+  return {
+    column,
+    fontSize,
+    height: fontSize,
+    text,
+    width: text.length * 5,
+    x,
+    y,
   };
 }
 
@@ -136,6 +162,52 @@ describe('ExperienceStructuralParser', () => {
           expect.objectContaining({
             duration: 'September 2012 - May 2018',
             title: 'Research Assistant',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('uses supplied structural lines instead of rebuilding from text items', () => {
+    const twoColumnLayout: LayoutInfo = {
+      type: 'two-column',
+      sidebarBounds: {
+        left: 20,
+        right: 120,
+        top: 700,
+        bottom: 580,
+      },
+      mainBounds: {
+        left: 220,
+        right: 420,
+        top: 700,
+        bottom: 580,
+      },
+    };
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings({
+      layout: twoColumnLayout,
+      structuralLines: [
+        structuralLine({ text: 'Experience', y: 700 }),
+        structuralLine({ text: 'Example Labs', y: 670 }),
+        structuralLine({ text: 'Senior Engineer', y: 650 }),
+        structuralLine({ text: 'January 2020 - Present (4 years)', y: 630 }),
+        structuralLine({
+          text: 'Built reliable parsing systems for structured profile data.',
+          y: 610,
+        }),
+      ],
+      textItems: [],
+    });
+
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Example Labs',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Built reliable parsing systems for structured profile data.',
+            duration: 'January 2020 - Present',
+            title: 'Senior Engineer',
           }),
         ],
       }),

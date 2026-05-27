@@ -234,9 +234,11 @@ async function parseLinkedInPDFInternal(
   let experienceGroups: ExperienceGroup[];
   if (structuralData) {
     const workExperienceResult =
-      ExperienceStructuralParser.parseExperienceWithWarnings(
-        structuralData.textItems
-      );
+      ExperienceStructuralParser.parseExperienceWithWarnings({
+        layout: structuralData.layout,
+        structuralLines: structuralData.structuralLines,
+        textItems: structuralData.textItems,
+      });
     const workExperiences = workExperienceResult.value;
     sectionWarnings.push(...workExperienceResult.warnings);
 
