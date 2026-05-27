@@ -69,7 +69,10 @@ const EMAIL_SEARCH_LINE_PATTERN = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}$/i;
 const LABELED_EMAIL_SEARCH_LINE_PATTERN =
   /^(?:e-?mail|mail)(?:\s*[:-]\s*|\s+)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}$/i;
 const WRAPPED_EMAIL_START_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.$/i;
-const EMAIL_TLD_CONTINUATION_PATTERN = /^[A-Z]{2,63}$/i;
+const EMAIL_TLD_CONTINUATION_PATTERN = /^[A-Z]{2,24}$/i;
+const CONTACT_LINK_LABEL_PATTERN = /\(([A-Za-z][A-Za-z0-9 &/+.-]{1,40})\)\s*$/u;
+const PHONE_LINE_LABEL_PATTERN =
+  /\s*\((?:mobile|work|phone|tel|telephone)\)\s*$/iu;
 
 interface ContactLinkDraft {
   label?: string;
@@ -559,10 +562,7 @@ export class BasicInfoParser {
         continue;
       }
 
-      const phoneMatch =
-        normalizedLine.match(
-          /(?:\+\d{1,3}[\s.-]*)?(?:\(?\d{2,3}\)?[\s.-]*)?\d{3,5}[\s.-]?\d{4}/
-        )?.[0] ?? normalizedLine.match(REGEX_PATTERNS.PHONE)?.[0];
+      const phoneMatch = this.extractPhoneCandidate(normalizedLine);
 
       if (phoneMatch && phoneMatch.replace(/\D/g, '').length >= 8) {
         return phoneMatch;
@@ -570,6 +570,32 @@ export class BasicInfoParser {
     }
 
     return undefined;
+  }
+
+  private static extractPhoneCandidate(line: string): string | undefined {
+    const searchableLine = normalizeWhitespace(
+      line.replace(PHONE_LINE_LABEL_PATTERN, '')
+    );
+    const candidates = searchableLine.match(
+      /(?:\+\d{1,3}\s*)?(?:\(?\d{1,4}\)?[\s.-]*){2,6}\d{2,4}/gu
+    );
+
+    for (const candidate of candidates ?? []) {
+      const normalizedCandidate = normalizeWhitespace(
+        candidate.replace(/[^\d+().\s-]+$/gu, '')
+      );
+      const digitCount = normalizedCandidate.replace(/\D/g, '').length;
+
+      if (digitCount >= 8 && digitCount <= 15) {
+        return normalizedCandidate;
+      }
+    }
+
+    const fallback = searchableLine.match(REGEX_PATTERNS.PHONE)?.[0];
+
+    return fallback && fallback.replace(/\D/g, '').length >= 8
+      ? fallback
+      : undefined;
   }
 
   private static isContactNonLinkLine(line: string): boolean {
@@ -580,7 +606,7 @@ export class BasicInfoParser {
   }
 
   private static extractContactLinkLabel(line: string): string | undefined {
-    const match = line.match(/\((LinkedIn|Company|Other|Blog)\)\s*$/i);
+    const match = line.match(CONTACT_LINK_LABEL_PATTERN);
 
     if (!match) {
       return undefined;
@@ -591,7 +617,7 @@ export class BasicInfoParser {
 
   private static removeContactLinkLabel(line: string): string {
     return normalizeWhitespace(
-      line.replace(/\s*\((?:LinkedIn|Company|Other|Blog)\)\s*$/i, '')
+      line.replace(/\s*\([A-Za-z][A-Za-z0-9 &/+.-]{1,40}\)\s*$/u, '')
     );
   }
 
@@ -626,7 +652,7 @@ export class BasicInfoParser {
       !/^\(?\s*(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|present)\s*\)?$/i.test(
         normalizedLine
       ) &&
-      (/\b(?:mobile|phone|tel)\b/i.test(normalizedLine) ||
+      (/\b(?:mobile|phone|tel|work)\b/i.test(normalizedLine) ||
         /^[+\d\s().-]+$/.test(normalizedLine))
     );
   }

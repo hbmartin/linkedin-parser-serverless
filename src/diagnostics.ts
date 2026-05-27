@@ -168,6 +168,8 @@ function isEmptyProfile(profile: LinkedInProfile): boolean {
     profile.volunteer_work.length === 0 &&
     profile.projects.length === 0 &&
     profile.publications.length === 0 &&
+    profile.patents.length === 0 &&
+    profile.organizations.length === 0 &&
     profile.honors_awards.length === 0 &&
     profile.experience_groups.length === 0 &&
     profile.experience.length === 0 &&
@@ -193,6 +195,8 @@ function hasListContent(profile: LinkedInProfile): boolean {
     profile.volunteer_work.length > 0 ||
     profile.projects.length > 0 ||
     profile.publications.length > 0 ||
+    profile.patents.length > 0 ||
+    profile.organizations.length > 0 ||
     profile.honors_awards.length > 0
   );
 }

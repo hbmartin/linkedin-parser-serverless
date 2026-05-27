@@ -3,6 +3,7 @@ import {
   PROFILE_SECTION_HEADER_ENTRIES,
   type ProfileSectionKey,
 } from '../utils/profile-section-headers.js';
+import { mergeWrappedStructuralListLines } from '../utils/sidebar-list-lines.js';
 import { normalizeWhitespace, splitLines } from '../utils/text-utils.js';
 import type {
   ParsedSectionResult,
@@ -16,6 +17,8 @@ export interface ExtraProfileSections {
   volunteer_work: string[];
   projects: string[];
   publications: string[];
+  patents: string[];
+  organizations: string[];
 }
 
 type ExtraSectionKey = keyof ExtraProfileSections;
@@ -38,8 +41,6 @@ const BOUNDARY_SECTION_HEADERS = new Set<string>([
     normalizeSectionHeader(text)
   ),
   'courses',
-  'patents',
-  'organizations',
   'recommendations',
   'interests',
   ...TARGET_SECTION_HEADERS.keys(),
@@ -67,6 +68,8 @@ function isExtraSectionKey(
     section === 'honors_awards' ||
     section === 'projects' ||
     section === 'publications' ||
+    section === 'patents' ||
+    section === 'organizations' ||
     section === 'volunteer_work'
   );
 }
@@ -108,6 +111,8 @@ export class ExtraSectionParser {
       sections.projects.push(...columnSections.value.projects);
       sections.publications.push(...columnSections.value.publications);
       sections.volunteer_work.push(...columnSections.value.volunteer_work);
+      sections.patents.push(...columnSections.value.patents);
+      sections.organizations.push(...columnSections.value.organizations);
       warnings.push(...columnSections.warnings);
     }
 
@@ -130,6 +135,8 @@ export function filterMergedSectionWarnings({
     honors_awards: sections.honors_awards,
     projects: sections.projects,
     publications: sections.publications,
+    patents: sections.patents,
+    organizations: sections.organizations,
     volunteer_work: sections.volunteer_work,
   };
   const emittedEmptySectionWarnings = new Set<WarningSection>();
@@ -161,70 +168,45 @@ export function filterMergedSectionWarnings({
 function mergeWrappedStructuralSectionLines(lines: StructuralLine[]): string[] {
   const mergedLines: string[] = [];
   let activeSection: ExtraSectionKey | undefined;
-  let previousEntry:
-    | {
-        line: StructuralLine;
-        mergedLineIndex: number;
-      }
-    | undefined;
+  let activeSectionLines: StructuralLine[] = [];
+
+  function flushActiveSectionLines(): void {
+    if (activeSectionLines.length === 0) {
+      return;
+    }
+
+    mergedLines.push(...mergeWrappedStructuralListLines(activeSectionLines));
+    activeSectionLines = [];
+  }
 
   for (const line of lines) {
     const header = getSectionHeader(line.text);
 
     if (header?.kind === 'target') {
+      flushActiveSectionLines();
       activeSection = header.key;
-      previousEntry = undefined;
       mergedLines.push(line.text);
       continue;
     }
 
     if (header?.kind === 'boundary') {
+      flushActiveSectionLines();
       activeSection = undefined;
-      previousEntry = undefined;
       mergedLines.push(line.text);
       continue;
     }
 
-    if (
-      activeSection &&
-      previousEntry &&
-      isWrappedStructuralEntryLine(previousEntry.line, line)
-    ) {
-      mergedLines[previousEntry.mergedLineIndex] = normalizeWhitespace(
-        `${mergedLines[previousEntry.mergedLineIndex]} ${line.text}`
-      );
-      previousEntry = {
-        line,
-        mergedLineIndex: previousEntry.mergedLineIndex,
-      };
+    if (activeSection) {
+      activeSectionLines.push(line);
       continue;
     }
 
     mergedLines.push(line.text);
-    previousEntry = activeSection
-      ? {
-          line,
-          mergedLineIndex: mergedLines.length - 1,
-        }
-      : undefined;
   }
 
+  flushActiveSectionLines();
+
   return mergedLines;
-}
-
-function isWrappedStructuralEntryLine(
-  previousLine: StructuralLine,
-  line: StructuralLine
-): boolean {
-  const yGap = previousLine.y - line.y;
-  const maxExpectedWrapGap = Math.max(previousLine.height, line.height) + 4;
-  const isAligned = Math.abs(previousLine.x - line.x) <= 8;
-  const hasSimilarFontSize =
-    Math.abs(previousLine.fontSize - line.fontSize) < 1;
-
-  return (
-    yGap > 0 && yGap <= maxExpectedWrapGap && isAligned && hasSimilarFontSize
-  );
 }
 
 function parseSectionLines(
@@ -270,6 +252,8 @@ function createEmptySections(): ExtraProfileSections {
     projects: [],
     publications: [],
     volunteer_work: [],
+    patents: [],
+    organizations: [],
   };
 }
 
@@ -316,7 +300,7 @@ function createExtraSectionWarnings(
   const warnings: SectionParseWarning[] = [];
 
   for (const section of detectedSections) {
-    if (sections[section].length > 0) {
+    if (sections[section].length > 0 || section === 'organizations') {
       continue;
     }
 

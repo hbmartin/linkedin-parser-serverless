@@ -192,6 +192,8 @@ function mockBinaryParse({
       value: {
         certifications: [],
         honors_awards: [],
+        organizations: [],
+        patents: [],
         projects: [],
         publications: [],
         volunteer_work: [],

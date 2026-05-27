@@ -97,6 +97,28 @@ describe('IdentityStructuralParser', () => {
     expect(identity.location).toBe('United States');
   });
 
+  test('splits metropolitan area identity locations out of headlines', () => {
+    const identity = IdentityStructuralParser.parse([
+      line({ fontSize: 26, text: 'Victor Wu', y: 760 }),
+      line({
+        fontSize: 12,
+        text: 'Consumer CFO | Pricing Strategy | P&L Management',
+        y: 730,
+      }),
+      line({
+        fontSize: 12,
+        text: 'Salt Lake City Metropolitan Area',
+        y: 710,
+      }),
+      line({ fontSize: 16, text: 'Experience', y: 680 }),
+    ]);
+
+    expect(identity.headline).toBe(
+      'Consumer CFO | Pricing Strategy | P&L Management'
+    );
+    expect(identity.location).toBe('Salt Lake City Metropolitan Area');
+  });
+
   test('returns warnings for malformed sidebar sections without identity candidates', () => {
     const result = IdentityStructuralParser.parseWithWarnings([
       line({ column: 'left', text: 'Contact', y: 760 }),
@@ -141,5 +163,26 @@ describe('IdentityStructuralParser', () => {
       name: 'Artemis Selene',
       topSkills: ['TypeScript', 'Product Strategy'],
     });
+  });
+
+  test('merges wrapped top skill lines in the same sidebar column', () => {
+    const identity = IdentityStructuralParser.parse([
+      line({ column: 'left', text: 'Top Skills', y: 760 }),
+      line({ column: 'left', text: 'Cross-Functional Team', y: 740 }),
+      line({ column: 'left', text: 'Management', y: 728 }),
+      line({
+        column: 'left',
+        text: 'Qualitative & Quantitative Research',
+        y: 704,
+      }),
+      line({ column: 'left', text: 'Methodologies', y: 692 }),
+      line({ column: 'left', text: 'Languages', y: 660 }),
+      line({ fontSize: 26, text: 'Ariadne Minos', y: 760 }),
+    ]);
+
+    expect(identity.topSkills).toEqual([
+      'Cross-Functional Team Management',
+      'Qualitative & Quantitative Research Methodologies',
+    ]);
   });
 });

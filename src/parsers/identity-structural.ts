@@ -8,6 +8,7 @@ import {
   isLikelyLocationText,
   isSectionHeaderText,
 } from '../utils/profile-text.js';
+import { mergeWrappedStructuralListLines } from '../utils/sidebar-list-lines.js';
 import { normalizeWhitespace } from '../utils/text-utils.js';
 
 export interface StructuralIdentity {
@@ -136,8 +137,7 @@ export class IdentityStructuralParser {
     const skillLines =
       endIndex === -1 ? followingLines : followingLines.slice(0, endIndex);
 
-    return skillLines
-      .map(line => line.text)
+    return mergeWrappedStructuralListLines(skillLines)
       .filter(skill => skill.length > 1 && skill.length < 50)
       .slice(0, TOP_SKILLS_LIMIT);
   }

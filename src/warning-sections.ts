@@ -8,6 +8,8 @@ export const WARNING_SECTIONS = [
   'volunteer_work',
   'projects',
   'publications',
+  'patents',
+  'organizations',
   'honors_awards',
   'experience',
   'education',

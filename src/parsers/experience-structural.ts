@@ -342,10 +342,43 @@ export class ExperienceStructuralParser {
     return (
       followingLine !== undefined &&
       this.haveComparableHeaderFonts(line, nextLine) &&
-      this.WRAPPED_TITLE_KEYWORD_PATTERN.test(line.text) &&
+      (this.WRAPPED_TITLE_KEYWORD_PATTERN.test(line.text) ||
+        this.looksLikePosition(line.text) ||
+        this.looksLikeWrappedBusinessTitleAfterOrganization({
+          allLines,
+          combinedText,
+          index,
+          line,
+          nextLine,
+        })) &&
       this.looksLikePendingTitleContinuationLine(nextLine.text) &&
       this.looksLikeDuration(followingLine.text) &&
       this.looksLikePotentialPositionTitleLine(combinedText)
+    );
+  }
+
+  private static looksLikeWrappedBusinessTitleAfterOrganization({
+    allLines,
+    index,
+    line,
+  }: WrappedParserLineMergeParams): boolean {
+    const previousLine = this.previousContentLine(allLines, index - 1);
+
+    if (
+      !previousLine ||
+      !this.canStartCanonicalExperienceHeader(previousLine.text)
+    ) {
+      return false;
+    }
+
+    const normalizedLine = line.text.trim();
+    const wordCount = normalizedLine.split(/\s+/).filter(Boolean).length;
+    const hasBusinessTitlePunctuation = /[,/&|–-]/u.test(normalizedLine);
+
+    return (
+      wordCount >= 4 &&
+      hasBusinessTitlePunctuation &&
+      this.looksLikePotentialPositionTitleLine(normalizedLine)
     );
   }
 
@@ -386,6 +419,21 @@ export class ExperienceStructuralParser {
     return parserLines
       .slice(startIndex)
       .find(line => !this.isExperienceNoiseLine(line.text));
+  }
+
+  private static previousContentLine(
+    parserLines: NormalizedParserLine[],
+    startIndex: number
+  ): NormalizedParserLine | undefined {
+    for (let index = startIndex; index >= 0; index--) {
+      const line = parserLines[index];
+
+      if (!this.isExperienceNoiseLine(line.text)) {
+        return line;
+      }
+    }
+
+    return undefined;
   }
 
   private static haveComparableHeaderFonts(
@@ -623,9 +671,9 @@ export class ExperienceStructuralParser {
 
     if (
       normalizedLine.length < 2 ||
-      /^[-+*•]/u.test(normalizedLine) ||
+      /^[-+*•>]/u.test(normalizedLine) ||
       (/[.?]$/.test(normalizedLine) &&
-        !/\b(?:co|corp|gmbh|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
+        !/\b(?:co|corp|gmbh|inc|llc|ltd|n\.a)\.$/i.test(normalizedLine)) ||
       normalizedLine.includes('@') ||
       /https?:\/\//iu.test(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
@@ -1243,7 +1291,7 @@ export class ExperienceStructuralParser {
       (normalizedLine.length > 80 &&
         !isLongAcademicOrganization &&
         !isWrappedOrganization) ||
-      /^[-+*•]/u.test(normalizedLine) ||
+      /^[-+*•>]/u.test(normalizedLine) ||
       (/[.?]$/.test(normalizedLine) &&
         !/\b(?:co|corp|gmbh|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
       (/^[a-z]/.test(normalizedLine) &&
@@ -1408,7 +1456,8 @@ export class ExperienceStructuralParser {
     }
 
     return (
-      !/^[-+*•]/u.test(normalizedLine) &&
+      !/^[-+*•>]/u.test(normalizedLine) &&
+      !/[!?]/u.test(normalizedLine) &&
       looksLikePositionTitleText(normalizedLine) &&
       !this.looksLikeDuration(normalizedLine) &&
       !this.looksLikeLocation(normalizedLine)
@@ -1457,7 +1506,7 @@ export class ExperienceStructuralParser {
         !this.looksLikeLowerCamelOrganization(normalizedLine)) ||
       /[.!?]$/.test(normalizedLine) ||
       normalizedLine.includes('@') ||
-      /^[-+*•]/u.test(normalizedLine) ||
+      /^[-+*•>]/u.test(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
       (hasLocationShape && (!hasFollowingPosition || !hasOrganizationCue)) ||
@@ -1647,9 +1696,9 @@ export class ExperienceStructuralParser {
         !isKnownLowercaseOrganization &&
         !isLowerCamelOrganization) ||
       (/[.!?]$/.test(normalizedLine) &&
-        !/\b(?:co|corp|gmbh|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
+        !/\b(?:co|corp|gmbh|inc|llc|ltd|n\.a)\.$/i.test(normalizedLine)) ||
       normalizedLine.includes('@') ||
-      /^[-+*•]/u.test(normalizedLine) ||
+      /^[-+*•>]/u.test(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikeLocation(normalizedLine) ||
@@ -1680,9 +1729,10 @@ export class ExperienceStructuralParser {
     return (
       normalizedLine.length >= 3 &&
       normalizedLine.length < 90 &&
-      normalizedLine.split(/\s+/).length <= 10 &&
+      normalizedLine.split(/\s+/).length <= 14 &&
       /^[\p{Lu}0-9]/u.test(normalizedLine) &&
-      !/[.!?]$/.test(normalizedLine) &&
+      !/[!?]/u.test(normalizedLine) &&
+      !/[.]$/.test(normalizedLine) &&
       !normalizedLine.includes('@') &&
       !/https?:\/\//i.test(normalizedLine) &&
       !this.isExperienceNoiseLine(normalizedLine) &&
@@ -2293,7 +2343,7 @@ export class ExperienceStructuralParser {
       normalizedLine.split(/\s+/).length <= 4 &&
       /^[\p{Lu}0-9]/u.test(normalizedLine) &&
       !/[.!?]$/.test(normalizedLine) &&
-      !/^[-+*•]/u.test(normalizedLine) &&
+      !/^[-+*•>]/u.test(normalizedLine) &&
       !looksLikePositionTitleText(normalizedLine) &&
       !this.looksLikeDuration(normalizedLine) &&
       !this.looksLikeLocation(normalizedLine) &&
@@ -2329,6 +2379,13 @@ export class ExperienceStructuralParser {
     }
 
     if (this.looksLikeWrappedOrganizationHeaderText(text.trim())) {
+      return text.trim();
+    }
+
+    if (
+      this.hasOrganizationDomainCueText(text.trim()) ||
+      this.hasOrganizationSuffixText(text.trim())
+    ) {
       return text.trim();
     }
 

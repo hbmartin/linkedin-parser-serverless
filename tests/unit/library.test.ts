@@ -263,6 +263,8 @@ describe('LinkedIn PDF Parser Library', () => {
         volunteer_work: [],
         projects: [],
         publications: [],
+        patents: [],
+        organizations: [],
         honors_awards: [],
         summary: undefined,
         experience_groups: [

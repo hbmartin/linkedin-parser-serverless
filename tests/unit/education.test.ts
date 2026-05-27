@@ -505,6 +505,31 @@ describe('EducationParser', () => {
     );
   });
 
+  test('classifies comma-separated academic program details as degree text', () => {
+    const [education] = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'Columbia Business School',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'YPO Academy, CIBE',
+        y: 710,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 680 }),
+    ]);
+
+    expect(education).toEqual(
+      expect.objectContaining({
+        degree: 'YPO Academy, CIBE',
+        institution: 'Columbia Business School',
+        location: '',
+      })
+    );
+  });
+
   test('adds structured dates for education ranges', () => {
     const [education] = EducationParser.parse(`
       Education

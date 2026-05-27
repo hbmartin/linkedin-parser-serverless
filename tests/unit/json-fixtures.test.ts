@@ -228,7 +228,9 @@ describe('JSON fixture batch operations', () => {
               "contact": {
                 "email": "fixture@example.com"
               },
-              "certifications": []
+              "certifications": [],
+              "organizations": [],
+              "patents": []
             }
           }`,
         ],
@@ -780,6 +782,8 @@ const defaultParseResult: ParseResult = {
     languages: [],
     location: 'San Francisco, CA',
     name: 'Orion Helios',
+    organizations: [],
+    patents: [],
     projects: [],
     publications: [],
     summary: undefined,

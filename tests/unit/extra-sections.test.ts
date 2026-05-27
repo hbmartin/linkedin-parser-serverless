@@ -50,6 +50,8 @@ describe('ExtraSectionParser', () => {
     expect(sections).toEqual({
       certifications: ['Cloud Architect Professional'],
       honors_awards: [],
+      organizations: [],
+      patents: [],
       projects: ['Internal Search Migration'],
       publications: ['Scaling Engineering Teams'],
       volunteer_work: ['Community Mentor'],
@@ -74,6 +76,8 @@ describe('ExtraSectionParser', () => {
     expect(sections.projects).toEqual(['Revenue Forecasting Tool']);
     expect(sections.publications).toEqual(['Distributed Systems Notes']);
     expect(sections.volunteer_work).toEqual(['Open Source Mentor']);
+    expect(sections.patents).toEqual([]);
+    expect(sections.organizations).toEqual([]);
   });
 
   test('extracts honors-awards as a supported extra section', () => {
@@ -90,6 +94,30 @@ describe('ExtraSectionParser', () => {
 
     expect(sections.honors_awards).toEqual([
       'Defender of the Declaration Award Winner',
+    ]);
+  });
+
+  test('extracts patents and memberships as supported extra sections', () => {
+    const sections = ExtraSectionParser.parseStructural([
+      line({ column: 'left', text: 'Patents', y: 760 }),
+      line({
+        column: 'left',
+        text: 'Systems and methods for profile parsing',
+        y: 740,
+      }),
+      line({ column: 'left', text: 'Memberships', y: 700 }),
+      line({ column: 'left', text: 'YPO', y: 680 }),
+      line({ column: 'left', text: 'Organizations', y: 640 }),
+      line({ column: 'left', text: 'IEEE Computer Society', y: 620 }),
+      line({ column: 'left', text: 'Experience', y: 580 }),
+    ]);
+
+    expect(sections.patents).toEqual([
+      'Systems and methods for profile parsing',
+    ]);
+    expect(sections.organizations).toEqual([
+      'YPO',
+      'IEEE Computer Society',
     ]);
   });
 
@@ -150,6 +178,18 @@ describe('ExtraSectionParser', () => {
     ]);
   });
 
+  test('does not warn for empty optional membership sections', () => {
+    const result = ExtraSectionParser.parseTextWithWarnings(`
+      Memberships
+
+      Experience
+      Example Labs
+    `);
+
+    expect(result.value.organizations).toEqual([]);
+    expect(result.warnings).toEqual([]);
+  });
+
   test('suppresses structural empty-column warnings after merged entries exist', () => {
     const result = ExtraSectionParser.parseStructuralWithWarnings([
       line({ column: 'left', text: 'Certifications', y: 760 }),
@@ -187,6 +227,8 @@ describe('ExtraSectionParser', () => {
       sections: {
         certifications: ['Cloud Architect Professional'],
         honors_awards: [],
+        organizations: [],
+        patents: [],
         projects: [],
         publications: [],
         volunteer_work: [],
@@ -221,6 +263,8 @@ describe('ExtraSectionParser', () => {
       sections: {
         certifications: [],
         honors_awards: [],
+        organizations: [],
+        patents: [],
         projects: [],
         publications: [],
         volunteer_work: [],

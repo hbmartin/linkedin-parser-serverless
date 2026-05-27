@@ -845,6 +845,254 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('starts confirmed organizations after descriptions and merges wrapped titles', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Spirit Bomb', y: 670 }),
+      textItem({ text: 'Board Observer', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - Present', y: 630 }),
+      textItem({
+        text: 'Works with founders on media and marketplace strategy.',
+        y: 610,
+      }),
+      textItem({ text: 'Warner Music Group', y: 570 }),
+      textItem({ text: 'Director, Global Business', y: 550, fontSize: 11.5 }),
+      textItem({ text: 'Development', y: 538, fontSize: 11.5 }),
+      textItem({ text: 'May 2018 - December 2019', y: 518 }),
+      textItem({ text: 'New York, NY', y: 498 }),
+      textItem({ text: 'Portugal Ventures', y: 458 }),
+      textItem({ text: 'Venture Partner', y: 438, fontSize: 11.5 }),
+      textItem({ text: 'January 2016 - April 2018', y: 418 }),
+      textItem({ text: 'Lisbon, Portugal', y: 398 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Spirit Bomb',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Works with founders on media and marketplace strategy.',
+            title: 'Board Observer',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Warner Music Group',
+        positions: [
+          expect.objectContaining({
+            duration: 'May 2018 - December 2019',
+            location: 'New York, NY',
+            title: 'Director, Global Business Development',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Portugal Ventures',
+        positions: [
+          expect.objectContaining({
+            duration: 'January 2016 - April 2018',
+            location: 'Lisbon, Portugal',
+            title: 'Venture Partner',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps a confirmed organization before a long wrapped business title', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Spirit Bomb', y: 670 }),
+      textItem({ text: 'Board Observer', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'July 2020 - March 2023', y: 630 }),
+      textItem({
+        text: 'Worked with media founders on publishing strategy.',
+        y: 610,
+      }),
+      textItem({ text: 'Warner Music Group', y: 570 }),
+      textItem({
+        text: 'Corporate Strategy, New Business & Ventures - Gaming & Emerging',
+        y: 550,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'Tech', y: 538, fontSize: 11.5 }),
+      textItem({ text: 'February 2018 - March 2023', y: 518 }),
+      textItem({ text: 'London, United Kingdom', y: 498 }),
+      textItem({ text: 'Portugal Ventures', y: 458 }),
+      textItem({
+        text: 'Media and Entertainment Investment Expert',
+        y: 438,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'March 2016 - 2022', y: 418 }),
+      textItem({ text: 'Portugal', y: 398 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Spirit Bomb',
+      }),
+      expect.objectContaining({
+        organization: 'Warner Music Group',
+        positions: [
+          expect.objectContaining({
+            duration: 'February 2018 - March 2023',
+            location: 'London, United Kingdom',
+            title:
+              'Corporate Strategy, New Business & Ventures - Gaming & Emerging Tech',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Portugal Ventures',
+        positions: [
+          expect.objectContaining({
+            duration: 'March 2016 - 2022',
+            location: 'Portugal',
+            title: 'Media and Entertainment Investment Expert',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('recognizes legal-suffix organizations after description text', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Explorer', y: 670 }),
+      textItem({ text: 'Advisor', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - Present', y: 630 }),
+      textItem({ text: 'Built a founder network across fintech.', y: 610 }),
+      textItem({ text: 'Santander Bank, N.A.', y: 570 }),
+      textItem({ text: 'Senior Product Manager', y: 550, fontSize: 11.5 }),
+      textItem({ text: 'March 2018 - December 2019', y: 530 }),
+      textItem({ text: 'Boston, MA', y: 510 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Explorer',
+        positions: [
+          expect.objectContaining({
+            description: 'Built a founder network across fintech.',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Santander Bank, N.A.',
+        positions: [
+          expect.objectContaining({
+            duration: 'March 2018 - December 2019',
+            location: 'Boston, MA',
+            title: 'Senior Product Manager',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps no-date title-looking hiring lines in descriptions', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'PNC', y: 670 }),
+      textItem({
+        text: 'Head of Enterprise Innovation',
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'January 2022 - Present', y: 630 }),
+      textItem({ text: 'Greater Pittsburgh Area', y: 610 }),
+      textItem({
+        text: '>> Software engineer? Strategist? Experience Strategist? Designer? Product',
+        y: 590,
+      }),
+      textItem({ text: "Manager? We're Hiring! Message me.", y: 578 }),
+      textItem({
+        text: 'Head of Technology Innovation',
+        y: 550,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'January 2020 - December 2021', y: 530 }),
+      textItem({ text: 'Greater Pittsburgh Area', y: 510 }),
+    ]);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'PNC',
+        positions: [
+          expect.objectContaining({
+            description:
+              ">> Software engineer? Strategist? Experience Strategist? Designer? Product Manager? We're Hiring! Message me.",
+            location: 'Greater Pittsburgh Area',
+            title: 'Head of Enterprise Innovation',
+          }),
+          expect.objectContaining({
+            duration: 'January 2020 - December 2021',
+            location: 'Greater Pittsburgh Area',
+            title: 'Head of Technology Innovation',
+          }),
+        ],
+      })
+    );
+  });
+
+  test('extracts international after-duration locations from metadata lines', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Market Systems', y: 670 }),
+      textItem({ text: 'Advisor', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2024 - Present', y: 630 }),
+      textItem({ text: 'Jakarta, Indonesia', y: 610 }),
+      textItem({ text: 'Taipei Analytics', y: 570 }),
+      textItem({ text: 'Board Member', y: 550, fontSize: 11.5 }),
+      textItem({ text: 'January 2022 - December 2023', y: 530 }),
+      textItem({ text: 'Taipei City, Taiwan', y: 510 }),
+      textItem({ text: 'Gulf Ventures', y: 470 }),
+      textItem({ text: 'Venture Partner', y: 450, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - December 2021', y: 430 }),
+      textItem({ text: 'Riyadh, Saudi Arabia', y: 410 }),
+      textItem({ text: 'Doha Labs', y: 370 }),
+      textItem({ text: 'Advisor', y: 350, fontSize: 11.5 }),
+      textItem({ text: 'January 2018 - December 2019', y: 330 }),
+      textItem({ text: 'Doha, Qatar', y: 310 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        positions: [
+          expect.objectContaining({
+            location: 'Jakarta, Indonesia',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        positions: [
+          expect.objectContaining({
+            location: 'Taipei City, Taiwan',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        positions: [
+          expect.objectContaining({
+            location: 'Riyadh, Saudi Arabia',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        positions: [
+          expect.objectContaining({
+            location: 'Doha, Qatar',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('recognizes short LinkedIn title vocabulary without turning titles into organizations', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),

@@ -17,6 +17,8 @@ describe('exported Zod schemas', () => {
       top_skills: ['TypeScript'],
       languages: [],
       certifications: [],
+      organizations: [],
+      patents: [],
       volunteer_work: [],
       projects: [],
       publications: [],

@@ -664,6 +664,8 @@ const defaultParseResult: ParseResult = {
     languages: [],
     location: 'San Francisco, CA',
     name: 'Orion Helios',
+    organizations: [],
+    patents: [],
     projects: [],
     publications: [],
     top_skills: [],
