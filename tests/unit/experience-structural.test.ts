@@ -724,6 +724,33 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('keeps legal-suffix organization headers with trailing tags as headers', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Acme Health and Care Inc. (Acquired)', y: 670 }),
+      textItem({ text: 'Principal Consultant', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - Present (4 years 5 months)', y: 630 }),
+      textItem({
+        text: 'Led integration planning for customer programs.',
+        y: 610,
+      }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Acme Health and Care Inc. (Acquired)',
+        positions: [
+          expect.objectContaining({
+            description: 'Led integration planning for customer programs.',
+            duration: 'January 2020 - Present',
+            title: 'Principal Consultant',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('merges wrapped bilingual organization headings', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -4135,15 +4162,19 @@ describe('ExperienceStructuralParser', () => {
   });
 
   test('marks canonical header provenance explicitly', () => {
-    const sections = ExperienceStructuralParser['classifyLines']([
-      parserLine({ index: 0, text: 'Northstar Labs' }),
-      parserLine({ index: 1, text: 'Principal Engineer' }),
-      parserLine({ index: 2, text: '2020 - 2021' }),
+    const anchoredOrganization =
+      'Aurora Meridian Atlas Horizon Keystone Summit Vertex Pioneer Harbor Signal Frontier Nexus';
+    const parserLines = [
+      parserLine({ fontSize: 12, index: 0, text: anchoredOrganization }),
+      parserLine({ fontSize: 11.5, index: 1, text: 'Principal Engineer' }),
+      parserLine({ fontSize: 10.5, index: 2, text: '2020 - 2021' }),
       parserLine({
+        fontSize: 10.5,
         index: 3,
         text: 'Shipped reliable platform upgrades for customer teams.',
       }),
-    ]);
+    ];
+    const sections = ExperienceStructuralParser['classifyLines'](parserLines);
 
     expect(
       sections.map(section => ({
@@ -4154,7 +4185,7 @@ describe('ExperienceStructuralParser', () => {
     ).toEqual([
       {
         headerProvenance: 'canonical_anchor',
-        text: 'Northstar Labs',
+        text: anchoredOrganization,
         type: 'organization',
       },
       {
@@ -4173,6 +4204,20 @@ describe('ExperienceStructuralParser', () => {
         type: 'description',
       },
     ]);
+    expect(
+      ExperienceStructuralParser['buildWorkExperiences'](sections)[0]
+        ?.organization
+    ).toBe(anchoredOrganization);
+
+    const inferredSections: StructuralSection[] = sections.map(section =>
+      section.type === 'organization'
+        ? { ...section, headerProvenance: 'inferred' }
+        : section
+    );
+
+    expect(
+      ExperienceStructuralParser['buildWorkExperiences'](inferredSections)
+    ).toEqual([]);
   });
 
   test('scores overlapping candidate titles that start stronger headers lower', () => {

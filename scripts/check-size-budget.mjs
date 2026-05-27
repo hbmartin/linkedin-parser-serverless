@@ -21,9 +21,8 @@ export const fileBudgets = [
   },
   {
     file: 'dist/index.min.js',
-    // PR #65 increases this budget for parser changes introduced in PR #64.
-    gzipBytes: 28 * 1024,
-    rawBytes: 101 * 1024,
+    gzipBytes: 29 * 1024,
+    rawBytes: 106 * 1024,
   },
   {
     file: 'dist/cli.js',
@@ -32,7 +31,7 @@ export const fileBudgets = [
     rawBytes: 30 * 1024,
   },
 ];
-export const totalTopLevelJavaScriptBudget = 643 * 1024;
+export const totalTopLevelJavaScriptBudget = 648 * 1024;
 
 function main() {
   const results = fileBudgets.map(budget => {

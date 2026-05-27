@@ -123,11 +123,13 @@ export class ExperienceStructuralParser {
   private static readonly ORGANIZATION_CONNECTOR_WORD_PATTERN =
     /^(?:a|an|and|at|by|da|de|di|do|du|for|in|la|le|of|on|or|than|the|to|van|von|with|à)$/iu;
   private static readonly COMBINED_ORGANIZATION_TITLE_LINE_PATTERN =
-    /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?))\s+(.+)$/iu;
+    /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC\.?|LLP\.?|LP\.?|Ltd\.?|N\.?A\.?|PLC\.?|Pte\.?|S\.?A\.?))\s+(.+)$/iu;
   private static readonly ORGANIZATION_SUFFIX_TITLE_FRAGMENT_PATTERN =
-    /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?)$/iu;
+    /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC\.?|LLP\.?|LP\.?|Ltd\.?|N\.?A\.?|PLC\.?|Pte\.?|S\.?A\.?)$/iu;
   private static readonly ORGANIZATION_TERMINAL_ABBREVIATION_PATTERN =
-    /\b(?:co|corp|gmbh|inc|llc|ltd|n\.a)\.$/iu;
+    /\b(?:ag|co|corp|gmbh|inc|llc|llp|lp|ltd|n\.a|plc|pte|s\.a)\.?$/iu;
+  private static readonly ORGANIZATION_TERMINAL_SUFFIX_PATTERN =
+    /\b(?:agency|ag|co|company|corp|corporation|gmbh|inc|limited|llc|llp|lp|ltd|n\.a|plc|pte|s\.a)\.?$/iu;
   // Header checks preserve brand names ending in "!", while boundary checks stay stricter.
   private static readonly ORGANIZATION_HEADER_TERMINAL_PUNCTUATION_PATTERN =
     /[.?]$/u;
@@ -1208,6 +1210,10 @@ export class ExperienceStructuralParser {
       .some(word =>
         this.looksLikeOrganizationSuffixText(word.replace(/^[,]+|[,]+$/g, ''))
       );
+  }
+
+  private static endsWithOrganizationSuffixText(text: string): boolean {
+    return this.ORGANIZATION_TERMINAL_SUFFIX_PATTERN.test(text.trim());
   }
 
   private static hasOrganizationDomainCueText(text: string): boolean {
@@ -2765,12 +2771,13 @@ export class ExperienceStructuralParser {
       return false;
     }
 
+    if (this.endsWithOrganizationSuffixText(sentenceText)) {
+      return false;
+    }
+
     const words = sentenceText.split(/\s+/).filter(Boolean);
 
-    return (
-      words.length >= 5 &&
-      words.some(word => /^[\p{Ll}]/u.test(word.replace(/^[("']+/u, '')))
-    );
+    return words.length >= 5 && words.some(word => /^[("']*\p{Ll}/u.test(word));
   }
 
   private static looksLikeShortDescriptorLine(line: string): boolean {
