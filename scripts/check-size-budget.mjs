@@ -22,7 +22,6 @@ export const fileBudgets = [
   {
     file: 'dist/index.min.js',
     gzipBytes: 28 * 1024,
-    // PR #64 intentionally adds typed patents and organizations parsing.
     rawBytes: 101 * 1024,
   },
   {

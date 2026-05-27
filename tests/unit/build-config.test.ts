@@ -207,7 +207,7 @@ describe('build config contract', () => {
     );
   });
 
-  test('documents the intentional PR 64 minified bundle budget increase', async () => {
+  test('documents the intentional PR 65 minified bundle budget increase', async () => {
     const { fileBudgets } = await sizeBudgetConfig();
     const source = fs.readFileSync(
       repoFilePath('scripts/check-size-budget.mjs'),
@@ -217,9 +217,14 @@ describe('build config contract', () => {
       budget => budget.file === 'dist/index.min.js'
     );
 
-    expect(minifiedBudget?.rawBytes).toBe(101 * 1024);
+    expect(minifiedBudget).toBeDefined();
+    if (minifiedBudget === undefined) {
+      throw new Error('Missing dist/index.min.js size budget');
+    }
+
+    expect(minifiedBudget.rawBytes).toBe(101 * 1024);
     expect(source).toContain(
-      'PR #64 intentionally adds typed patents and organizations parsing.'
+      'PR #65 increases this budget for parser changes introduced in PR #64.'
     );
   });
 
