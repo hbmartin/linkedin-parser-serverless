@@ -10,6 +10,7 @@
 - When debugging sample PDF extraction, use the repo-local skill at `.agents/skills/debug-linkedin-sample-pdfs`.
 - Sample coverage strictness must include field-level misclassification checks, not only section-level source traceability.
 - NEVER edit, delete, overwrite, or otherwise modify anything in the samples/ directory.
+- Avoid one-off parser hacks such as adding domain cue words or narrow regular expressions for a single sample. Prefer generalizable extraction strategies: canonical block parsing, visual hierarchy/layout evidence, scored confidence signals, and penalties for ambiguous cues (for example person-shaped organization names) instead of hard vetoes.
 
 # TypeScript
 

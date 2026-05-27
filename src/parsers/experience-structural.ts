@@ -72,7 +72,19 @@ interface DescriptionLineParams {
   previousLine?: string;
 }
 
+interface ExperienceHeaderCandidate {
+  durationLine: NormalizedParserLine;
+  locationLine?: NormalizedParserLine;
+  organizationLine: NormalizedParserLine;
+  score: number;
+  titleLine: NormalizedParserLine;
+  totalDurationLine?: NormalizedParserLine;
+}
+
 export class ExperienceStructuralParser {
+  private static readonly EXPERIENCE_HEADER_ALIGNMENT_TOLERANCE = 12;
+  private static readonly EXPERIENCE_HEADER_ACCEPTANCE_SCORE = 4;
+  private static readonly EXPERIENCE_HEADER_DESCRIPTION_LOOKAHEAD = 3;
   private static readonly MIN_DESCRIPTION_LINE_LENGTH = 30;
   private static readonly MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH = 20;
   private static readonly DESCRIPTION_CONTINUATION_CONNECTOR_PATTERN =
@@ -217,6 +229,8 @@ export class ExperienceStructuralParser {
     const expandedParserLines = this.expandCombinedOrganizationTitleLines(
       normalizedParserLines
     );
+    const canonicalHeaderLineTypes =
+      this.createCanonicalHeaderLineTypes(expandedParserLines);
     let state: ExperienceLineState = 'seeking_company';
 
     for (let index = 0; index < expandedParserLines.length; index++) {
@@ -236,12 +250,14 @@ export class ExperienceStructuralParser {
         confidence: 0,
       };
 
-      section.type = this.classifyLineType({
-        allLines: expandedParserLines,
-        index,
-        line: parserLine,
-        state,
-      });
+      section.type =
+        canonicalHeaderLineTypes.get(index) ??
+        this.classifyLineType({
+          allLines: expandedParserLines,
+          index,
+          line: parserLine,
+          state,
+        });
       state = this.nextState(state, section.type);
       section.confidence = this.calculateConfidence(
         line,
@@ -435,6 +451,433 @@ export class ExperienceStructuralParser {
     return expandedParserLines;
   }
 
+  private static createCanonicalHeaderLineTypes(
+    parserLines: NormalizedParserLine[]
+  ): Map<number, StructuralSection['type']> {
+    const lineTypes = new Map<number, StructuralSection['type']>();
+
+    for (let index = 0; index < parserLines.length; index++) {
+      if (lineTypes.has(index)) {
+        continue;
+      }
+
+      const candidate = this.createExperienceHeaderCandidate(
+        parserLines,
+        index
+      );
+
+      if (
+        !candidate ||
+        candidate.score < this.EXPERIENCE_HEADER_ACCEPTANCE_SCORE
+      ) {
+        continue;
+      }
+
+      lineTypes.set(candidate.organizationLine.index, 'organization');
+
+      if (candidate.totalDurationLine) {
+        lineTypes.set(candidate.totalDurationLine.index, 'duration');
+      }
+
+      lineTypes.set(candidate.titleLine.index, 'position');
+      lineTypes.set(candidate.durationLine.index, 'duration');
+
+      if (candidate.locationLine) {
+        lineTypes.set(candidate.locationLine.index, 'location');
+      }
+    }
+
+    return lineTypes;
+  }
+
+  private static createExperienceHeaderCandidate(
+    parserLines: NormalizedParserLine[],
+    index: number
+  ): ExperienceHeaderCandidate | undefined {
+    const organizationLine = parserLines[index];
+
+    if (
+      !organizationLine ||
+      !this.canStartCanonicalExperienceHeader(organizationLine.text)
+    ) {
+      return undefined;
+    }
+
+    const lineTexts = parserLines.map(line => line.text);
+    const firstDetailLine = this.nextContentLine(parserLines, index + 1);
+
+    if (!firstDetailLine) {
+      return undefined;
+    }
+
+    if (this.looksLikeTotalDuration(firstDetailLine.text)) {
+      return this.createMultiPositionHeaderCandidate({
+        lineTexts,
+        organizationLine,
+        parserLines,
+        totalDurationLine: firstDetailLine,
+      });
+    }
+
+    return this.createSinglePositionHeaderCandidate({
+      lineTexts,
+      organizationLine,
+      parserLines,
+      titleLine: firstDetailLine,
+    });
+  }
+
+  private static createSinglePositionHeaderCandidate({
+    lineTexts,
+    organizationLine,
+    parserLines,
+    titleLine,
+  }: {
+    lineTexts: string[];
+    organizationLine: NormalizedParserLine;
+    parserLines: NormalizedParserLine[];
+    titleLine: NormalizedParserLine;
+  }): ExperienceHeaderCandidate | undefined {
+    if (!this.looksLikeCanonicalHeaderTitleLine(titleLine, lineTexts)) {
+      return undefined;
+    }
+
+    const durationLine = this.nextContentLine(parserLines, titleLine.index + 1);
+
+    if (!durationLine || !this.looksLikeDuration(durationLine.text)) {
+      return undefined;
+    }
+
+    const locationLine = this.canonicalHeaderLocationLine({
+      durationLine,
+      parserLines,
+    });
+    const candidate: ExperienceHeaderCandidate = {
+      ...(locationLine ? { locationLine } : {}),
+      durationLine,
+      organizationLine,
+      score: 0,
+      titleLine,
+    };
+
+    return {
+      ...candidate,
+      score: this.scoreExperienceHeaderCandidate(candidate, parserLines),
+    };
+  }
+
+  private static createMultiPositionHeaderCandidate({
+    lineTexts,
+    organizationLine,
+    parserLines,
+    totalDurationLine,
+  }: {
+    lineTexts: string[];
+    organizationLine: NormalizedParserLine;
+    parserLines: NormalizedParserLine[];
+    totalDurationLine: NormalizedParserLine;
+  }): ExperienceHeaderCandidate | undefined {
+    const titleLine = this.nextContentLine(
+      parserLines,
+      totalDurationLine.index + 1
+    );
+
+    if (
+      !titleLine ||
+      !this.looksLikeCanonicalHeaderTitleLine(titleLine, lineTexts)
+    ) {
+      return undefined;
+    }
+
+    const durationLine = this.nextContentLine(parserLines, titleLine.index + 1);
+
+    if (!durationLine || !this.looksLikeDuration(durationLine.text)) {
+      return undefined;
+    }
+
+    const locationLine = this.canonicalHeaderLocationLine({
+      durationLine,
+      parserLines,
+    });
+    const candidate: ExperienceHeaderCandidate = {
+      ...(locationLine ? { locationLine } : {}),
+      durationLine,
+      organizationLine,
+      score: 0,
+      titleLine,
+      totalDurationLine,
+    };
+
+    return {
+      ...candidate,
+      score: this.scoreExperienceHeaderCandidate(candidate, parserLines),
+    };
+  }
+
+  private static canStartCanonicalExperienceHeader(line: string): boolean {
+    const normalizedLine = line.trim();
+    const isKnownLowercaseOrganization =
+      this.looksLikeKnownLowercaseOrganization(normalizedLine);
+    const isLowerCamelOrganization =
+      this.looksLikeLowerCamelOrganization(normalizedLine);
+    const isLongAcademicOrganization =
+      this.looksLikeLongAcademicOrganizationHeaderText(normalizedLine);
+    const isWrappedOrganization =
+      this.looksLikeWrappedOrganizationHeaderText(normalizedLine);
+
+    if (
+      normalizedLine.length < 2 ||
+      (normalizedLine.length > 90 &&
+        !isLongAcademicOrganization &&
+        !isWrappedOrganization) ||
+      /^[-+*•]/u.test(normalizedLine) ||
+      (/[.?]$/.test(normalizedLine) &&
+        !/\b(?:co|corp|gmbh|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
+      (/^[a-z]/u.test(normalizedLine) &&
+        !isKnownLowercaseOrganization &&
+        !isLowerCamelOrganization) ||
+      normalizedLine.includes('@') ||
+      /https?:\/\//iu.test(normalizedLine) ||
+      this.looksLikeDuration(normalizedLine) ||
+      (this.looksLikePosition(normalizedLine) &&
+        !this.hasExplicitOrganizationCueText(normalizedLine)) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
+      this.looksLikeSentenceLikeDescriptionText(normalizedLine) ||
+      isSectionHeaderText(normalizedLine)
+    ) {
+      return false;
+    }
+
+    return (
+      !this.looksLikeLocation(normalizedLine) ||
+      this.hasExplicitOrganizationCueText(normalizedLine)
+    );
+  }
+
+  private static looksLikeCanonicalHeaderTitleLine(
+    line: NormalizedParserLine,
+    allLines: string[]
+  ): boolean {
+    const normalizedLine = line.text.trim();
+
+    return (
+      !this.looksLikeOrganizationBoundaryCandidate(
+        normalizedLine,
+        line.index,
+        allLines
+      ) &&
+      (this.looksLikePosition(normalizedLine) ||
+        this.looksLikePotentialPositionTitleLine(normalizedLine))
+    );
+  }
+
+  private static canonicalHeaderLocationLine({
+    durationLine,
+    parserLines,
+  }: {
+    durationLine: NormalizedParserLine;
+    parserLines: NormalizedParserLine[];
+  }): NormalizedParserLine | undefined {
+    const possibleLocationLine = this.nextContentLine(
+      parserLines,
+      durationLine.index + 1
+    );
+
+    if (!possibleLocationLine) {
+      return undefined;
+    }
+
+    const text = possibleLocationLine.text;
+    const lineTexts = parserLines.map(line => line.text);
+
+    if (
+      this.canStartCanonicalExperienceHeader(text) &&
+      (this.hasImmediateTitleAndDurationAfterOrganization(
+        possibleLocationLine.index,
+        lineTexts
+      ) ||
+        this.hasTotalDurationThenPosition(
+          possibleLocationLine.index,
+          lineTexts
+        ))
+    ) {
+      return undefined;
+    }
+
+    return this.looksLikeLocation(text) ||
+      classifyLocationText({
+        context: { structuralContext: 'after-duration' },
+        text,
+      }).isLocation
+      ? possibleLocationLine
+      : undefined;
+  }
+
+  private static scoreExperienceHeaderCandidate(
+    candidate: ExperienceHeaderCandidate,
+    parserLines: NormalizedParserLine[]
+  ): number {
+    const organizationText = candidate.organizationLine.text.trim();
+    let score = 4;
+
+    if (this.hasAlignedHeaderGeometry(candidate)) {
+      score += 2;
+    }
+
+    if (this.hasProminentOrganizationFont(candidate)) {
+      score += 1;
+    }
+
+    if (this.hasOrganizationHeaderShape(organizationText)) {
+      score += 1;
+    }
+
+    if (this.descriptionMentionsOrganization(candidate, parserLines)) {
+      score += 1;
+    }
+
+    if (
+      looksLikePersonNameText(organizationText) &&
+      !this.hasExplicitOrganizationCueText(organizationText)
+    ) {
+      score -= 3;
+    }
+
+    return score;
+  }
+
+  private static hasAlignedHeaderGeometry(
+    candidate: ExperienceHeaderCandidate
+  ): boolean {
+    const headerLines = this.headerGeometryLines(candidate);
+    const organizationX = candidate.organizationLine.x;
+    const hasAlignedX =
+      organizationX !== undefined &&
+      headerLines.every(
+        line =>
+          line.x !== undefined &&
+          Math.abs(line.x - organizationX) <=
+            this.EXPERIENCE_HEADER_ALIGNMENT_TOLERANCE
+      );
+    const knownColumns = headerLines
+      .map(line => line.column)
+      .filter(column => column !== undefined);
+    const firstColumn = knownColumns[0];
+    const hasSameColumn =
+      firstColumn === undefined ||
+      knownColumns.every(column => column === firstColumn);
+
+    return hasAlignedX && hasSameColumn;
+  }
+
+  private static hasProminentOrganizationFont(
+    candidate: ExperienceHeaderCandidate
+  ): boolean {
+    const organizationFontSize = candidate.organizationLine.fontSize;
+
+    if (organizationFontSize === undefined) {
+      return false;
+    }
+
+    return this.headerGeometryLines(candidate)
+      .filter(line => line !== candidate.organizationLine)
+      .every(
+        line =>
+          line.fontSize !== undefined && organizationFontSize >= line.fontSize
+      );
+  }
+
+  private static headerGeometryLines(
+    candidate: ExperienceHeaderCandidate
+  ): NormalizedParserLine[] {
+    return [
+      candidate.organizationLine,
+      ...(candidate.totalDurationLine ? [candidate.totalDurationLine] : []),
+      candidate.titleLine,
+      candidate.durationLine,
+    ];
+  }
+
+  private static hasOrganizationHeaderShape(text: string): boolean {
+    return (
+      this.hasExplicitOrganizationCueText(text) ||
+      this.looksLikeVisualOrganizationHeaderText(text)
+    );
+  }
+
+  private static hasExplicitOrganizationCueText(text: string): boolean {
+    const normalizedLine = text.trim();
+
+    return (
+      this.looksLikeKnownLowercaseOrganization(normalizedLine) ||
+      /\bMarine Corps\b/u.test(normalizedLine) ||
+      this.looksLikeLowerCamelOrganization(normalizedLine) ||
+      this.looksLikeLongAcademicOrganizationHeaderText(normalizedLine) ||
+      this.looksLikeWrappedOrganizationHeaderText(normalizedLine) ||
+      this.hasOrganizationDomainCueText(normalizedLine) ||
+      this.hasOrganizationSuffixText(normalizedLine) ||
+      looksLikeOrganizationNameText(normalizedLine) ||
+      /\bthan\b/iu.test(normalizedLine) ||
+      /[&|–-]/u.test(normalizedLine) ||
+      /\b[A-Z]{2,}\b/u.test(normalizedLine)
+    );
+  }
+
+  private static descriptionMentionsOrganization(
+    candidate: ExperienceHeaderCandidate,
+    parserLines: NormalizedParserLine[]
+  ): boolean {
+    const organizationLookupText = this.normalizeHeaderLookupText(
+      candidate.organizationLine.text
+    );
+
+    if (organizationLookupText.length < 4) {
+      return false;
+    }
+
+    let checkedLineCount = 0;
+    let nextLine = this.nextContentLine(
+      parserLines,
+      (candidate.locationLine ?? candidate.durationLine).index + 1
+    );
+
+    while (
+      nextLine &&
+      checkedLineCount < this.EXPERIENCE_HEADER_DESCRIPTION_LOOKAHEAD
+    ) {
+      const text = nextLine.text;
+
+      if (
+        this.looksLikeDuration(text) ||
+        isSectionHeaderText(text) ||
+        this.isExperienceNoiseLine(text)
+      ) {
+        break;
+      }
+
+      if (
+        this.normalizeHeaderLookupText(text).includes(organizationLookupText)
+      ) {
+        return true;
+      }
+
+      checkedLineCount++;
+      nextLine = this.nextContentLine(parserLines, nextLine.index + 1);
+    }
+
+    return false;
+  }
+
+  private static normalizeHeaderLookupText(text: string): string {
+    return text
+      .normalize('NFKD')
+      .replace(/\p{M}+/gu, '')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
   private static splitCombinedOrganizationTitleLine({
     line,
     nextLine,
@@ -486,7 +929,7 @@ export class ExperienceStructuralParser {
   }
 
   private static hasOrganizationDomainCueText(text: string): boolean {
-    return /\b(?:AI|Angels|Coalition|Connections|Federation|Forex|Labs?|Network|Robotics|Services?|Ventures?)\b/u.test(
+    return /\b(?:AI|Coalition|Connections|Federation|Forex|Labs?|Network|Robotics|Services?|Ventures?)\b/u.test(
       text
     );
   }
@@ -946,6 +1389,10 @@ export class ExperienceStructuralParser {
       !this.looksLikeDuration(normalizedLine) &&
       !this.looksLikeLocation(normalizedLine)
     );
+  }
+
+  private static looksLikeKnownLowercaseOrganization(line: string): boolean {
+    return /^(?:self-employed)$/i.test(line.trim());
   }
 
   private static looksLikeLowerCamelOrganization(line: string): boolean {
@@ -1535,7 +1982,7 @@ export class ExperienceStructuralParser {
     return text
       .replace(/\bY\s+ork\b/g, 'York')
       .replace(
-        /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))[,\s]*(?:U\.?\s*S\.?(?:\.?A\.?)?|USA\.?)$/iu,
+        /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))[,\s]*(?:U\.?\s*S\.?(?:\.?A\.?)?|USA\.?)[,\s]*$/iu,
         '$1'
       )
       .replace(/,\s*([A-Z])\s+([A-Z])$/g, ', $1$2')
