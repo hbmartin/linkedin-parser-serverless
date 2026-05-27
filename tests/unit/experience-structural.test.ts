@@ -650,12 +650,40 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
-  test('does not promote likely person-name lines to organizations', () => {
+  test('parses person-shaped organization names with canonical visual hierarchy', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
       textItem({ text: 'Hermes Argus', y: 670 }),
       textItem({ text: 'Software Engineer', y: 650, fontSize: 11.5 }),
       textItem({ text: '2020 - 2022', y: 630 }),
+    ];
+
+    const experiences = ExperienceStructuralParser.parseExperience(items);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Hermes Argus',
+        positions: [
+          expect.objectContaining({
+            duration: '2020 - 2022',
+            title: 'Software Engineer',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('rejects person-shaped organization names without aligned header hierarchy', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Hermes Argus', y: 670, fontSize: 10 }),
+      textItem({
+        text: 'Software Engineer',
+        y: 650,
+        fontSize: 12,
+        x: 270,
+      }),
+      textItem({ text: '2020 - 2022', y: 630, fontSize: 12, x: 270 }),
     ];
 
     const experiences = ExperienceStructuralParser.parseExperience(items);
@@ -701,6 +729,61 @@ describe('ExperienceStructuralParser', () => {
             title: 'Investor',
           }),
         ],
+      }),
+    ]);
+  });
+
+  test('keeps page-footer noise and location inside canonical person-shaped blocks', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Aster Vale', y: 670 }),
+      textItem({ text: 'Software Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'Page 1 of 2', y: 635, fontSize: 9 }),
+      textItem({ text: 'January 2020 - Present', y: 620, fontSize: 10.5 }),
+      textItem({ text: 'Austin, TX', y: 600, fontSize: 10.5 }),
+      textItem({ text: 'Built durable workflow tools.', y: 580 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Aster Vale',
+        positions: [
+          expect.objectContaining({
+            description: 'Built durable workflow tools.',
+            duration: 'January 2020 - Present',
+            location: 'Austin, TX',
+            title: 'Software Engineer',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('recognizes person-shaped multi-position organizations with total duration', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Blue River', y: 670 }),
+      textItem({ text: '3 years', y: 650, fontSize: 10.5 }),
+      textItem({ text: 'Principal Engineer', y: 630, fontSize: 11.5 }),
+      textItem({ text: 'January 2022 - Present', y: 610, fontSize: 10.5 }),
+      textItem({ text: 'Senior Engineer', y: 580, fontSize: 11.5 }),
+      textItem({ text: 'January 2021 - January 2022', y: 560, fontSize: 10.5 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Blue River',
+        positions: [
+          expect.objectContaining({
+            duration: 'January 2022 - Present',
+            title: 'Principal Engineer',
+          }),
+          expect.objectContaining({
+            duration: 'January 2021 - January 2022',
+            title: 'Senior Engineer',
+          }),
+        ],
+        totalDuration: '3 years',
       }),
     ]);
   });
