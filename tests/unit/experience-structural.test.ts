@@ -759,6 +759,33 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('scores organization mentions after page-footer noise in canonical headers', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Aster Vale', y: 670 }),
+      textItem({ text: 'Software Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - Present', y: 630 }),
+      textItem({ text: 'Page 1 of 2', y: 615, fontSize: 9 }),
+      textItem({
+        text: 'Aster Vale builds planning software.',
+        y: 600,
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Aster Vale',
+        positions: [
+          expect.objectContaining({
+            description: 'Aster Vale builds planning software.',
+            duration: 'January 2020 - Present',
+            title: 'Software Engineer',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('recognizes person-shaped multi-position organizations with total duration', () => {
     const experiences = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -2767,6 +2794,8 @@ describe('ExperienceStructuralParser', () => {
       ' U.S.',
       ', U.S.A.',
       ' U S',
+      ' U S A',
+      ', U. S. A.',
       ' US.',
       ' US,',
       ' U.S.,',

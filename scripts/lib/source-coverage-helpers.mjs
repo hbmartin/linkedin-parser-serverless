@@ -672,6 +672,8 @@ function hasContextualStandaloneRegionCode({
     return false;
   }
 
+  // Require segment-level location evidence to avoid promoting full-text matches
+  // or ambiguous region codes across comma-separated segments.
   return commaSegments.some(segment => {
     const segmentWords = segment.split(/\s+/u).filter(Boolean);
     const hasKnownPlaceSegment =
@@ -684,7 +686,7 @@ function hasContextualStandaloneRegionCode({
       segmentWords
     ).some(
       word =>
-        regionCodeWords.includes(word) &&
+        standaloneLocationRegionCodes.has(word) &&
         !ambiguousStandaloneLocationRegionCodes.has(word)
     );
 

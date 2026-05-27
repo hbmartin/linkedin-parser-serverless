@@ -571,6 +571,8 @@ function hasContextualRegionCode({
     return false;
   }
 
+  // Comma-separated locations need segment-level evidence so full-text place matches
+  // or ambiguous region codes do not promote unrelated segments.
   return commaSegments.some(segment => {
     const lookupSegment = normalizeLookupText(segment);
     const segmentWords = lookupWordsFor(lookupSegment);
@@ -578,7 +580,7 @@ function hasContextualRegionCode({
       hasKnownPlace && containsKnownPhrase(lookupSegment, knownPlaceNames);
     const hasUnambiguousRegionCodeSegment = regionCodeCandidates(
       segmentWords
-    ).some(word => codeWords.includes(word) && !ambiguousRegionCodes.has(word));
+    ).some(word => regionCodes.has(word) && !ambiguousRegionCodes.has(word));
 
     return hasKnownPlaceSegment || hasUnambiguousRegionCodeSegment;
   });
