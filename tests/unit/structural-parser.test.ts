@@ -360,8 +360,13 @@ describe('StructuralParser', () => {
     ).toEqual(expect.objectContaining({ type: 'single-column' }));
   });
 
-  test('covers empty bounds merging and default proximity grouping', () => {
-    expect(StructuralParser['mergeBounds']([undefined])).toBeUndefined();
+  test('covers empty layout bounds merging and default proximity grouping', () => {
+    expect(
+      StructuralParser['mergeLayoutBounds'](
+        [{ type: 'two-column' }],
+        'sidebarBounds'
+      )
+    ).toBeUndefined();
     expect(
       StructuralParser['groupItemsByY']([
         item({ text: 'A', x: 10, y: 700 }),

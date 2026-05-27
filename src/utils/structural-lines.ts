@@ -31,19 +31,26 @@ export function createStructuralLines({
 
   for (const item of textItems) {
     const column = getStructuralColumn(item, layout);
-    const existingItems = columns.get(column) ?? [];
+    const existingItems = columns.get(column);
 
-    existingItems.push(item);
-    columns.set(column, existingItems);
+    if (existingItems) {
+      existingItems.push(item);
+    } else {
+      columns.set(column, [item]);
+    }
   }
 
-  return Array.from(columns.entries())
-    .flatMap(([column, columnItems]) =>
-      groupItemsByY(columnItems, maxYDistance).map(group =>
-        createStructuralLine(group, column)
-      )
-    )
-    .sort((first, second) => second.y - first.y || first.x - second.x);
+  const lines: StructuralLine[] = [];
+
+  for (const [column, columnItems] of columns) {
+    for (const group of groupItemsByY(columnItems, maxYDistance)) {
+      lines.push(createStructuralLine(group, column));
+    }
+  }
+
+  return lines.sort(
+    (first, second) => second.y - first.y || first.x - second.x
+  );
 }
 
 function getStructuralColumn(

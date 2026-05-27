@@ -177,7 +177,7 @@ const LOWERCASE_CONNECTOR_WORDS = new Set([
 
 const PERSON_LIKE_ORGANIZATION_TEXT = new Set(['goldman sachs']);
 
-const wholeKeywordPatternCache = new Map<string, RegExp>();
+const POSITION_KEYWORD_PATTERN = createWholeKeywordPattern(POSITION_KEYWORDS);
 
 export function isSectionHeaderText(text: string): boolean {
   return SECTION_HEADER_TEXT.has(normalizeProfileText(text).toLowerCase());
@@ -198,9 +198,7 @@ export function isEducationSectionHeaderText(text: string): boolean {
 export function looksLikePositionTitleText(text: string): boolean {
   const normalizedText = normalizeProfileText(text);
   const lowerText = normalizedText.toLowerCase();
-  const hasPositionKeyword = POSITION_KEYWORDS.some(keyword =>
-    includesWholeKeyword(lowerText, keyword)
-  );
+  const hasPositionKeyword = POSITION_KEYWORD_PATTERN.test(lowerText);
 
   const looksLikeDescription =
     normalizedText.length > 90 ||
@@ -440,23 +438,21 @@ function looksLikePersonNameWord(word: string): boolean {
   return /[\p{Lu}]/u.test(word) || word === word.toLocaleUpperCase();
 }
 
-function includesWholeKeyword(text: string, keyword: string): boolean {
-  let pattern = wholeKeywordPatternCache.get(keyword);
+function createWholeKeywordPattern(keywords: readonly string[]): RegExp {
+  const keywordAlternatives = [...keywords]
+    .sort((left, right) => right.length - left.length)
+    .map(keyword =>
+      keyword
+        .split(/\s+/)
+        .map(part => escapeRegExp(part))
+        .join('\\s+')
+    )
+    .join('|');
 
-  if (!pattern) {
-    const keywordPattern = keyword
-      .split(/\s+/)
-      .map(part => escapeRegExp(part))
-      .join('\\s+');
-
-    pattern = new RegExp(
-      `(^|[^\\p{L}\\p{N}])${keywordPattern}($|[^\\p{L}\\p{N}])`,
-      'iu'
-    );
-    wholeKeywordPatternCache.set(keyword, pattern);
-  }
-
-  return pattern.test(text);
+  return new RegExp(
+    `(^|[^\\p{L}\\p{N}])(?:${keywordAlternatives})($|[^\\p{L}\\p{N}])`,
+    'iu'
+  );
 }
 
 function escapeRegExp(text: string): string {
