@@ -542,7 +542,7 @@ interface ParseDiagnostics {
 ```
 </details>
 
-#### Diagnostics fields explained
+### Diagnostics fields explained
 
 | Field | Type | Meaning |
 |-------|------|---------|
