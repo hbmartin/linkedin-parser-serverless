@@ -68,6 +68,8 @@ const LOWERCASE_NAME_CONNECTORS = new Set([
 const EMAIL_SEARCH_LINE_PATTERN = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}$/i;
 const LABELED_EMAIL_SEARCH_LINE_PATTERN =
   /^(?:e-?mail|mail)(?:\s*[:-]\s*|\s+)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}$/i;
+const WRAPPED_EMAIL_START_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.$/i;
+const EMAIL_TLD_CONTINUATION_PATTERN = /^[A-Z]{2,24}$/i;
 
 interface ContactLinkDraft {
   label?: string;
@@ -360,7 +362,7 @@ export class BasicInfoParser {
 
   private static extractContactFromLines(lines: string[]): Contact {
     const contact: Contact = {};
-    const contactText = lines.join('\n');
+    const contactText = this.createEmailSearchText(lines);
     const email = this.extractEmail(contactText);
     const links = this.extractContactLinks(lines);
     const linkedInUrl =
@@ -387,6 +389,30 @@ export class BasicInfoParser {
     return contact;
   }
 
+  private static createEmailSearchText(lines: string[]): string {
+    const emailSearchLines: string[] = [];
+    const normalizedLines = lines.map(line => normalizeWhitespace(line));
+
+    for (let index = 0; index < normalizedLines.length; index += 1) {
+      const line = normalizedLines[index];
+      const nextLine = normalizedLines[index + 1];
+
+      if (
+        nextLine !== undefined &&
+        this.isWrappedEmailStartLine(line) &&
+        this.isEmailTldContinuationLine(nextLine)
+      ) {
+        emailSearchLines.push(`${line}${nextLine}`);
+        index += 1;
+        continue;
+      }
+
+      emailSearchLines.push(line);
+    }
+
+    return emailSearchLines.join('\n');
+  }
+
   private static extractTextContactLines(
     parserLines: NormalizedParserLine[]
   ): string[] {
@@ -400,12 +426,37 @@ export class BasicInfoParser {
     parserLines: NormalizedParserLine[]
   ): string[] {
     const headerEndIndex = Math.min(parserLines.length, 50);
-
-    return parserLines
+    const headerLines = parserLines
       .slice(0, headerEndIndex)
       .filter(line => line.section === 'identity')
       .map(line => line.text)
-      .filter(line => this.isHeaderContactSearchLine(line));
+      .filter(line => line.length > 0);
+    const contactLines: string[] = [];
+
+    for (let index = 0; index < headerLines.length; index += 1) {
+      const line = headerLines[index];
+
+      if (
+        !this.isHeaderContactSearchLine(line) &&
+        !this.isWrappedEmailStartLine(line)
+      ) {
+        continue;
+      }
+
+      contactLines.push(line);
+
+      const nextLine = headerLines[index + 1];
+      if (
+        nextLine !== undefined &&
+        this.isWrappedEmailStartLine(line) &&
+        this.isEmailTldContinuationLine(nextLine)
+      ) {
+        contactLines.push(nextLine);
+        index += 1;
+      }
+    }
+
+    return contactLines;
   }
 
   private static extractContactLinks(lines: string[]): ContactLink[] {
@@ -592,6 +643,19 @@ export class BasicInfoParser {
       (EMAIL_SEARCH_LINE_PATTERN.test(normalizedLine) ||
         LABELED_EMAIL_SEARCH_LINE_PATTERN.test(normalizedLine))
     );
+  }
+
+  private static isWrappedEmailStartLine(line: string): boolean {
+    const normalizedLine = line.trim().replace(/\s*@\s*/g, '@');
+
+    return (
+      normalizedLine.length <= 120 &&
+      WRAPPED_EMAIL_START_PATTERN.test(normalizedLine)
+    );
+  }
+
+  private static isEmailTldContinuationLine(line: string): boolean {
+    return EMAIL_TLD_CONTINUATION_PATTERN.test(line.trim());
   }
 
   private static extractEmail(text: string): string | undefined {

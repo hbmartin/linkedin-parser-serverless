@@ -1,6 +1,14 @@
 import { classifyLocationText } from '../../src/utils/location-classifier.js';
 
 describe('location classifier', () => {
+  test('rejects empty location text without signals', () => {
+    expect(classifyLocationText({ text: '   ' })).toEqual({
+      isLocation: false,
+      score: 0,
+      signals: [],
+    });
+  });
+
   test('scores named place, region, and country signals as locations', () => {
     expect(
       classifyLocationText({
@@ -19,6 +27,26 @@ describe('location classifier', () => {
     );
 
     expect(
+      classifyLocationText({
+        context: { structuralContext: 'metadata' },
+        text: 'Boston',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        isLocation: false,
+        score: 3,
+        signals: expect.arrayContaining(['exact-place', 'proper-shape']),
+      })
+    );
+
+    expect(classifyLocationText({ text: 'California' })).toEqual(
+      expect.objectContaining({
+        isLocation: true,
+        signals: expect.arrayContaining(['admin-region', 'proper-shape']),
+      })
+    );
+
+    expect(
       classifyLocationText({ text: 'Greater Los Angeles Area, United States' })
     ).toEqual(
       expect.objectContaining({
@@ -28,6 +56,18 @@ describe('location classifier', () => {
           'country-or-region',
           'qualified-area',
         ]),
+      })
+    );
+
+    expect(
+      classifyLocationText({
+        context: { structuralContext: 'after-duration' },
+        text: 'Chicago, IL',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        isLocation: true,
+        signals: expect.arrayContaining(['known-place', 'region-code']),
       })
     );
 

@@ -455,6 +455,7 @@ export class ExperienceStructuralParser {
     parserLines: NormalizedParserLine[]
   ): Map<number, StructuralSection['type']> {
     const lineTypes = new Map<number, StructuralSection['type']>();
+    const lineTexts = parserLines.map(line => line.text);
 
     for (let index = 0; index < parserLines.length; index++) {
       if (lineTypes.has(index)) {
@@ -463,7 +464,8 @@ export class ExperienceStructuralParser {
 
       const candidate = this.createExperienceHeaderCandidate(
         parserLines,
-        index
+        index,
+        lineTexts
       );
 
       if (
@@ -492,7 +494,8 @@ export class ExperienceStructuralParser {
 
   private static createExperienceHeaderCandidate(
     parserLines: NormalizedParserLine[],
-    index: number
+    index: number,
+    lineTexts: string[]
   ): ExperienceHeaderCandidate | undefined {
     const organizationLine = parserLines[index];
 
@@ -503,7 +506,6 @@ export class ExperienceStructuralParser {
       return undefined;
     }
 
-    const lineTexts = parserLines.map(line => line.text);
     const firstDetailLine = this.nextContentLine(parserLines, index + 1);
 
     if (!firstDetailLine) {
@@ -550,6 +552,7 @@ export class ExperienceStructuralParser {
 
     const locationLine = this.canonicalHeaderLocationLine({
       durationLine,
+      lineTexts,
       parserLines,
     });
     const candidate: ExperienceHeaderCandidate = {
@@ -597,6 +600,7 @@ export class ExperienceStructuralParser {
 
     const locationLine = this.canonicalHeaderLocationLine({
       durationLine,
+      lineTexts,
       parserLines,
     });
     const candidate: ExperienceHeaderCandidate = {
@@ -616,34 +620,51 @@ export class ExperienceStructuralParser {
 
   private static canStartCanonicalExperienceHeader(line: string): boolean {
     const normalizedLine = line.trim();
-    const isKnownLowercaseOrganization =
-      this.looksLikeKnownLowercaseOrganization(normalizedLine);
-    const isLowerCamelOrganization =
-      this.looksLikeLowerCamelOrganization(normalizedLine);
+
+    if (
+      normalizedLine.length < 2 ||
+      /^[-+*•]/u.test(normalizedLine) ||
+      (/[.?]$/.test(normalizedLine) &&
+        !/\b(?:co|corp|gmbh|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
+      normalizedLine.includes('@') ||
+      /https?:\/\//iu.test(normalizedLine) ||
+      this.looksLikeDuration(normalizedLine) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
+      this.looksLikeSentenceLikeDescriptionText(normalizedLine) ||
+      isSectionHeaderText(normalizedLine)
+    ) {
+      return false;
+    }
+
     const isLongAcademicOrganization =
       this.looksLikeLongAcademicOrganizationHeaderText(normalizedLine);
     const isWrappedOrganization =
       this.looksLikeWrappedOrganizationHeaderText(normalizedLine);
 
     if (
-      normalizedLine.length < 2 ||
-      (normalizedLine.length > 90 &&
-        !isLongAcademicOrganization &&
-        !isWrappedOrganization) ||
-      /^[-+*•]/u.test(normalizedLine) ||
-      (/[.?]$/.test(normalizedLine) &&
-        !/\b(?:co|corp|gmbh|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
-      (/^[a-z]/u.test(normalizedLine) &&
-        !isKnownLowercaseOrganization &&
-        !isLowerCamelOrganization) ||
-      normalizedLine.includes('@') ||
-      /https?:\/\//iu.test(normalizedLine) ||
-      this.looksLikeDuration(normalizedLine) ||
-      (this.looksLikePosition(normalizedLine) &&
-        !this.hasExplicitOrganizationCueText(normalizedLine)) ||
-      this.looksLikeMediaDescriptionLine(normalizedLine) ||
-      this.looksLikeSentenceLikeDescriptionText(normalizedLine) ||
-      isSectionHeaderText(normalizedLine)
+      normalizedLine.length > 90 &&
+      !isLongAcademicOrganization &&
+      !isWrappedOrganization
+    ) {
+      return false;
+    }
+
+    const isKnownLowercaseOrganization =
+      this.looksLikeKnownLowercaseOrganization(normalizedLine);
+    const isLowerCamelOrganization =
+      this.looksLikeLowerCamelOrganization(normalizedLine);
+
+    if (
+      /^[a-z]/u.test(normalizedLine) &&
+      !isKnownLowercaseOrganization &&
+      !isLowerCamelOrganization
+    ) {
+      return false;
+    }
+
+    if (
+      this.looksLikePosition(normalizedLine) &&
+      !this.hasExplicitOrganizationCueText(normalizedLine)
     ) {
       return false;
     }
@@ -661,21 +682,23 @@ export class ExperienceStructuralParser {
     const normalizedLine = line.text.trim();
 
     return (
+      (this.looksLikePosition(normalizedLine) ||
+        this.looksLikePotentialPositionTitleLine(normalizedLine)) &&
       !this.looksLikeOrganizationBoundaryCandidate(
         normalizedLine,
         line.index,
         allLines
-      ) &&
-      (this.looksLikePosition(normalizedLine) ||
-        this.looksLikePotentialPositionTitleLine(normalizedLine))
+      )
     );
   }
 
   private static canonicalHeaderLocationLine({
     durationLine,
+    lineTexts,
     parserLines,
   }: {
     durationLine: NormalizedParserLine;
+    lineTexts: string[];
     parserLines: NormalizedParserLine[];
   }): NormalizedParserLine | undefined {
     const possibleLocationLine = this.nextContentLine(
@@ -688,7 +711,6 @@ export class ExperienceStructuralParser {
     }
 
     const text = possibleLocationLine.text;
-    const lineTexts = parserLines.map(line => line.text);
 
     if (
       this.canStartCanonicalExperienceHeader(text) &&
@@ -718,6 +740,9 @@ export class ExperienceStructuralParser {
     parserLines: NormalizedParserLine[]
   ): number {
     const organizationText = candidate.organizationLine.text.trim();
+    // Canonical construction is already high-confidence; scoring starts at the
+    // acceptance threshold, adds confirming layout/text signals, and mainly
+    // downgrades person-shaped false positives without explicit organization cues.
     let score = 4;
 
     if (this.hasAlignedHeaderGeometry(candidate)) {
@@ -836,22 +861,22 @@ export class ExperienceStructuralParser {
     }
 
     let checkedLineCount = 0;
-    let nextLine = this.nextContentLine(
-      parserLines,
-      (candidate.locationLine ?? candidate.durationLine).index + 1
-    );
+    let currentIndex =
+      (candidate.locationLine ?? candidate.durationLine).index + 1;
 
     while (
-      nextLine &&
+      currentIndex < parserLines.length &&
       checkedLineCount < this.EXPERIENCE_HEADER_DESCRIPTION_LOOKAHEAD
     ) {
+      const nextLine = parserLines[currentIndex];
       const text = nextLine.text;
 
-      if (
-        this.looksLikeDuration(text) ||
-        isSectionHeaderText(text) ||
-        this.isExperienceNoiseLine(text)
-      ) {
+      if (this.isExperienceNoiseLine(text)) {
+        currentIndex++;
+        continue;
+      }
+
+      if (this.looksLikeDuration(text) || isSectionHeaderText(text)) {
         break;
       }
 
@@ -862,7 +887,7 @@ export class ExperienceStructuralParser {
       }
 
       checkedLineCount++;
-      nextLine = this.nextContentLine(parserLines, nextLine.index + 1);
+      currentIndex++;
     }
 
     return false;
@@ -1191,9 +1216,8 @@ export class ExperienceStructuralParser {
     options: { allowPersonLikeName: boolean } = { allowPersonLikeName: false }
   ): boolean {
     const normalizedLine = line.trim();
-    const isKnownLowercaseOrganization = /^(?:self-employed)$/i.test(
-      normalizedLine
-    );
+    const isKnownLowercaseOrganization =
+      this.looksLikeKnownLowercaseOrganization(normalizedLine);
     const isLowerCamelOrganization =
       this.looksLikeLowerCamelOrganization(normalizedLine);
     const isLongAcademicOrganization =
@@ -1414,6 +1438,8 @@ export class ExperienceStructuralParser {
       this.hasImmediateTitleAndDurationAfterOrganization(index, allLines) ||
       this.hasTotalDurationThenPosition(index, allLines);
     const hasLocationShape = this.looksLikeLocation(normalizedLine);
+    // Organization-name shape is useful only after location-shaped text is excluded;
+    // stronger cues below can still identify academic, camel-case, domain, suffix, or wrapped organization names.
     const hasNonLocationOrganizationNameShape =
       !hasLocationShape && looksLikeOrganizationNameText(normalizedLine);
     const hasOrganizationCue =
@@ -1607,9 +1633,8 @@ export class ExperienceStructuralParser {
     allLines: string[]
   ): boolean {
     const normalizedLine = line.trim();
-    const isKnownLowercaseOrganization = /^self-employed$/i.test(
-      normalizedLine
-    );
+    const isKnownLowercaseOrganization =
+      this.looksLikeKnownLowercaseOrganization(normalizedLine);
     const isLowerCamelOrganization =
       this.looksLikeLowerCamelOrganization(normalizedLine);
     const isLongAcademicOrganization =
@@ -1979,16 +2004,19 @@ export class ExperienceStructuralParser {
   }
 
   private static normalizeLocationText(text: string): string {
-    return text
-      .replace(/\bY\s+ork\b/g, 'York')
-      .replace(
-        /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))[,\s]*(?:U\.?\s*S\.?(?:\.?A\.?)?|USA\.?)[,\s]*$/iu,
-        '$1'
-      )
-      .replace(/,\s*([A-Z])\s+([A-Z])$/g, ', $1$2')
-      .replace(/\s+,/g, ',')
-      .replace(/,\s*/g, ', ')
-      .trim();
+    return (
+      text
+        .replace(/\bY\s+ork\b/g, 'York')
+        // Strip trailing US/USA variants from Greater/Metro Area locations while preserving the captured place name.
+        .replace(
+          /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))[,\s]*(?:U\.?\s*S\.?(?:\s*A\.?)?|USA\.?)[,\s]*$/iu,
+          '$1'
+        )
+        .replace(/,\s*([A-Z])\s+([A-Z])$/g, ', $1$2')
+        .replace(/\s+,/g, ',')
+        .replace(/,\s*/g, ', ')
+        .trim()
+    );
   }
 
   private static normalizeCompletedLocationText(text: string): string {
@@ -2276,7 +2304,7 @@ export class ExperienceStructuralParser {
   private static extractCleanOrganizationName(
     text: string
   ): string | undefined {
-    if (/^self-employed$/i.test(text.trim())) {
+    if (this.looksLikeKnownLowercaseOrganization(text)) {
       return text.trim();
     }
 

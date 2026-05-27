@@ -256,6 +256,17 @@ describe('BasicInfoParser', () => {
     expect(profile.contact.email).toBe('apollo@example.com');
   });
 
+  test('extracts wrapped email continuations from header contact lines', () => {
+    const profile = BasicInfoParser.parse(`
+      Apollo Helios
+      Principal Advisor
+      apollo@example.
+      com
+    `);
+
+    expect(profile.contact.email).toBe('apollo@example.com');
+  });
+
   test('extracts structural contact links while ignoring URL path digits as phones', () => {
     const result = BasicInfoParser.parseStructuralWithWarnings(
       [
@@ -339,6 +350,51 @@ describe('BasicInfoParser', () => {
       'https://linkedin.com/in/jd-example'
     );
     expect(result.value.summary).toBe('JD can be reached at jd@example.com.');
+  });
+
+  test('extracts wrapped structural contact email continuation lines', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      [
+        'Contact',
+        '+1 310 498 3047 (Mobile)',
+        'stephan.agerman@slvventure.',
+        'com',
+        'www.linkedin.com/in/stephan-',
+        'agerman (LinkedIn)',
+        'Summary',
+      ].join('\n'),
+      [
+        structuralLine({ column: 'left', text: 'Contact', y: 760 }),
+        structuralLine({
+          column: 'left',
+          text: '+1 310 498 3047 (Mobile)',
+          y: 740,
+        }),
+        structuralLine({
+          column: 'left',
+          text: 'stephan.agerman@slvventure.',
+          y: 720,
+        }),
+        structuralLine({ column: 'left', text: 'com', y: 700 }),
+        structuralLine({
+          column: 'left',
+          text: 'www.linkedin.com/in/stephan-',
+          y: 680,
+        }),
+        structuralLine({
+          column: 'left',
+          text: 'agerman (LinkedIn)',
+          y: 660,
+        }),
+        structuralLine({ column: 'right', text: 'Summary', y: 640 }),
+      ]
+    );
+
+    expect(result.value.contact.email).toBe('stephan.agerman@slvventure.com');
+    expect(result.value.contact.phone).toBe('+1 310 498 3047');
+    expect(result.value.contact.linkedin_url).toBe(
+      'https://linkedin.com/in/stephan-agerman'
+    );
   });
 
   test('falls back to header contact lines for empty structural contact sections', () => {
