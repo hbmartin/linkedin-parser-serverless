@@ -54,4 +54,5 @@ export interface StructuralSection {
   fontSize: number;
   y: number;
   confidence: number;
+  isHeaderAnchor?: boolean;
 }

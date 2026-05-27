@@ -191,6 +191,87 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('resolves competing header anchors before assigning prose to organizations', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Mosaic Lab', y: 730 }),
+      textItem({ text: 'Research Scientist', y: 710, fontSize: 11.5 }),
+      textItem({ text: 'January 2021 - March 2022 (1 year 3 months)', y: 690 }),
+      textItem({
+        text: 'Mosaic AI Research Group',
+        y: 670,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Future Works (formerly Project 42)',
+        y: 630,
+      }),
+      textItem({ text: 'Principal', y: 610, fontSize: 11.5 }),
+      textItem({ text: 'April 2022 - Present (4 years 2 months)', y: 590 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Mosaic Lab',
+        positions: [
+          expect.objectContaining({
+            description: 'Mosaic AI Research Group',
+            duration: 'January 2021 - March 2022',
+            title: 'Research Scientist',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Future Works (formerly Project 42)',
+        positions: [
+          expect.objectContaining({
+            duration: 'April 2022 - Present',
+            title: 'Principal',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('prefers complete total-duration company anchors over overlapping prose candidates', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 800, fontSize: 16 }),
+      textItem({ text: 'Mosaic Lab', y: 770 }),
+      textItem({ text: 'Research Scientist', y: 750, fontSize: 11.5 }),
+      textItem({ text: 'January 2021 - March 2022 (1 year 3 months)', y: 730 }),
+      textItem({ text: 'Research Group', y: 710, fontSize: 10.5 }),
+      textItem({ text: 'UCLA', y: 670 }),
+      textItem({ text: '7 years 11 months', y: 650 }),
+      textItem({ text: 'Associate Professor', y: 630, fontSize: 11.5 }),
+      textItem({ text: 'July 2024 - Present (1 year 11 months)', y: 610 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Mosaic Lab',
+        positions: [
+          expect.objectContaining({
+            description: 'Research Group',
+            duration: 'January 2021 - March 2022',
+            title: 'Research Scientist',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'UCLA',
+        positions: [
+          expect.objectContaining({
+            duration: 'July 2024 - Present',
+            title: 'Associate Professor',
+          }),
+        ],
+        totalDuration: '7 years 11 months',
+      }),
+    ]);
+  });
+
   test('preserves company total duration and duplicate dated positions', () => {
     const [experience] = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Berufserfahrung', y: 700, fontSize: 16 }),
@@ -3974,6 +4055,107 @@ describe('ExperienceStructuralParser', () => {
         'FY2020 planning cycle with long text long text long text long text long text'
       )
     ).toBe('FY2020 planning cycle with long text long text lon');
+  });
+
+  test('scores overlapping candidate titles that start stronger headers lower', () => {
+    const parserLines = [
+      parserLine({ fontSize: 10.5, index: 0, text: 'Research Group' }),
+      parserLine({ fontSize: 12, index: 1, text: 'UCLA' }),
+      parserLine({ fontSize: 10.5, index: 2, text: '7 years 11 months' }),
+      parserLine({ fontSize: 11.5, index: 3, text: 'Associate Professor' }),
+      parserLine({
+        fontSize: 10.5,
+        index: 4,
+        text: 'July 2024 - Present (1 year 11 months)',
+      }),
+    ];
+    const competingCandidate = {
+      durationLine: parserLines[2],
+      organizationLine: parserLines[0],
+      score: 0,
+      titleLine: parserLines[1],
+    };
+
+    expect(
+      ExperienceStructuralParser['scoreExperienceHeaderCandidate'](
+        competingCandidate,
+        parserLines
+      )
+    ).toBeLessThan(4);
+  });
+
+  test('orders same-score header candidates by organization font prominence', () => {
+    const smallerOrganizationCandidate = {
+      durationLine: parserLine({ index: 2, text: '2020 - 2021' }),
+      organizationLine: parserLine({
+        fontSize: 10,
+        index: 0,
+        text: 'Northstar Labs',
+      }),
+      score: 5,
+      titleLine: parserLine({ index: 1, text: 'Principal Engineer' }),
+    };
+    const largerOrganizationCandidate = {
+      durationLine: parserLine({ index: 12, text: '2022 - Present' }),
+      organizationLine: parserLine({
+        fontSize: 12,
+        index: 10,
+        text: 'Cobalt Systems',
+      }),
+      score: 5,
+      titleLine: parserLine({ index: 11, text: 'Engineering Director' }),
+    };
+
+    expect(
+      ExperienceStructuralParser['compareExperienceHeaderCandidates'](
+        smallerOrganizationCandidate,
+        largerOrganizationCandidate
+      )
+    ).toBeGreaterThan(0);
+  });
+
+  test('covers header helper fallback branches', () => {
+    expect(
+      ExperienceStructuralParser['nextContentLineStartsCanonicalHeader']({
+        allLines: [parserLine({ index: 0, text: 'Description' })],
+        canonicalHeaders: {
+          lineTypes: new Map(),
+          organizationIndexes: new Set(),
+        },
+        index: 0,
+      })
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['createMergedParserLine']({
+        combinedText: 'Merged Header',
+        index: 0,
+        line: parserLine({ text: 'Merged' }),
+        nextLine: parserLine({ fontSize: 12, text: 'Header' }),
+      }).fontSize
+    ).toBe(12);
+    expect(
+      ExperienceStructuralParser['canStartCanonicalExperienceHeader'](
+        'This Extremely Long Descriptive Line Has Many Capitalized Words But No Real Header Shape And Should Not Become A Company Because It Exceeds The Normal Length'
+      )
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['hasProminentOrganizationFont']({
+        durationLine: parserLine({ index: 2, text: '2020 - 2021' }),
+        organizationLine: parserLine({ index: 0, text: 'Example Labs' }),
+        score: 0,
+        titleLine: parserLine({ index: 1, text: 'Principal Engineer' }),
+      })
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['completeWorkExperience']({
+        descriptionLines: [],
+        position: null,
+        workExperience: {
+          organization: 'Example Labs',
+          positions: [],
+        },
+      })
+    ).toBeUndefined();
   });
 });
 

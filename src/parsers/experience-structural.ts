@@ -81,6 +81,23 @@ interface ExperienceHeaderCandidate {
   totalDurationLine?: NormalizedParserLine;
 }
 
+interface CanonicalHeaderLineTypes {
+  lineTypes: Map<number, StructuralSection['type']>;
+  organizationIndexes: ReadonlySet<number>;
+}
+
+interface InferredLineTypeParams {
+  allLines: NormalizedParserLine[];
+  canonicalHeaders: CanonicalHeaderLineTypes;
+  index: number;
+  inferredType: StructuralSection['type'];
+  state: ExperienceLineState;
+}
+
+interface ExtractCleanOrganizationNameOptions {
+  allowAnchoredHeaderText: boolean;
+}
+
 export class ExperienceStructuralParser {
   private static readonly EXPERIENCE_HEADER_ALIGNMENT_TOLERANCE = 12;
   private static readonly EXPERIENCE_HEADER_ACCEPTANCE_SCORE = 4;
@@ -236,7 +253,7 @@ export class ExperienceStructuralParser {
     const expandedParserLines = this.expandCombinedOrganizationTitleLines(
       normalizedParserLines
     );
-    const canonicalHeaderLineTypes =
+    const canonicalHeaders =
       this.createCanonicalHeaderLineTypes(expandedParserLines);
     let state: ExperienceLineState = 'seeking_company';
 
@@ -257,14 +274,22 @@ export class ExperienceStructuralParser {
         confidence: 0,
       };
 
+      const anchoredLineType = canonicalHeaders.lineTypes.get(index);
       section.type =
-        canonicalHeaderLineTypes.get(index) ??
-        this.classifyLineType({
+        anchoredLineType ??
+        this.refineInferredLineType({
           allLines: expandedParserLines,
+          canonicalHeaders,
           index,
-          line: parserLine,
+          inferredType: this.classifyLineType({
+            allLines: expandedParserLines,
+            index,
+            line: parserLine,
+            state,
+          }),
           state,
         });
+      section.isHeaderAnchor = anchoredLineType !== undefined;
       state = this.nextState(state, section.type);
       section.confidence = this.calculateConfidence(
         line,
@@ -276,6 +301,44 @@ export class ExperienceStructuralParser {
     }
 
     return sections;
+  }
+
+  private static refineInferredLineType({
+    allLines,
+    canonicalHeaders,
+    index,
+    inferredType,
+    state,
+  }: InferredLineTypeParams): StructuralSection['type'] {
+    if (
+      inferredType !== 'organization' ||
+      state !== 'in_description' ||
+      !this.nextContentLineStartsCanonicalHeader({
+        allLines,
+        canonicalHeaders,
+        index,
+      })
+    ) {
+      return inferredType;
+    }
+
+    return 'description';
+  }
+
+  private static nextContentLineStartsCanonicalHeader({
+    allLines,
+    canonicalHeaders,
+    index,
+  }: {
+    allLines: NormalizedParserLine[];
+    canonicalHeaders: CanonicalHeaderLineTypes;
+    index: number;
+  }): boolean {
+    const nextLine = this.nextContentLine(allLines, index + 1);
+
+    return nextLine
+      ? canonicalHeaders.organizationIndexes.has(nextLine.index)
+      : false;
   }
 
   private static mergeWrappedHeaderLines(
@@ -508,28 +571,14 @@ export class ExperienceStructuralParser {
 
   private static createCanonicalHeaderLineTypes(
     parserLines: NormalizedParserLine[]
-  ): Map<number, StructuralSection['type']> {
+  ): CanonicalHeaderLineTypes {
     const lineTypes = new Map<number, StructuralSection['type']>();
     const lineTexts = parserLines.map(line => line.text);
+    const selectedCandidates = this.selectExperienceHeaderCandidates(
+      this.createExperienceHeaderCandidates(parserLines, lineTexts)
+    );
 
-    for (let index = 0; index < parserLines.length; index++) {
-      if (lineTypes.has(index)) {
-        continue;
-      }
-
-      const candidate = this.createExperienceHeaderCandidate(
-        parserLines,
-        index,
-        lineTexts
-      );
-
-      if (
-        !candidate ||
-        candidate.score < this.EXPERIENCE_HEADER_ACCEPTANCE_SCORE
-      ) {
-        continue;
-      }
-
+    for (const candidate of selectedCandidates) {
       lineTypes.set(candidate.organizationLine.index, 'organization');
 
       if (candidate.totalDurationLine) {
@@ -544,7 +593,105 @@ export class ExperienceStructuralParser {
       }
     }
 
-    return lineTypes;
+    return {
+      lineTypes,
+      organizationIndexes: new Set(
+        selectedCandidates.map(candidate => candidate.organizationLine.index)
+      ),
+    };
+  }
+
+  private static createExperienceHeaderCandidates(
+    parserLines: NormalizedParserLine[],
+    lineTexts: string[]
+  ): ExperienceHeaderCandidate[] {
+    const candidates: ExperienceHeaderCandidate[] = [];
+
+    for (let index = 0; index < parserLines.length; index++) {
+      const candidate = this.createExperienceHeaderCandidate(
+        parserLines,
+        index,
+        lineTexts
+      );
+
+      if (
+        candidate &&
+        candidate.score >= this.EXPERIENCE_HEADER_ACCEPTANCE_SCORE
+      ) {
+        candidates.push(candidate);
+      }
+    }
+
+    return candidates;
+  }
+
+  private static selectExperienceHeaderCandidates(
+    candidates: ExperienceHeaderCandidate[]
+  ): ExperienceHeaderCandidate[] {
+    const selectedCandidates: ExperienceHeaderCandidate[] = [];
+    const sortedCandidates = [...candidates].sort((left, right) =>
+      this.compareExperienceHeaderCandidates(left, right)
+    );
+
+    for (const candidate of sortedCandidates) {
+      if (
+        selectedCandidates.some(selectedCandidate =>
+          this.haveOverlappingHeaderCandidateLines(candidate, selectedCandidate)
+        )
+      ) {
+        continue;
+      }
+
+      selectedCandidates.push(candidate);
+    }
+
+    return selectedCandidates.sort(
+      (left, right) =>
+        left.organizationLine.index - right.organizationLine.index
+    );
+  }
+
+  private static compareExperienceHeaderCandidates(
+    left: ExperienceHeaderCandidate,
+    right: ExperienceHeaderCandidate
+  ): number {
+    if (left.score !== right.score) {
+      return right.score - left.score;
+    }
+
+    const leftFontSize = left.organizationLine.fontSize ?? 0;
+    const rightFontSize = right.organizationLine.fontSize ?? 0;
+
+    if (leftFontSize !== rightFontSize) {
+      return rightFontSize - leftFontSize;
+    }
+
+    return left.organizationLine.index - right.organizationLine.index;
+  }
+
+  private static haveOverlappingHeaderCandidateLines(
+    left: ExperienceHeaderCandidate,
+    right: ExperienceHeaderCandidate
+  ): boolean {
+    const rightIndexes = new Set(this.headerCandidateLineIndexes(right));
+
+    return this.headerCandidateLineIndexes(left).some(index =>
+      rightIndexes.has(index)
+    );
+  }
+
+  private static headerCandidateLineIndexes(
+    candidate: ExperienceHeaderCandidate
+  ): number[] {
+    return [
+      candidate.organizationLine.index,
+      ...(candidate.totalDurationLine
+        ? [candidate.totalDurationLine.index]
+        : []),
+      candidate.titleLine.index,
+      candidate.durationLine.index,
+      ...(candidate.locationLine ? [candidate.locationLine.index] : []),
+    ];
   }
 
   private static createExperienceHeaderCandidate(
@@ -828,6 +975,14 @@ export class ExperienceStructuralParser {
       score += 1;
     }
 
+    if (this.hasSubordinateOrganizationFont(candidate)) {
+      score -= 2;
+    }
+
+    if (this.titleLineStartsCompetingHeader(candidate, parserLines)) {
+      score -= 4;
+    }
+
     if (
       looksLikePersonNameText(organizationText) &&
       !this.hasExplicitOrganizationCueText(organizationText)
@@ -836,6 +991,36 @@ export class ExperienceStructuralParser {
     }
 
     return score;
+  }
+
+  private static hasSubordinateOrganizationFont(
+    candidate: ExperienceHeaderCandidate
+  ): boolean {
+    const organizationFontSize = candidate.organizationLine.fontSize;
+    const titleFontSize = candidate.titleLine.fontSize;
+
+    return (
+      organizationFontSize !== undefined &&
+      titleFontSize !== undefined &&
+      organizationFontSize + 0.75 < titleFontSize
+    );
+  }
+
+  private static titleLineStartsCompetingHeader(
+    candidate: ExperienceHeaderCandidate,
+    parserLines: NormalizedParserLine[]
+  ): boolean {
+    const lineTexts = parserLines.map(line => line.text);
+    const titleLine = candidate.titleLine;
+
+    return (
+      this.canStartCanonicalExperienceHeader(titleLine.text) &&
+      (this.hasImmediateTitleAndDurationAfterOrganization(
+        titleLine.index,
+        lineTexts
+      ) ||
+        this.hasTotalDurationThenPosition(titleLine.index, lineTexts))
+    );
   }
 
   private static hasAlignedHeaderGeometry(
@@ -1366,14 +1551,7 @@ export class ExperienceStructuralParser {
       return false;
     }
 
-    const normalizedHeaderLine =
-      this.normalizeOrganizationHeaderParentheticalSpans(normalizedLine);
-
-    if (!normalizedHeaderLine) {
-      return false;
-    }
-
-    const words = normalizedHeaderLine.split(/\s+/).filter(Boolean);
+    const words = normalizedLine.split(/\s+/).filter(Boolean);
 
     return (
       words.length > 0 &&
@@ -1412,14 +1590,7 @@ export class ExperienceStructuralParser {
       return false;
     }
 
-    const normalizedHeaderLine =
-      this.normalizeOrganizationHeaderParentheticalSpans(normalizedLine);
-
-    if (!normalizedHeaderLine) {
-      return false;
-    }
-
-    const words = normalizedHeaderLine.split(/\s+/).filter(Boolean);
+    const words = normalizedLine.split(/\s+/).filter(Boolean);
     const hasOrganizationCue =
       hasPipeSeparator || this.hasOrganizationSuffixText(normalizedLine);
 
@@ -1437,69 +1608,6 @@ export class ExperienceStructuralParser {
           /^\([\p{L}\p{M}0-9&.'+!–-]+\)$/u.test(word) ||
           /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word) ||
           (hasPipeSeparator && /^[\p{Ll}\p{M}]+$/u.test(word))
-      )
-    );
-  }
-
-  private static normalizeOrganizationHeaderParentheticalSpans(
-    line: string
-  ): string | undefined {
-    const parentheticalMatches = [...line.matchAll(/\(([^()]*)\)/gu)];
-
-    if (parentheticalMatches.length === 0) {
-      return line;
-    }
-
-    const hasOnlyHeaderSafeParentheticals = parentheticalMatches.every(match =>
-      this.looksLikeOrganizationHeaderParentheticalText(match[1] ?? '')
-    );
-
-    if (!hasOnlyHeaderSafeParentheticals) {
-      return undefined;
-    }
-
-    return line
-      .replace(/\([^()]*\)/gu, '(QUALIFIER)')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  private static looksLikeOrganizationHeaderParentheticalText(
-    text: string
-  ): boolean {
-    const normalizedText = text.replace(/\s+/g, ' ').trim();
-
-    if (
-      normalizedText.length < 2 ||
-      normalizedText.length > 80 ||
-      normalizedText.includes('@') ||
-      /https?:\/\//i.test(normalizedText) ||
-      this.looksLikeDuration(normalizedText) ||
-      this.looksLikeLocation(normalizedText) ||
-      this.looksLikePosition(normalizedText) ||
-      this.looksLikeMediaDescriptionLine(normalizedText) ||
-      isSectionHeaderText(normalizedText)
-    ) {
-      return false;
-    }
-
-    const words = normalizedText
-      .split(/[\s,/]+/u)
-      .map(word => word.replace(/^[.;:]+|[.;:]+$/g, ''))
-      .filter(Boolean);
-
-    const hasDistinctiveHeaderWord = words.some(word =>
-      /^[\p{Lu}0-9]/u.test(word)
-    );
-
-    return (
-      words.length > 0 &&
-      words.length <= 12 &&
-      hasDistinctiveHeaderWord &&
-      words.every(
-        word =>
-          this.ORGANIZATION_CONNECTOR_WORD_PATTERN.test(word) ||
-          /^[\p{L}\p{M}0-9&.'+!–-]+$/u.test(word)
       )
     );
   }
@@ -2242,7 +2350,10 @@ export class ExperienceStructuralParser {
         case 'organization':
           {
             const cleanOrgName = this.extractCleanOrganizationName(
-              section.text
+              section.text,
+              {
+                allowAnchoredHeaderText: section.isHeaderAnchor === true,
+              }
             );
 
             if (!cleanOrgName) {
@@ -2455,7 +2566,10 @@ export class ExperienceStructuralParser {
   }
 
   private static extractCleanOrganizationName(
-    text: string
+    text: string,
+    options: ExtractCleanOrganizationNameOptions = {
+      allowAnchoredHeaderText: false,
+    }
   ): string | undefined {
     if (this.looksLikeKnownLowercaseOrganization(text)) {
       return text.trim();
@@ -2503,10 +2617,37 @@ export class ExperienceStructuralParser {
       .replace(/\s+/g, ' ')
       .trim();
 
+    if (
+      options.allowAnchoredHeaderText &&
+      this.looksLikeAnchoredOrganizationHeaderText(normalizedText)
+    ) {
+      return normalizedText;
+    }
+
     return this.looksLikeVisualOrganizationHeaderText(normalizedText) ||
       this.looksLikeWrappedOrganizationHeaderText(normalizedText)
       ? normalizedText
       : undefined;
+  }
+
+  private static looksLikeAnchoredOrganizationHeaderText(
+    text: string
+  ): boolean {
+    const normalizedText = text.trim();
+
+    return (
+      normalizedText.length >= 2 &&
+      normalizedText.length <= 140 &&
+      !normalizedText.includes('@') &&
+      !/https?:\/\//i.test(normalizedText) &&
+      !/^[-+*•>]/u.test(normalizedText) &&
+      !this.isExperienceNoiseLine(normalizedText) &&
+      !this.looksLikeDuration(normalizedText) &&
+      !this.looksLikeLocation(normalizedText) &&
+      !this.looksLikePosition(normalizedText) &&
+      !this.looksLikeMediaDescriptionLine(normalizedText) &&
+      !isSectionHeaderText(normalizedText)
+    );
   }
 
   private static extractCleanDuration(text: string): string {
