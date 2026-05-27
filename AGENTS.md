@@ -3,6 +3,7 @@
 - After adding any code or functionality, write thorough unit tests and check coverage.
 - After making any changes always execute `pnpm run check` to verify
 - After completing a task and the check verification, run `pnpm run samples:verify`. Make no further changes based on this output (unless explicitly asked) but report any changes to the user.
+- Following any call to `pnpm run samples:verify` that fails, report should include use of the `.agents/skills/debug-linkedin-sample-pdfs` skill to inform the user whether the changes are (a) a strict improvement or (b) a regression or (c) ambiguous. 
 - `samples/` is local and gitignored, so sample verification is intentionally separate from `pnpm run check`.
 - Fix any pnpm format issues (even if they are unrelated)
 - When confusion or errors reveal a reusable project workflow rule, add a concise guideline to AGENTS.md.

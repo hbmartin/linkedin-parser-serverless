@@ -647,6 +647,79 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('keeps sentence-ending parenthetical descriptions before same-company roles', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Mindshare', y: 730 }),
+      textItem({ text: '2 years 8 months', y: 710 }),
+      textItem({
+        text: 'Digital Senior Associate - Facebook, ampm/ARCO',
+        y: 690,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'June 2017 - May 2018 (1 year)', y: 670 }),
+      textItem({
+        text: 'Planned and executed year-long campaigns for seasonal products.',
+        y: 650,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Increased customer engagement and conversion rates by 33%. (ampm)',
+        y: 630,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Digital Associate',
+        y: 590,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'October 2015 - May 2017 (1 year 8 months)',
+        y: 570,
+      }),
+      textItem({ text: 'Greater Los Angeles Area', y: 550 }),
+      textItem({
+        text: 'Monitored ongoing campaigns and coordinated vendor meetings.',
+        y: 530,
+      }),
+      textItem({ text: 'Thakoon', y: 490 }),
+      textItem({ text: 'Design Intern', y: 470, fontSize: 11.5 }),
+      textItem({ text: 'September 2014 - December 2014 (4 months)', y: 450 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Mindshare',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Planned and executed year-long campaigns for seasonal products. Increased customer engagement and conversion rates by 33%. (ampm)',
+            duration: 'June 2017 - May 2018',
+            title: 'Digital Senior Associate - Facebook, ampm/ARCO',
+          }),
+          expect.objectContaining({
+            description:
+              'Monitored ongoing campaigns and coordinated vendor meetings.',
+            duration: 'October 2015 - May 2017',
+            location: 'Greater Los Angeles Area',
+            title: 'Digital Associate',
+          }),
+        ],
+        totalDuration: '2 years 8 months',
+      }),
+      expect.objectContaining({
+        organization: 'Thakoon',
+        positions: [
+          expect.objectContaining({
+            duration: 'September 2014 - December 2014',
+            title: 'Design Intern',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('merges wrapped bilingual organization headings', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -973,6 +1046,51 @@ describe('ExperienceStructuralParser', () => {
           expect.objectContaining({
             duration: 'November 2024 - Present',
             title: 'Investor & Advisor',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('recognizes visual organizations with nested safe parenthetical qualifiers', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'X (A (B))', y: 670 }),
+      textItem({ text: 'Research Fellow', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - January 2021', y: 630 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'X (A (B))',
+        positions: [
+          expect.objectContaining({
+            duration: 'January 2020 - January 2021',
+            title: 'Research Fellow',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('does not promote nested prose parentheticals to organization headers', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'X (built marketplace (pilot))', y: 670 }),
+      textItem({ text: 'Research Fellow', y: 650, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - January 2021', y: 630 }),
+      textItem({ text: 'Northstar Labs', y: 590 }),
+      textItem({ text: 'Staff Engineer', y: 570, fontSize: 11.5 }),
+      textItem({ text: 'February 2021 - February 2022', y: 550 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Northstar Labs',
+        positions: [
+          expect.objectContaining({
+            duration: 'February 2021 - February 2022',
+            title: 'Staff Engineer',
           }),
         ],
       }),
@@ -4112,6 +4230,24 @@ describe('ExperienceStructuralParser', () => {
         largerOrganizationCandidate
       )
     ).toBeGreaterThan(0);
+  });
+
+  test('normalizes nested organization header parentheticals inside out', () => {
+    expect(
+      ExperienceStructuralParser[
+        'normalizeOrganizationHeaderParentheticalSpans'
+      ]('X (A (B))')
+    ).toBe('X QUALIFIER');
+    expect(
+      ExperienceStructuralParser[
+        'normalizeOrganizationHeaderParentheticalSpans'
+      ]('X (A (built marketplace))')
+    ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser[
+        'normalizeOrganizationHeaderParentheticalSpans'
+      ]('X (A (B)')
+    ).toBeUndefined();
   });
 
   test('covers header helper fallback branches', () => {
