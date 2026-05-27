@@ -69,12 +69,17 @@ const EMAIL_SEARCH_LINE_PATTERN = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}$/i;
 const LABELED_EMAIL_SEARCH_LINE_PATTERN =
   /^(?:e-?mail|mail)(?:\s*[:-]\s*|\s+)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}$/i;
 const WRAPPED_EMAIL_START_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.$/i;
-const EMAIL_TLD_CONTINUATION_PATTERN = /^[A-Z]{2,24}$/i;
+const EMAIL_TLD_CONTINUATION_PATTERN = /^[A-Z]{2,63}$/i;
 
 interface ContactLinkDraft {
   label?: string;
   parts: string[];
   rawLines: string[];
+}
+
+interface ContactSearchLines {
+  emailSearchLines: string[];
+  linkSearchLines: string[];
 }
 
 export class BasicInfoParser {
@@ -362,12 +367,13 @@ export class BasicInfoParser {
 
   private static extractContactFromLines(lines: string[]): Contact {
     const contact: Contact = {};
-    const contactText = this.createEmailSearchText(lines);
+    const contactSearchLines = this.createContactSearchLines(lines);
+    const contactText = contactSearchLines.emailSearchLines.join('\n');
     const email = this.extractEmail(contactText);
-    const links = this.extractContactLinks(lines);
-    const linkedInUrl =
-      links.find(link => /linkedin\.com\/in\//i.test(link.url))?.url ??
-      this.extractLinkedInUrlFromLines(lines);
+    const links = this.extractContactLinks(contactSearchLines.linkSearchLines);
+    const linkedInUrl = links.find(link =>
+      /linkedin\.com\/in\//i.test(link.url)
+    )?.url;
     const phone = this.extractPhoneFromLines(lines);
 
     if (email) {
@@ -389,14 +395,19 @@ export class BasicInfoParser {
     return contact;
   }
 
-  private static createEmailSearchText(lines: string[]): string {
+  private static createContactSearchLines(lines: string[]): ContactSearchLines {
     const emailSearchLines: string[] = [];
+    const linkSearchLines: string[] = [];
     const normalizedLines = lines.map(line => normalizeWhitespace(line));
 
     for (let index = 0; index < normalizedLines.length; index += 1) {
       const line = normalizedLines[index];
       const nextLine = normalizedLines[index + 1];
 
+      // Walk normalizedLines once: when isWrappedEmailStartLine and
+      // isEmailTldContinuationLine match, emailSearchLines gets
+      // "user@example." + "com" stitched while linkSearchLines skips those
+      // fragments and index advances past the consumed continuation.
       if (
         nextLine !== undefined &&
         this.isWrappedEmailStartLine(line) &&
@@ -408,9 +419,10 @@ export class BasicInfoParser {
       }
 
       emailSearchLines.push(line);
+      linkSearchLines.push(line);
     }
 
-    return emailSearchLines.join('\n');
+    return { emailSearchLines, linkSearchLines };
   }
 
   private static extractTextContactLines(
@@ -537,14 +549,6 @@ export class BasicInfoParser {
       rawText: draft.rawLines.join(' '),
       url,
     });
-  }
-
-  private static extractLinkedInUrlFromLines(
-    lines: string[]
-  ): string | undefined {
-    return this.extractContactLinks(lines).find(link =>
-      /linkedin\.com\/in\//i.test(link.url)
-    )?.url;
   }
 
   private static extractPhoneFromLines(lines: string[]): string | undefined {
