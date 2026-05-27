@@ -2,8 +2,8 @@
 
 2.1.0 keeps the main `parseLinkedInPDF` entrypoint and import path, but it
 expands the public result shape and adds helpers for confidence checks, typed
-errors, plain-text formatting, grouped work experience, and PDF source
-debugging.
+errors, plain-text/Markdown formatting, grouped work experience, additional
+extra sections, and PDF source debugging.
 
 The most common migration work is updating TypeScript mocks, JSON fixtures, and
 golden-file assertions that were written against the 2.0.0 result shape.
@@ -12,16 +12,18 @@ golden-file assertions that were written against the 2.0.0 result shape.
 
 1. Upgrade the package to `linkedin-parser-serverless@2.1.0`.
 2. Update any stored `ParseResult` JSON to include top-level `diagnostics`.
-3. Update any constructed `LinkedInProfile` values to include
-   `experience_groups` and `honors_awards`.
+3. Update any constructed `LinkedInProfile` values to include `patents`,
+   `organizations`, `honors_awards`, and `experience_groups`.
 4. Decide whether your integration should use lenient parsing
    (`parseLinkedInPDF`), schema-validated parsing (`parseLinkedInPDFStrict`), or
    no-throw parsing (`safeParseLinkedInPDF`).
 5. If you validate parser output with Zod, update expected shapes for
-   `ParseDiagnosticsSchema`, `ContactLinkSchema`, and `ExperienceGroupSchema`.
+   `ParseDiagnosticsSchema`, `ContactLinkSchema`, `ExperienceGroupSchema`, and
+   `WarningSectionSchema`.
 6. If you compare complete parser JSON, regenerate fixtures because parser
-   heuristics now extract more contact links, honors/awards, grouped experience,
-   dates, languages, education, and section warnings.
+   heuristics now extract more contact links, patents, organizations,
+   honors/awards, grouped experience, dates, languages, education, and section
+   warnings.
 
 Node.js 22+ remains required. Local development in this repository now uses
 `pnpm@11.1.3`.
@@ -65,11 +67,13 @@ parse.
 
 ## Profile Shape Changes
 
-`LinkedInProfile` now has two additional required array fields:
+`LinkedInProfile` now has additional required array fields:
 
 ```ts
 interface LinkedInProfile {
   // Existing 2.0.0 fields remain.
+  patents: string[];
+  organizations: string[];
   honors_awards: string[];
   experience_groups: ExperienceGroup[];
 }
@@ -87,6 +91,8 @@ const profile: LinkedInProfile = {
   volunteer_work: [],
   projects: [],
   publications: [],
+  patents: [],
+  organizations: [],
   honors_awards: [],
   experience_groups: [],
   experience: [],
@@ -94,8 +100,9 @@ const profile: LinkedInProfile = {
 };
 ```
 
-`WarningSection` also includes `honors_awards`, so exhaustive switches over
-warning sections must handle that value.
+`WarningSection` also includes `patents`, `organizations`, and
+`honors_awards`, so exhaustive switches over warning sections must handle those
+values.
 
 ## Grouped Experience
 
@@ -187,9 +194,11 @@ interface FormatLinkedInProfileOptions {
 }
 ```
 
-`includeContact` defaults to `false`, so email, phone, LinkedIn URL, location,
-and profile links are omitted for privacy. Pass `includeContact: true` when the
-plain-text output should include the `Contact` section:
+`includeContact` defaults to `false`, so the formatter omits the `Contact`
+section with email, phone, the contact LinkedIn URL, contact-section location,
+and profile links. The top-level `profile.location` can still appear in the
+identity section. Pass `includeContact: true` when the plain-text output should
+include the `Contact` section:
 
 ```ts
 const textWithContact = formatLinkedInProfile(profile, {
@@ -305,12 +314,13 @@ contains schema-validated output.
 `ParseResultSchema` now requires `diagnostics`, and the package exports
 `ParseDiagnosticsSchema`.
 
-`LinkedInProfileSchema` now requires `honors_awards` and `experience_groups`.
-The package also exports:
+`LinkedInProfileSchema` now requires `patents`, `organizations`,
+`honors_awards`, and `experience_groups`. The package also exports:
 
 - `ContactLinkSchema`
 - `ExperienceGroupSchema`
 - `ExperienceGroupPositionSchema`
+- `WarningSectionSchema`
 
 Before:
 
@@ -335,6 +345,7 @@ when your input PDFs have not changed.
 Expect more or different values in these areas:
 
 - `profile.contact.links` and `profile.contact.linkedin_url`
+- `profile.patents` and `profile.organizations`
 - `profile.honors_awards`
 - `profile.experience_groups` and flattened `profile.experience`
 - `dates.durationText` for duration strings such as parenthetical durations or
@@ -347,8 +358,8 @@ Expect more or different values in these areas:
 - `profile.education`, especially wrapped institutions, month/year ranges, and
   degree lines with embedded dates
 - `warnings`, because contact warnings are suppressed when another structural
-  parser resolves contact data and section warnings now include
-  `honors_awards`
+  parser resolves contact data and section warnings now include `patents`,
+  `organizations`, and `honors_awards`
 
 If you assert complete JSON equality, regenerate baselines after upgrading. If
 you only need stable application behavior, prefer assertions around the fields

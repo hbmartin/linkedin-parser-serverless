@@ -9,12 +9,17 @@
 
 A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsing LinkedIn PDF resumes and extracting structured profile data.
 
+- [Features](#features)
 - [📦 Installation](#-installation)
 - [🖥️ CLI Usage](#️-cli-usage)
 - [🚀 Quick Start](#-quick-start)
 - [📚 Examples](#-examples)
 - [📖 API Reference](#-api-reference)
+- [🏗️ TypeScript Interfaces](#️-typescript-interfaces)
 - [🛠️ Development](#️-development)
+- [📊 Performance](#-performance)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
 ---
 
@@ -33,7 +38,7 @@ A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsi
 
 - Node.js 22.0.0 or newer
 - pnpm 11.1.3 for local development
-- Supported runtimes: Node.js 22+, Vercel Edge, and serverless JavaScript runtimes that provide Web-standard binary types such as `ArrayBuffer`
+- Also runs on Vercel Edge and any serverless JavaScript runtime that provides Web-standard binary types such as `ArrayBuffer`
 
 ### Library Usage
 
@@ -537,6 +542,30 @@ interface ParseDiagnostics {
 ```
 </details>
 
+#### Diagnostics fields explained
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `sectionsFound` | `WarningSection[]` | Profile sections detected in the input — found by matching normalized section headers in the extracted text and by collecting the `section` of any `section_parse_warning`. The list is deduplicated; values come from the `WarningSection` union (`summary`, `experience`, `education`, `top_skills`, `languages`, etc.). |
+| `confidence` | `number` (0–1) | Heuristic quality score, rounded to two decimals. Treat it as a relative indicator, not a probability — there is no fixed "good" threshold. See the scoring breakdown below. |
+| `isLikelyLinkedInExport` | `boolean` | Whether the input looks like a LinkedIn "Save to PDF" export rather than an arbitrary document. **Use this — not `confidence` — to decide whether to trust the result as a LinkedIn profile.** True when the profile is non-empty *and* any of: a LinkedIn signal is present (a `linkedin_url`, or "linkedin" appears in the text), at least 2 sections were found, or at least one section was found with `confidence >= 0.5`. |
+| `isEmpty` | `boolean` | True when no profile fields were extracted at all (no name, headline, location, summary, contact, list sections, experience, or education). Readable input that yields nothing returns `isEmpty: true` rather than throwing. |
+
+**How `confidence` is computed.** It is `0` for an empty profile. Otherwise it is the sum of the weighted signals below, minus a warning penalty, clamped to `[0, 1]`:
+
+| Signal | Contribution |
+|--------|-------------|
+| LinkedIn signal (`linkedin_url` present, or "linkedin" in the text) | +0.30 |
+| Sections found | +0.06 each, capped at +0.25 |
+| Name | +0.12 |
+| Headline | +0.05 |
+| Location | +0.05 |
+| Any contact field (email, phone, LinkedIn URL, location, or links) | +0.10 |
+| Has experience or experience groups | +0.15 |
+| Has education | +0.10 |
+| Any list section (skills, languages, certifications, projects, etc.) | +0.10 |
+| Warning penalty | −0.02 per warning, capped at −0.15 |
+
 <details>
 <summary><strong>LinkedInProfileParseError</strong></summary>
 
@@ -665,10 +694,34 @@ node bin/cli.js tests/fixtures/Profile.pdf | jq '.profile.experience[0]'
 
 ## 📊 Performance
 
-- **Processing time**: ~70ms average for typical LinkedIn PDF
-- **Memory usage**: Minimal memory footprint (~8MB)
-- **Bundle size**: Ultra-lightweight at 3.0kB gzipped
+Measure performance against the checked-in fixtures with the built package:
 
+```bash
+pnpm run perf:measure -- --iterations 25 --warmup 5
+```
+
+A local run on Node v24.16.0 (`darwin/arm64`) produced:
+
+| Input | Kind | Size | Average | Median | p95 | Max heap delta |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `Profile.pdf` | PDF | 49.25 KiB | 31.0ms | 30.8ms | 32.8ms | 12.43 MiB |
+| `test_resume.pdf` | PDF | 81.30 KiB | 103.8ms | 102.9ms | 109.0ms | 51.45 MiB |
+| `Profile.txt` | text | 1.54 KiB | 1.7ms | 1.7ms | 1.9ms | 1.27 MiB |
+| `test_resume.txt` | text | 12.60 KiB | 8.1ms | 8.1ms | 8.7ms | 5.35 MiB |
+
+PDF timings include `unpdf` extraction plus structural parsing. Text timings
+start after text extraction. Heap deltas are the maximum heap growth observed
+during a single measured parse; expect them to vary by Node version, platform,
+fixture shape, and garbage-collection timing.
+
+The package keeps runtime dependencies external. Current built artifact sizes:
+
+| Artifact | Raw | Gzip |
+| --- | ---: | ---: |
+| `dist/index.js` | 236.05 KiB | 44.52 KiB |
+| `dist/index.cjs` | 237.64 KiB | 44.80 KiB |
+| `dist/index.min.js` | 103.77 KiB | 28.27 KiB |
+| `dist/cli.js` | 28.83 KiB | 5.77 KiB |
 
 ## 🤝 Contributing
 
@@ -676,8 +729,10 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ## 📄 License
 
-[MIT](LICENSE) © [Arkady Zalkowitsch](mailto:arkady@zalko.com)
+[MIT](LICENSE) © [Harold Martin](mailto:harold.martin@gmail.com)
 
 ---
 
-Made with ❤️ by [Arkady Zalkowitsch](https://github.com/zalkowitsch) and Harold Martin
+Originally made with ❤️ by [Arkady Zalkowitsch](https://github.com/zalkowitsch).
+
+Currently maintained (with ❤️ of course!) by [Harold Martin](https://www.linkedin.com/in/harold-martin-98526971/).
