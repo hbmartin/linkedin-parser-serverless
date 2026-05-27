@@ -1,4 +1,5 @@
 import {
+  LayoutInfo,
   TextItem,
   WorkExperience,
   Position,
@@ -104,6 +105,14 @@ interface ExtractCleanOrganizationNameOptions {
   mode: 'anchored_header' | 'standard';
 }
 
+export interface ParseExperienceParams {
+  textItems: TextItem[];
+  experienceStartY?: number;
+  experienceEndY?: number;
+  layout?: LayoutInfo;
+  structuralLines?: StructuralLine[];
+}
+
 export class ExperienceStructuralParser {
   private static readonly EXPERIENCE_HEADER_ALIGNMENT_TOLERANCE = 12;
   private static readonly EXPERIENCE_HEADER_ACCEPTANCE_SCORE = 4;
@@ -154,28 +163,52 @@ export class ExperienceStructuralParser {
       'technology',
       'ventures',
     ]);
+  static parseExperience(params: ParseExperienceParams): WorkExperience[];
   static parseExperience(
     textItems: TextItem[],
     experienceStartY?: number,
     experienceEndY?: number
+  ): WorkExperience[];
+  static parseExperience(
+    paramsOrTextItems: ParseExperienceParams | TextItem[],
+    experienceStartY?: number,
+    experienceEndY?: number
   ): WorkExperience[] {
-    return this.parseExperienceWithWarnings(
-      textItems,
+    const params = this.normalizeParseExperienceParams(
+      paramsOrTextItems,
       experienceStartY,
       experienceEndY
-    ).value;
+    );
+
+    return this.parseExperienceWithWarnings(params).value;
   }
 
+  static parseExperienceWithWarnings(
+    params: ParseExperienceParams
+  ): ParsedSectionResult<WorkExperience[]>;
   static parseExperienceWithWarnings(
     textItems: TextItem[],
     experienceStartY?: number,
     experienceEndY?: number
+  ): ParsedSectionResult<WorkExperience[]>;
+  static parseExperienceWithWarnings(
+    paramsOrTextItems: ParseExperienceParams | TextItem[],
+    experienceStartY?: number,
+    experienceEndY?: number
   ): ParsedSectionResult<WorkExperience[]> {
-    const layout = StructuralParser.detectLayout(textItems);
-    const initialStructuralLines = createStructuralLines({
-      layout,
-      textItems,
-    });
+    const params = this.normalizeParseExperienceParams(
+      paramsOrTextItems,
+      experienceStartY,
+      experienceEndY
+    );
+    const layout =
+      params.layout ?? StructuralParser.detectLayout(params.textItems);
+    const initialStructuralLines =
+      params.structuralLines ??
+      createStructuralLines({
+        layout,
+        textItems: params.textItems,
+      });
     const hasSingleColumnMainCandidate = initialStructuralLines.some(
       line => line.column === 'single' && line.x >= 150
     );
@@ -193,16 +226,23 @@ export class ExperienceStructuralParser {
       !hasLeftSingleColumnExperienceHeader
         ? createStructuralLines({
             layout,
-            textItems: textItems.filter(item => item.x >= 150),
+            textItems: params.textItems.filter(item => item.x >= 150),
           })
         : initialStructuralLines;
     let relevantLines = structuralLines.filter(
       line => line.column === 'right' || line.column === 'single'
     );
 
-    if (experienceStartY !== undefined && experienceEndY !== undefined) {
+    if (
+      params.experienceStartY !== undefined &&
+      params.experienceEndY !== undefined
+    ) {
+      const boundedExperienceStartY = params.experienceStartY;
+      const boundedExperienceEndY = params.experienceEndY;
+
       relevantLines = relevantLines.filter(
-        line => line.y < experienceStartY && line.y > experienceEndY
+        line =>
+          line.y < boundedExperienceStartY && line.y > boundedExperienceEndY
       );
     }
 
@@ -229,6 +269,20 @@ export class ExperienceStructuralParser {
       value: workExperiences,
       warnings: this.createExperienceWarnings(workExperiences),
     };
+  }
+
+  private static normalizeParseExperienceParams(
+    paramsOrTextItems: ParseExperienceParams | TextItem[],
+    experienceStartY?: number,
+    experienceEndY?: number
+  ): ParseExperienceParams {
+    return Array.isArray(paramsOrTextItems)
+      ? {
+          experienceEndY,
+          experienceStartY,
+          textItems: paramsOrTextItems,
+        }
+      : paramsOrTextItems;
   }
 
   private static extractExperienceStructuralLines(

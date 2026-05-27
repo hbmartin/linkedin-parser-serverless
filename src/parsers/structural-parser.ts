@@ -2,6 +2,25 @@ import { getDocumentProxy, extractTextItems } from 'unpdf';
 import { TextItem, LayoutInfo } from '../types/structural.js';
 import { getTextItemStructuralColumn } from '../utils/structural-layout.js';
 
+export interface GroupTextByProximityParams {
+  textItems: TextItem[];
+  layout?: LayoutInfo;
+  maxYDistance?: number;
+}
+
+interface MainColumnCluster {
+  count: number;
+  minX: number;
+}
+
+type LayoutBounds = NonNullable<LayoutInfo['sidebarBounds']>;
+type LayoutBoundsKey = 'mainBounds' | 'sidebarBounds';
+
+interface TextItemGroupWithAverageY {
+  averageY: number;
+  group: TextItem[];
+}
+
 export class StructuralParser {
   private static readonly MIN_LEFT_ITEMS_FOR_TWO_COLUMN = 2;
   private static readonly MIN_RIGHT_ITEMS_FOR_TWO_COLUMN = 15;
@@ -53,9 +72,14 @@ export class StructuralParser {
     }
 
     const pageLayouts = this.detectPageLayouts(textItems);
-    const twoColumnPageLayouts = pageLayouts.filter(
-      layout => layout.type === 'two-column'
-    );
+    const twoColumnPageLayouts: LayoutInfo[] = [];
+
+    for (const pageLayout of pageLayouts) {
+      if (pageLayout?.type === 'two-column') {
+        twoColumnPageLayouts.push(pageLayout);
+      }
+    }
+
     const globalLayout = this.detectPageLayout(textItems);
     const twoColumnLayouts =
       twoColumnPageLayouts.length > 0
@@ -74,12 +98,8 @@ export class StructuralParser {
     return {
       type: 'two-column',
       pageLayouts,
-      sidebarBounds: this.mergeBounds(
-        twoColumnLayouts.map(layout => layout.sidebarBounds)
-      ),
-      mainBounds: this.mergeBounds(
-        twoColumnLayouts.map(layout => layout.mainBounds)
-      ),
+      sidebarBounds: this.mergeLayoutBounds(twoColumnLayouts, 'sidebarBounds'),
+      mainBounds: this.mergeLayoutBounds(twoColumnLayouts, 'mainBounds'),
     };
   }
 
@@ -106,9 +126,6 @@ export class StructuralParser {
   }
 
   private static detectPageLayout(textItems: TextItem[]): LayoutInfo {
-    const xPositions = textItems.map(item => item.x);
-    const minX = Math.min(...xPositions);
-    const maxX = Math.max(...xPositions);
     const mainLeft = this.findMainColumnLeft(textItems);
 
     if (mainLeft === undefined) {
@@ -118,19 +135,40 @@ export class StructuralParser {
     }
 
     const mainBoundary = mainLeft - this.MAIN_COLUMN_LEFT_TOLERANCE;
-    const leftItems = textItems.filter(
-      item => item.x < mainBoundary && !this.isPageNumberItem(item)
-    );
-    const rightItems = textItems.filter(item => item.x >= mainBoundary);
+    let minX = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let leftItemCount = 0;
+    let rightItemCount = 0;
+    let sidebarRight = Number.NEGATIVE_INFINITY;
+    let sidebarTop = Number.POSITIVE_INFINITY;
+    let sidebarBottom = Number.NEGATIVE_INFINITY;
+    let mainTop = Number.POSITIVE_INFINITY;
+    let mainBottom = Number.NEGATIVE_INFINITY;
+
+    for (const item of textItems) {
+      minX = Math.min(minX, item.x);
+      maxX = Math.max(maxX, item.x);
+
+      if (item.x < mainBoundary) {
+        if (this.isPageNumberItem(item)) {
+          continue;
+        }
+
+        leftItemCount += 1;
+        sidebarRight = Math.max(sidebarRight, item.x + (item.width || 100));
+        sidebarTop = Math.min(sidebarTop, item.y);
+        sidebarBottom = Math.max(sidebarBottom, item.y);
+      } else {
+        rightItemCount += 1;
+        mainTop = Math.min(mainTop, item.y);
+        mainBottom = Math.max(mainBottom, item.y);
+      }
+    }
 
     if (
-      leftItems.length >= this.MIN_LEFT_ITEMS_FOR_TWO_COLUMN &&
-      rightItems.length >= this.MIN_RIGHT_ITEMS_FOR_TWO_COLUMN
+      leftItemCount >= this.MIN_LEFT_ITEMS_FOR_TWO_COLUMN &&
+      rightItemCount >= this.MIN_RIGHT_ITEMS_FOR_TWO_COLUMN
     ) {
-      const sidebarRight = Math.max(
-        ...leftItems.map(item => item.x + (item.width || 100))
-      );
-
       if (mainLeft - sidebarRight < this.MIN_COLUMN_GAP) {
         return {
           type: 'single-column',
@@ -142,14 +180,14 @@ export class StructuralParser {
         sidebarBounds: {
           left: minX,
           right: sidebarRight,
-          top: Math.min(...leftItems.map(item => item.y)),
-          bottom: Math.max(...leftItems.map(item => item.y)),
+          top: sidebarTop,
+          bottom: sidebarBottom,
         },
         mainBounds: {
           left: mainLeft,
           right: maxX,
-          top: Math.min(...rightItems.map(item => item.y)),
-          bottom: Math.max(...rightItems.map(item => item.y)),
+          top: mainTop,
+          bottom: mainBottom,
         },
       };
     }
@@ -160,7 +198,7 @@ export class StructuralParser {
   }
 
   private static findMainColumnLeft(textItems: TextItem[]): number | undefined {
-    const clusters = new Map<number, number[]>();
+    const clusters = new Map<number, MainColumnCluster>();
 
     for (const item of textItems) {
       if (item.x < this.MIN_MAIN_COLUMN_X || this.isPageNumberItem(item)) {
@@ -168,48 +206,103 @@ export class StructuralParser {
       }
 
       const clusterKey = Math.round(item.x / 5) * 5;
-      const clusterItems = clusters.get(clusterKey) ?? [];
+      const existingCluster = clusters.get(clusterKey);
 
-      clusterItems.push(item.x);
-      clusters.set(clusterKey, clusterItems);
+      if (existingCluster) {
+        existingCluster.count += 1;
+        existingCluster.minX = Math.min(existingCluster.minX, item.x);
+      } else {
+        clusters.set(clusterKey, {
+          count: 1,
+          minX: item.x,
+        });
+      }
     }
 
-    const [bestCluster] = Array.from(clusters.values()).sort(
-      (first, second) => second.length - first.length
-    );
+    let bestCluster: MainColumnCluster | undefined;
 
-    if (!bestCluster || bestCluster.length < this.MIN_MAIN_CLUSTER_ITEMS) {
+    for (const cluster of clusters.values()) {
+      if (!bestCluster || cluster.count > bestCluster.count) {
+        bestCluster = cluster;
+      }
+    }
+
+    if (!bestCluster || bestCluster.count < this.MIN_MAIN_CLUSTER_ITEMS) {
       return undefined;
     }
 
-    return Math.min(...bestCluster);
+    return bestCluster.minX;
   }
 
   private static mergeBounds(
     bounds: Array<LayoutInfo['sidebarBounds']>
   ): LayoutInfo['sidebarBounds'] {
-    const presentBounds = bounds.filter(
-      (bound): bound is NonNullable<typeof bound> => bound !== undefined
-    );
+    let mergedBounds: LayoutBounds | undefined;
 
-    if (presentBounds.length === 0) {
-      return undefined;
+    for (const bound of bounds) {
+      mergedBounds = this.mergeBound(mergedBounds, bound);
     }
 
-    return {
-      left: Math.min(...presentBounds.map(bound => bound.left)),
-      right: Math.max(...presentBounds.map(bound => bound.right)),
-      top: Math.min(...presentBounds.map(bound => bound.top)),
-      bottom: Math.max(...presentBounds.map(bound => bound.bottom)),
-    };
+    return mergedBounds;
+  }
+
+  private static mergeLayoutBounds(
+    layouts: LayoutInfo[],
+    boundsKey: LayoutBoundsKey
+  ): LayoutInfo['sidebarBounds'] {
+    let mergedBounds: LayoutBounds | undefined;
+
+    for (const layout of layouts) {
+      mergedBounds = this.mergeBound(mergedBounds, layout[boundsKey]);
+    }
+
+    return mergedBounds;
+  }
+
+  private static mergeBound(
+    mergedBounds: LayoutBounds | undefined,
+    bound: LayoutInfo['sidebarBounds']
+  ): LayoutBounds | undefined {
+    if (!bound) {
+      return mergedBounds;
+    }
+
+    if (!mergedBounds) {
+      return {
+        left: bound.left,
+        right: bound.right,
+        top: bound.top,
+        bottom: bound.bottom,
+      };
+    }
+
+    mergedBounds.left = Math.min(mergedBounds.left, bound.left);
+    mergedBounds.right = Math.max(mergedBounds.right, bound.right);
+    mergedBounds.top = Math.min(mergedBounds.top, bound.top);
+    mergedBounds.bottom = Math.max(mergedBounds.bottom, bound.bottom);
+
+    return mergedBounds;
   }
 
   static groupTextByProximity(
     textItems: TextItem[],
+    maxYDistance?: number
+  ): TextItem[][];
+  static groupTextByProximity(params: GroupTextByProximityParams): TextItem[][];
+  static groupTextByProximity(
+    paramsOrTextItems: GroupTextByProximityParams | TextItem[],
     maxYDistance = 5
   ): TextItem[][] {
+    const params = Array.isArray(paramsOrTextItems)
+      ? {
+          maxYDistance,
+          textItems: paramsOrTextItems,
+        }
+      : paramsOrTextItems;
+    const textItems = params.textItems;
+    const effectiveMaxYDistance = params.maxYDistance ?? maxYDistance;
     // Detect layout first to handle columns separately
-    const layout = this.detectLayout(textItems);
+    const layout = params.layout ?? this.detectLayout(textItems);
 
     if (layout.type === 'two-column') {
       const leftItems: TextItem[] = [];
@@ -229,26 +322,55 @@ export class StructuralParser {
         }
       }
 
-      const leftGroups = this.groupItemsByY(leftItems, maxYDistance);
-      const rightGroups = this.groupItemsByY(rightItems, maxYDistance);
+      const leftGroups = this.groupItemsByY(leftItems, effectiveMaxYDistance);
+      const rightGroups = this.groupItemsByY(rightItems, effectiveMaxYDistance);
 
       // Combine and sort all groups by their average Y position
-      const allGroups = [...leftGroups, ...rightGroups];
-      allGroups.sort((a, b) => {
-        const avgYA = a.reduce((sum, item) => sum + item.y, 0) / a.length;
-        const avgYB = b.reduce((sum, item) => sum + item.y, 0) / b.length;
-        return avgYB - avgYA; // Top to bottom
-      });
+      const allGroups: TextItemGroupWithAverageY[] = [];
 
-      return allGroups;
+      for (const group of leftGroups) {
+        allGroups.push({
+          averageY: this.calculateAverageY(group),
+          group,
+        });
+      }
+
+      for (const group of rightGroups) {
+        allGroups.push({
+          averageY: this.calculateAverageY(group),
+          group,
+        });
+      }
+
+      allGroups.sort(
+        (first, second) => second.averageY - first.averageY // Top to bottom
+      );
+
+      const sortedGroups: TextItem[][] = [];
+
+      for (const { group } of allGroups) {
+        sortedGroups.push(group);
+      }
+
+      return sortedGroups;
     } else {
       // Single column processing
-      return this.groupItemsByY(textItems, maxYDistance);
+      return this.groupItemsByY(textItems, effectiveMaxYDistance);
     }
   }
 
   private static isPageNumberItem(item: TextItem): boolean {
     return /^(?:page|\d+|of)$/i.test(item.text.trim());
+  }
+
+  private static calculateAverageY(group: TextItem[]): number {
+    let yTotal = 0;
+
+    for (const item of group) {
+      yTotal += item.y;
+    }
+
+    return yTotal / group.length;
   }
 
   private static groupItemsByY(

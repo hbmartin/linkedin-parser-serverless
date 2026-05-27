@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { StructuralParser } from '../../src/parsers/structural-parser.js';
 import { createStructuralLines } from '../../src/utils/structural-lines.js';
 import type { TextItem } from '../../src/types/structural.js';
@@ -50,6 +51,10 @@ function twoColumnPageItems(pageIndex: number): TextItem[] {
 }
 
 describe('StructuralParser', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test('treats exactly ten left-column items as a two-column layout', () => {
     const leftItems = Array.from({ length: 10 }, (_, index) =>
       item({ text: `left ${index}`, x: 40, y: 700 - index * 20 })
@@ -191,6 +196,38 @@ describe('StructuralParser', () => {
     ).toEqual([]);
   });
 
+  test('uses supplied layout when grouping text by proximity', () => {
+    const detectLayoutSpy = jest.spyOn(StructuralParser, 'detectLayout');
+    const groups = StructuralParser.groupTextByProximity({
+      layout: {
+        type: 'two-column',
+        sidebarBounds: {
+          left: 20,
+          right: 120,
+          top: 700,
+          bottom: 700,
+        },
+        mainBounds: {
+          left: 220,
+          right: 320,
+          top: 700,
+          bottom: 700,
+        },
+      },
+      maxYDistance: 5,
+      textItems: [
+        item({ text: 'Left same row', x: 20, y: 700 }),
+        item({ text: 'Right same row', x: 220, y: 700 }),
+      ],
+    });
+
+    expect(detectLayoutSpy).not.toHaveBeenCalled();
+    expect(groups).toHaveLength(2);
+    expect(groups.map(group => group.map(groupItem => groupItem.text))).toEqual(
+      [['Left same row'], ['Right same row']]
+    );
+  });
+
   test('sorts structural lines with the same y position by x position', () => {
     const lines = createStructuralLines({
       layout: {
@@ -300,9 +337,9 @@ describe('StructuralParser', () => {
     const layout = StructuralParser.detectLayout(sparsePageItems);
 
     expect(layout.type).toBe('two-column');
-    expect(layout.pageLayouts?.every(page => page.type === 'single-column')).toBe(
-      true
-    );
+    expect(
+      layout.pageLayouts?.every(page => page.type === 'single-column')
+    ).toBe(true);
   });
 
   test('rejects two-column layouts with insufficient visual gap', () => {
@@ -318,9 +355,9 @@ describe('StructuralParser', () => {
       item({ text: `right ${index}`, x: 190, y: 700 - index * 20 })
     );
 
-    expect(StructuralParser.detectLayout([...leftItems, ...rightItems])).toEqual(
-      expect.objectContaining({ type: 'single-column' })
-    );
+    expect(
+      StructuralParser.detectLayout([...leftItems, ...rightItems])
+    ).toEqual(expect.objectContaining({ type: 'single-column' }));
   });
 
   test('covers empty bounds merging and default proximity grouping', () => {
@@ -343,7 +380,9 @@ describe('StructuralParser', () => {
       item({ text: `right ${index}`, x: 220, y: 700 - index * 20 })
     );
 
-    expect(StructuralParser.detectLayout([...leftItems, ...rightItems])).toEqual(
+    expect(
+      StructuralParser.detectLayout([...leftItems, ...rightItems])
+    ).toEqual(
       expect.objectContaining({
         sidebarBounds: expect.objectContaining({
           right: 130,

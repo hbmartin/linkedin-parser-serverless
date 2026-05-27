@@ -14,7 +14,10 @@ export async function extractLinkedInPDFSourceDebug(
   input: ArrayBuffer | Uint8Array
 ): Promise<LinkedInPDFSourceDebugArtifacts> {
   const structuralData = await StructuralParser.extractStructuredText(input);
-  const rawText = createRawTextFromTextItems(structuralData.textItems);
+  const rawText = createRawTextFromTextItems({
+    layout: structuralData.layout,
+    textItems: structuralData.textItems,
+  });
   const structuralLines = createStructuralLines({
     layout: structuralData.layout,
     textItems: structuralData.textItems,
@@ -28,8 +31,19 @@ export async function extractLinkedInPDFSourceDebug(
   };
 }
 
-function createRawTextFromTextItems(textItems: TextItem[]): string {
-  const groups = StructuralParser.groupTextByProximity(textItems);
+interface CreateRawTextFromTextItemsParams {
+  layout: LayoutInfo;
+  textItems: TextItem[];
+}
+
+function createRawTextFromTextItems({
+  layout,
+  textItems,
+}: CreateRawTextFromTextItemsParams): string {
+  const groups = StructuralParser.groupTextByProximity({
+    layout,
+    textItems,
+  });
   const lines = StructuralParser.combineGroupedText(groups);
 
   return lines.join('\n');
