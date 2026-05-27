@@ -350,11 +350,14 @@ describe('ListParser', () => {
   });
 
   test('accepts short hyphenated language variants without proficiencies', () => {
+    const enDashLanguage = 'Chinese \u2013 Cantonese';
+    const emDashLanguage = 'Chinese \u2014 Mandarin';
     const result = ListParser.parseStructuralLanguagesWithWarnings([
       structuralLine({ column: 'left', text: 'Languages', y: 700 }),
       structuralLine({ column: 'left', text: 'Chinese - Cantonese', y: 680 }),
-      structuralLine({ column: 'left', text: 'Chinese - Mandarin', y: 660 }),
-      structuralLine({ column: 'left', text: 'Experience', y: 640 }),
+      structuralLine({ column: 'left', text: enDashLanguage, y: 660 }),
+      structuralLine({ column: 'left', text: emDashLanguage, y: 640 }),
+      structuralLine({ column: 'left', text: 'Experience', y: 620 }),
     ]);
 
     expect(result).toEqual({
@@ -364,7 +367,11 @@ describe('ListParser', () => {
           proficiency: 'Unknown',
         },
         {
-          language: 'Chinese - Mandarin',
+          language: enDashLanguage,
+          proficiency: 'Unknown',
+        },
+        {
+          language: emDashLanguage,
           proficiency: 'Unknown',
         },
       ],

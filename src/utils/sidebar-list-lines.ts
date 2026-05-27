@@ -37,7 +37,7 @@ export function mergeWrappedStructuralListLines(
   return mergedLines;
 }
 
-function canMergeWrappedStructuralListLine(
+export function canMergeWrappedStructuralListLine(
   previousLine: StructuralLine,
   line: StructuralLine
 ): boolean {

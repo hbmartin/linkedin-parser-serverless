@@ -207,6 +207,22 @@ describe('build config contract', () => {
     );
   });
 
+  test('documents the intentional PR 64 minified bundle budget increase', async () => {
+    const { fileBudgets } = await sizeBudgetConfig();
+    const source = fs.readFileSync(
+      repoFilePath('scripts/check-size-budget.mjs'),
+      'utf8'
+    );
+    const minifiedBudget = fileBudgets.find(
+      budget => budget.file === 'dist/index.min.js'
+    );
+
+    expect(minifiedBudget?.rawBytes).toBe(101 * 1024);
+    expect(source).toContain(
+      'PR #64 intentionally adds typed patents and organizations parsing.'
+    );
+  });
+
   test('keeps gzip budgets proportional to raw file budgets', async () => {
     const { fileBudgets } = await sizeBudgetConfig();
 

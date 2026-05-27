@@ -3,7 +3,10 @@ import {
   PROFILE_SECTION_HEADER_ENTRIES,
   type ProfileSectionKey,
 } from '../utils/profile-section-headers.js';
-import { mergeWrappedStructuralListLines } from '../utils/sidebar-list-lines.js';
+import {
+  canMergeWrappedStructuralListLine,
+  mergeWrappedStructuralListLines,
+} from '../utils/sidebar-list-lines.js';
 import { normalizeWhitespace, splitLines } from '../utils/text-utils.js';
 import type {
   ParsedSectionResult,
@@ -182,6 +185,17 @@ function mergeWrappedStructuralSectionLines(lines: StructuralLine[]): string[] {
   for (const line of lines) {
     const header = getSectionHeader(line.text);
 
+    if (
+      header &&
+      shouldTreatHeaderAsWrappedSectionEntry({
+        activeSectionLines,
+        line,
+      })
+    ) {
+      activeSectionLines.push(line);
+      continue;
+    }
+
     if (header?.kind === 'target') {
       flushActiveSectionLines();
       activeSection = header.key;
@@ -207,6 +221,21 @@ function mergeWrappedStructuralSectionLines(lines: StructuralLine[]): string[] {
   flushActiveSectionLines();
 
   return mergedLines;
+}
+
+function shouldTreatHeaderAsWrappedSectionEntry({
+  activeSectionLines,
+  line,
+}: {
+  activeSectionLines: StructuralLine[];
+  line: StructuralLine;
+}): boolean {
+  const previousLine = activeSectionLines.at(-1);
+
+  return (
+    previousLine !== undefined &&
+    canMergeWrappedStructuralListLine(previousLine, line)
+  );
 }
 
 function parseSectionLines(

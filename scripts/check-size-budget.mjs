@@ -22,15 +22,17 @@ export const fileBudgets = [
   {
     file: 'dist/index.min.js',
     gzipBytes: 28 * 1024,
-    rawBytes: 100 * 1024,
+    // PR #64 intentionally adds typed patents and organizations parsing.
+    rawBytes: 101 * 1024,
   },
   {
     file: 'dist/cli.js',
-    gzipBytes: 5 * 1024,
-    rawBytes: 20 * 1024,
+    // The Rollup CLI artifact is intentionally unminified for readable stack traces.
+    gzipBytes: 8 * 1024,
+    rawBytes: 30 * 1024,
   },
 ];
-export const totalTopLevelJavaScriptBudget = 632 * 1024;
+export const totalTopLevelJavaScriptBudget = 643 * 1024;
 
 function main() {
   const results = fileBudgets.map(budget => {

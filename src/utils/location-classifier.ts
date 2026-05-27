@@ -673,8 +673,7 @@ function looksLikeQualifiedProperArea(
     hasAreaShapeQualifier &&
     words.length >= 2 &&
     words.length <= 6 &&
-    looksLikeProperLocationShape(words) &&
-    lookupWords.some(word => genericLocationQualifiers.has(word))
+    looksLikeProperLocationShape(words)
   );
 }
 
