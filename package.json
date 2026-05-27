@@ -26,6 +26,12 @@
 		"email": "harold.martin@gmail.com",
 		"url": "https://www.linkedin.com/in/harold-martin-98526971/"
 	},
+	"contributors": [
+		{
+			"name": "Arkady Zalkowitsch",
+			"url": "https://github.com/zalkowitsch"
+		}
+	],
 	"license": "MIT",
 	"keywords": [
 		"pdf",

@@ -9,12 +9,17 @@
 
 A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsing LinkedIn PDF resumes and extracting structured profile data.
 
+- [Features](#features)
 - [📦 Installation](#-installation)
 - [🖥️ CLI Usage](#️-cli-usage)
 - [🚀 Quick Start](#-quick-start)
 - [📚 Examples](#-examples)
 - [📖 API Reference](#-api-reference)
+- [🏗️ TypeScript Interfaces](#️-typescript-interfaces)
 - [🛠️ Development](#️-development)
+- [📊 Performance](#-performance)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
 ---
 
@@ -33,7 +38,7 @@ A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsi
 
 - Node.js 22.0.0 or newer
 - pnpm 11.1.3 for local development
-- Supported runtimes: Node.js 22+, Vercel Edge, and serverless JavaScript runtimes that provide Web-standard binary types such as `ArrayBuffer`
+- Also runs on Vercel Edge and any serverless JavaScript runtime that provides Web-standard binary types such as `ArrayBuffer`
 
 ### Library Usage
 
@@ -537,6 +542,30 @@ interface ParseDiagnostics {
 ```
 </details>
 
+#### Diagnostics fields explained
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `sectionsFound` | `WarningSection[]` | Profile sections detected in the input — found by matching normalized section headers in the extracted text and by collecting the `section` of any `section_parse_warning`. The list is deduplicated; values come from the `WarningSection` union (`summary`, `experience`, `education`, `top_skills`, `languages`, etc.). |
+| `confidence` | `number` (0–1) | Heuristic quality score, rounded to two decimals. Treat it as a relative indicator, not a probability — there is no fixed "good" threshold. See the scoring breakdown below. |
+| `isLikelyLinkedInExport` | `boolean` | Whether the input looks like a LinkedIn "Save to PDF" export rather than an arbitrary document. **Use this — not `confidence` — to decide whether to trust the result as a LinkedIn profile.** True when the profile is non-empty *and* any of: a LinkedIn signal is present (a `linkedin_url`, or "linkedin" appears in the text), at least 2 sections were found, or at least one section was found with `confidence >= 0.5`. |
+| `isEmpty` | `boolean` | True when no profile fields were extracted at all (no name, headline, location, summary, contact, list sections, experience, or education). Readable input that yields nothing returns `isEmpty: true` rather than throwing. |
+
+**How `confidence` is computed.** It is `0` for an empty profile. Otherwise it is the sum of the weighted signals below, minus a warning penalty, clamped to `[0, 1]`:
+
+| Signal | Contribution |
+|--------|-------------|
+| LinkedIn signal (`linkedin_url` present, or "linkedin" in the text) | +0.30 |
+| Sections found | +0.06 each, capped at +0.25 |
+| Name | +0.12 |
+| Headline | +0.05 |
+| Location | +0.05 |
+| Any contact field (email, phone, LinkedIn URL, location, or links) | +0.10 |
+| Has experience or experience groups | +0.15 |
+| Has education | +0.10 |
+| Any list section (skills, languages, certifications, projects, etc.) | +0.10 |
+| Warning penalty | −0.02 per warning, capped at −0.15 |
+
 <details>
 <summary><strong>LinkedInProfileParseError</strong></summary>
 
@@ -676,8 +705,10 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ## 📄 License
 
-[MIT](LICENSE) © [Arkady Zalkowitsch](mailto:arkady@zalko.com)
+[MIT](LICENSE) © [Harold Martin](mailto:harold.martin@gmail.com)
 
 ---
 
-Made with ❤️ by [Arkady Zalkowitsch](https://github.com/zalkowitsch) and Harold Martin
+Originally made with ❤️ by [Arkady Zalkowitsch](https://github.com/zalkowitsch).
+
+Currently maintained (with ❤️ of course!) by [Harold Martin](https://www.linkedin.com/in/harold-martin-98526971/).
