@@ -70,7 +70,7 @@ const LABELED_EMAIL_SEARCH_LINE_PATTERN =
   /^(?:e-?mail|mail)(?:\s*[:-]\s*|\s+)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}$/i;
 const WRAPPED_EMAIL_START_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.$/i;
 const EMAIL_TLD_CONTINUATION_PATTERN = /^[A-Z]{2,24}$/i;
-const CONTACT_LINK_LABEL_PATTERN = /\(([A-Za-z][A-Za-z0-9 &/+.-]{1,40})\)\s*$/u;
+const CONTACT_LINK_LABEL_PATTERN = /\(([\p{L}][\p{L}\p{N} &/+.-]{1,40})\)\s*$/u;
 const PHONE_LINE_LABEL_PATTERN =
   /\s*\((?:mobile|work|phone|tel|telephone)\)\s*$/iu;
 
@@ -581,9 +581,7 @@ export class BasicInfoParser {
     );
 
     for (const candidate of candidates ?? []) {
-      const normalizedCandidate = normalizeWhitespace(
-        candidate.replace(/[^\d+().\s-]+$/gu, '')
-      );
+      const normalizedCandidate = normalizeWhitespace(candidate);
       const digitCount = normalizedCandidate.replace(/\D/g, '').length;
 
       if (digitCount >= 8 && digitCount <= 15) {
@@ -616,9 +614,7 @@ export class BasicInfoParser {
   }
 
   private static removeContactLinkLabel(line: string): string {
-    return normalizeWhitespace(
-      line.replace(/\s*\([A-Za-z][A-Za-z0-9 &/+.-]{1,40}\)\s*$/u, '')
-    );
+    return normalizeWhitespace(line.replace(CONTACT_LINK_LABEL_PATTERN, ''));
   }
 
   private static looksLikeContactLinkStart(line: string): boolean {
@@ -786,20 +782,12 @@ function findBasicInfoHeaderEndIndex(
   for (let index = 0; index < parserLines.length; index++) {
     const line = parserLines[index];
 
-    if (!line.text) {
-      continue;
-    }
-
     const header = getParserLineSectionHeader(line.text);
 
     if (header?.kind === 'target') {
       return isBasicInfoWarningSection(header.section)
         ? findBasicInfoWarningHeaderEndIndex(parserLines, index)
         : index;
-    }
-
-    if (line.section !== 'identity') {
-      return index;
     }
 
     state = nextBasicInfoState(state, line.text);
@@ -883,12 +871,6 @@ function findBasicInfoWarningHeaderEndIndex(
   while (endIndex < parserLines.length) {
     const line = parserLines[endIndex];
 
-    // Ignore spacing inside warning sections while looking for the next real boundary.
-    if (!line.text) {
-      endIndex++;
-      continue;
-    }
-
     const header = getParserLineSectionHeader(line.text);
 
     // A non-warning target header starts the next parser section.
@@ -901,15 +883,6 @@ function findBasicInfoWarningHeaderEndIndex(
 
     // A hard boundary header always closes the warning header block.
     if (header?.kind === 'boundary') {
-      return endIndex;
-    }
-
-    // Non-header content in another section means the parser has advanced.
-    if (
-      !header &&
-      line.section !== 'identity' &&
-      !isBasicInfoWarningSection(line.section)
-    ) {
       return endIndex;
     }
 

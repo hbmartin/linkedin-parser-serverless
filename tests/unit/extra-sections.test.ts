@@ -7,17 +7,19 @@ import type { StructuralLine } from '../../src/utils/structural-lines.js';
 
 function line({
   column = 'right',
+  fontSize = 10,
   text,
   y,
 }: {
   column?: StructuralLine['column'];
+  fontSize?: number;
   text: string;
   y: number;
 }): StructuralLine {
   return {
     column,
-    fontSize: 10,
-    height: 10,
+    fontSize,
+    height: fontSize,
     text,
     width: text.length * 5,
     x: column === 'left' ? 30 : 220,
@@ -147,6 +149,41 @@ describe('ExtraSectionParser', () => {
       'MITx 14.310Fx: Data Analysis in Social Science',
       'Certificate of Completion - 23 hours of Android development training',
     ]);
+  });
+
+  test('merges header-looking structural extra section continuations by visual evidence', () => {
+    const sections = ExtraSectionParser.parseStructural([
+      line({ column: 'left', fontSize: 13, text: 'Patents', y: 760 }),
+      line({
+        column: 'left',
+        text: 'Systems and Methods for Trading',
+        y: 740,
+      }),
+      line({ column: 'left', text: 'Memberships', y: 728 }),
+      line({ column: 'left', fontSize: 13, text: 'Experience', y: 700 }),
+    ]);
+
+    expect(sections.patents).toEqual([
+      'Systems and Methods for Trading Memberships',
+    ]);
+    expect(sections.organizations).toEqual([]);
+  });
+
+  test('keeps visually prominent membership headers as organization boundaries', () => {
+    const sections = ExtraSectionParser.parseStructural([
+      line({ column: 'left', fontSize: 13, text: 'Patents', y: 760 }),
+      line({
+        column: 'left',
+        text: 'Systems and Methods for Trading',
+        y: 740,
+      }),
+      line({ column: 'left', fontSize: 13, text: 'Memberships', y: 728 }),
+      line({ column: 'left', text: 'YPO', y: 708 }),
+      line({ column: 'left', fontSize: 13, text: 'Experience', y: 680 }),
+    ]);
+
+    expect(sections.patents).toEqual(['Systems and Methods for Trading']);
+    expect(sections.organizations).toEqual(['YPO']);
   });
 
   test('stops extra section capture at normalized registry boundaries', () => {

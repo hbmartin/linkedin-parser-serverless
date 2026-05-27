@@ -407,6 +407,42 @@ describe('BasicInfoParser', () => {
     ]);
   });
 
+  test('extracts localized structural contact link labels', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      [
+        'Contact',
+        'www.ejemplo.es (Portafólio)',
+        'www.example.ru/projects (Проекты)',
+        'Top Skills',
+      ].join('\n'),
+      [
+        structuralLine({ column: 'left', text: 'Contact', y: 760 }),
+        structuralLine({
+          column: 'left',
+          text: 'www.ejemplo.es (Portafólio)',
+          y: 740,
+        }),
+        structuralLine({
+          column: 'left',
+          text: 'www.example.ru/projects (Проекты)',
+          y: 720,
+        }),
+        structuralLine({ column: 'left', text: 'Top Skills', y: 700 }),
+      ]
+    );
+
+    expect(result.value.contact.links).toEqual([
+      expect.objectContaining({
+        label: 'Portafólio',
+        url: 'https://www.ejemplo.es',
+      }),
+      expect.objectContaining({
+        label: 'Проекты',
+        url: 'https://www.example.ru/projects',
+      }),
+    ]);
+  });
+
   test('does not extract structural contact email from summary text', () => {
     const result = BasicInfoParser.parseStructuralWithWarnings(
       [

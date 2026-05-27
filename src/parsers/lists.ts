@@ -191,11 +191,11 @@ export class ListParser {
     const specificPatterns = [
       // "Chinese (Traditional) (Limited Working)" where the language variant
       // and proficiency are both parenthesized.
-      /^([\p{L}\s.+-]+(?:\s*\([\p{L}\s.+-]+\))?)\s*\(([^)]+)\)$/u,
+      /^([\p{L}\s.+\u2013\u2014-]+(?:\s*\([\p{L}\s.+\u2013\u2014-]+\))?)\s*\(([^)]+)\)$/u,
       // "Português (Native or Bilingual)" or "Inglês (Professional Working)"
-      /^([\p{L}\s.+-]+?)\s*\(([^)]+)\)/u,
+      /^([\p{L}\s.+\u2013\u2014-]+?)\s*\(([^)]+)\)/u,
       // "Inglês Professional Working" - without parentheses
-      /^([\p{L}\s.+-]+?)\s+((?:Professional|Native|Elementary|Bilingual|Working|Limited|Fluent)(?:\s+\w+)?)/iu,
+      /^([\p{L}\s.+\u2013\u2014-]+?)\s+((?:Professional|Native|Elementary|Bilingual|Working|Limited|Fluent)(?:\s+\w+)?)/iu,
     ];
 
     for (const pattern of specificPatterns) {
@@ -227,7 +227,7 @@ export class ListParser {
     if (
       line.length > 1 &&
       line.length < 30 &&
-      /^[\p{L}][\p{L}\s.+-]*$/u.test(line) &&
+      /^[\p{L}][\p{L}\s.+\u2013\u2014-]*$/u.test(line) &&
       !startsWithLanguageProficiencyWord(line) &&
       !endsWithUnsupportedLanguageProficiencyWord(line) &&
       (!looksLikeOrganizationNameText(line) ||
@@ -346,26 +346,18 @@ function looksLikeParenthesizedLanguageContinuation(text: string): boolean {
 function looksLikeLanguageBaseWithoutProficiency(text: string): boolean {
   return (
     !REGEX_PATTERNS.LANGUAGE_PROFICIENCY.test(text) &&
-    /^[\p{L}\s.+-]+(?:\s*\([\p{L}\s.+-]+\))?$/u.test(text)
+    /^[\p{L}\s.+\u2013\u2014-]+(?:\s*\([\p{L}\s.+\u2013\u2014-]+\))?$/u.test(
+      text
+    )
   );
 }
 
 function looksLikeShortLanguageLabel(text: string): boolean {
   const normalizedText = normalizeWhitespace(text);
   const words = normalizedText
-    .split(/\s+|-/u)
+    .split(/\s+|[-\u2013\u2014]/u)
     .map(word => word.trim())
     .filter(word => word.length > 0);
-  const firstWord = words[0]?.toLowerCase();
-
-  if (
-    firstWord &&
-    /^(?:bilingual|elementary|fluent|limited|native|professional|working)$/u.test(
-      firstWord
-    )
-  ) {
-    return false;
-  }
 
   return (
     words.length >= 1 &&
