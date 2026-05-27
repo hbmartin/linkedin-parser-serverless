@@ -790,6 +790,10 @@ function findBasicInfoHeaderEndIndex(
         : index;
     }
 
+    if (line.section !== 'identity') {
+      return index;
+    }
+
     state = nextBasicInfoState(state, line.text);
 
     if (state === 'in_summary') {
@@ -883,6 +887,14 @@ function findBasicInfoWarningHeaderEndIndex(
 
     // A hard boundary header always closes the warning header block.
     if (header?.kind === 'boundary') {
+      return endIndex;
+    }
+
+    if (
+      !header &&
+      line.section !== 'identity' &&
+      !isBasicInfoWarningSection(line.section)
+    ) {
       return endIndex;
     }
 

@@ -138,6 +138,59 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('keeps prose description before acquisition-qualified organization boundary', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Intrinsic', y: 730 }),
+      textItem({ text: 'Page 1 of 2', y: 710, fontSize: 9 }),
+      textItem({ text: 'Research Scientist', y: 690, fontSize: 11.5 }),
+      textItem({ text: 'May 2022 - November 2023 (1 year 7 months)', y: 670 }),
+      textItem({
+        text: 'Intrinsic is an AI Research Group at Google',
+        y: 650,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Akasha Imaging (Acquired, now part of Alphabet)',
+        y: 610,
+      }),
+      textItem({ text: 'Co-Founder (Acquired)', y: 590, fontSize: 11.5 }),
+      textItem({ text: '2019 - May 2022 (3 years)', y: 570 }),
+      textItem({ text: 'Palo Alto, CA', y: 550 }),
+      textItem({
+        text: "Startup backed by Khosla Ventures. Founded in '19 and acquired in '22 (now",
+        y: 530,
+      }),
+      textItem({ text: 'part of Intrinsic / Google).', y: 510 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'Intrinsic',
+        positions: [
+          expect.objectContaining({
+            description: 'Intrinsic is an AI Research Group at Google',
+            duration: 'May 2022 - November 2023',
+            title: 'Research Scientist',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Akasha Imaging (Acquired, now part of Alphabet)',
+        positions: [
+          expect.objectContaining({
+            description:
+              "Startup backed by Khosla Ventures. Founded in '19 and acquired in '22 (now part of Intrinsic / Google).",
+            duration: '2019 - May 2022',
+            location: 'Palo Alto, CA',
+            title: 'Co-Founder (Acquired)',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('preserves company total duration and duplicate dated positions', () => {
     const [experience] = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Berufserfahrung', y: 700, fontSize: 16 }),
@@ -993,6 +1046,26 @@ describe('ExperienceStructuralParser', () => {
         ],
       }),
     ]);
+  });
+
+  test('classifies n.a. legal suffix organizations across boundary paths', () => {
+    const organization = 'Santander Bank, N.A.';
+    const lines = [
+      organization,
+      'Senior Product Manager',
+      'March 2018 - December 2019',
+    ];
+
+    expect(
+      ExperienceStructuralParser['fallbackLineType'](organization, 12, 0, lines)
+    ).toBe('organization');
+    expect(
+      ExperienceStructuralParser['looksLikeOrganizationBeforePosition'](
+        organization,
+        0,
+        lines
+      )
+    ).toBe(true);
   });
 
   test('keeps no-date title-looking hiring lines in descriptions', () => {

@@ -185,6 +185,8 @@ function mergeWrappedStructuralSectionLines(lines: StructuralLine[]): string[] {
   for (const line of lines) {
     const header = getSectionHeader(line.text);
 
+    // Known section headers can also appear as wrapped entry text; keep them
+    // with the active section only when the shared visual-wrap evidence matches.
     if (
       header &&
       shouldTreatHeaderAsWrappedSectionEntry({
@@ -232,6 +234,8 @@ function shouldTreatHeaderAsWrappedSectionEntry({
 }): boolean {
   const previousLine = activeSectionLines.at(-1);
 
+  // Reuse the list-line wrap predicate so extra sections honor the same
+  // indentation and typography evidence as structural list parsing.
   return (
     previousLine !== undefined &&
     canMergeWrappedStructuralListLine(previousLine, line)

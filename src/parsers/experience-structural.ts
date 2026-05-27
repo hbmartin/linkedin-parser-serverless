@@ -103,6 +103,13 @@ export class ExperienceStructuralParser {
     /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?))\s+(.+)$/iu;
   private static readonly ORGANIZATION_SUFFIX_TITLE_FRAGMENT_PATTERN =
     /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?)$/iu;
+  private static readonly ORGANIZATION_TERMINAL_ABBREVIATION_PATTERN =
+    /\b(?:co|corp|gmbh|inc|llc|ltd|n\.a)\.$/iu;
+  // Header checks preserve brand names ending in "!", while boundary checks stay stricter.
+  private static readonly ORGANIZATION_HEADER_TERMINAL_PUNCTUATION_PATTERN =
+    /[.?]$/u;
+  private static readonly ORGANIZATION_BOUNDARY_TERMINAL_PUNCTUATION_PATTERN =
+    /[.!?]$/u;
   private static readonly COMMA_SEPARATED_ORGANIZATION_SUFFIXES: ReadonlySet<string> =
     new Set([
       'company',
@@ -672,8 +679,10 @@ export class ExperienceStructuralParser {
     if (
       normalizedLine.length < 2 ||
       /^[-+*•>]/u.test(normalizedLine) ||
-      (/[.?]$/.test(normalizedLine) &&
-        !/\b(?:co|corp|gmbh|inc|llc|ltd|n\.a)\.$/i.test(normalizedLine)) ||
+      this.hasDisallowedOrganizationTerminalPunctuation(
+        normalizedLine,
+        this.ORGANIZATION_HEADER_TERMINAL_PUNCTUATION_PATTERN
+      ) ||
       normalizedLine.includes('@') ||
       /https?:\/\//iu.test(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
@@ -720,6 +729,16 @@ export class ExperienceStructuralParser {
     return (
       !this.looksLikeLocation(normalizedLine) ||
       this.hasExplicitOrganizationCueText(normalizedLine)
+    );
+  }
+
+  private static hasDisallowedOrganizationTerminalPunctuation(
+    line: string,
+    terminalPunctuationPattern: RegExp
+  ): boolean {
+    return (
+      terminalPunctuationPattern.test(line) &&
+      !this.ORGANIZATION_TERMINAL_ABBREVIATION_PATTERN.test(line)
     );
   }
 
@@ -1292,8 +1311,10 @@ export class ExperienceStructuralParser {
         !isLongAcademicOrganization &&
         !isWrappedOrganization) ||
       /^[-+*•>]/u.test(normalizedLine) ||
-      (/[.?]$/.test(normalizedLine) &&
-        !/\b(?:co|corp|gmbh|inc|llc|ltd)\.$/i.test(normalizedLine)) ||
+      this.hasDisallowedOrganizationTerminalPunctuation(
+        normalizedLine,
+        this.ORGANIZATION_HEADER_TERMINAL_PUNCTUATION_PATTERN
+      ) ||
       (/^[a-z]/.test(normalizedLine) &&
         !isKnownLowercaseOrganization &&
         !isLowerCamelOrganization) ||
@@ -1345,7 +1366,14 @@ export class ExperienceStructuralParser {
       return false;
     }
 
-    const words = normalizedLine.split(/\s+/).filter(Boolean);
+    const normalizedHeaderLine =
+      this.normalizeOrganizationHeaderParentheticalSpans(normalizedLine);
+
+    if (!normalizedHeaderLine) {
+      return false;
+    }
+
+    const words = normalizedHeaderLine.split(/\s+/).filter(Boolean);
 
     return (
       words.length > 0 &&
@@ -1384,7 +1412,14 @@ export class ExperienceStructuralParser {
       return false;
     }
 
-    const words = normalizedLine.split(/\s+/).filter(Boolean);
+    const normalizedHeaderLine =
+      this.normalizeOrganizationHeaderParentheticalSpans(normalizedLine);
+
+    if (!normalizedHeaderLine) {
+      return false;
+    }
+
+    const words = normalizedHeaderLine.split(/\s+/).filter(Boolean);
     const hasOrganizationCue =
       hasPipeSeparator || this.hasOrganizationSuffixText(normalizedLine);
 
@@ -1402,6 +1437,69 @@ export class ExperienceStructuralParser {
           /^\([\p{L}\p{M}0-9&.'+!–-]+\)$/u.test(word) ||
           /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word) ||
           (hasPipeSeparator && /^[\p{Ll}\p{M}]+$/u.test(word))
+      )
+    );
+  }
+
+  private static normalizeOrganizationHeaderParentheticalSpans(
+    line: string
+  ): string | undefined {
+    const parentheticalMatches = [...line.matchAll(/\(([^()]*)\)/gu)];
+
+    if (parentheticalMatches.length === 0) {
+      return line;
+    }
+
+    const hasOnlyHeaderSafeParentheticals = parentheticalMatches.every(match =>
+      this.looksLikeOrganizationHeaderParentheticalText(match[1] ?? '')
+    );
+
+    if (!hasOnlyHeaderSafeParentheticals) {
+      return undefined;
+    }
+
+    return line
+      .replace(/\([^()]*\)/gu, '(QUALIFIER)')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private static looksLikeOrganizationHeaderParentheticalText(
+    text: string
+  ): boolean {
+    const normalizedText = text.replace(/\s+/g, ' ').trim();
+
+    if (
+      normalizedText.length < 2 ||
+      normalizedText.length > 80 ||
+      normalizedText.includes('@') ||
+      /https?:\/\//i.test(normalizedText) ||
+      this.looksLikeDuration(normalizedText) ||
+      this.looksLikeLocation(normalizedText) ||
+      this.looksLikePosition(normalizedText) ||
+      this.looksLikeMediaDescriptionLine(normalizedText) ||
+      isSectionHeaderText(normalizedText)
+    ) {
+      return false;
+    }
+
+    const words = normalizedText
+      .split(/[\s,/]+/u)
+      .map(word => word.replace(/^[.;:]+|[.;:]+$/g, ''))
+      .filter(Boolean);
+
+    const hasDistinctiveHeaderWord = words.some(word =>
+      /^[\p{Lu}0-9]/u.test(word)
+    );
+
+    return (
+      words.length > 0 &&
+      words.length <= 12 &&
+      hasDistinctiveHeaderWord &&
+      words.every(
+        word =>
+          this.ORGANIZATION_CONNECTOR_WORD_PATTERN.test(word) ||
+          /^[\p{L}\p{M}0-9&.'+!–-]+$/u.test(word)
       )
     );
   }
@@ -1504,7 +1602,10 @@ export class ExperienceStructuralParser {
       (normalizedLine.length > 90 && !isLongAcademicOrganization) ||
       (/^[a-z]/.test(normalizedLine) &&
         !this.looksLikeLowerCamelOrganization(normalizedLine)) ||
-      /[.!?]$/.test(normalizedLine) ||
+      this.hasDisallowedOrganizationTerminalPunctuation(
+        normalizedLine,
+        this.ORGANIZATION_BOUNDARY_TERMINAL_PUNCTUATION_PATTERN
+      ) ||
       normalizedLine.includes('@') ||
       /^[-+*•>]/u.test(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||
@@ -1695,8 +1796,10 @@ export class ExperienceStructuralParser {
       (/^[a-z]/.test(normalizedLine) &&
         !isKnownLowercaseOrganization &&
         !isLowerCamelOrganization) ||
-      (/[.!?]$/.test(normalizedLine) &&
-        !/\b(?:co|corp|gmbh|inc|llc|ltd|n\.a)\.$/i.test(normalizedLine)) ||
+      this.hasDisallowedOrganizationTerminalPunctuation(
+        normalizedLine,
+        this.ORGANIZATION_BOUNDARY_TERMINAL_PUNCTUATION_PATTERN
+      ) ||
       normalizedLine.includes('@') ||
       /^[-+*•>]/u.test(normalizedLine) ||
       isSectionHeaderText(normalizedLine) ||

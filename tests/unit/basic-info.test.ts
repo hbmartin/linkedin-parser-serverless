@@ -63,6 +63,18 @@ describe('BasicInfoParser', () => {
     expect(result.warnings).toEqual([]);
   });
 
+  test('does not scan boundary sections while looking for header warnings', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Apollo Helios
+      Principal Advisor
+
+      Patents
+      Summary
+    `);
+
+    expect(result.warnings).toEqual([]);
+  });
+
   test('reports adjacent empty contact and summary sections in the header', () => {
     const result = BasicInfoParser.parseWithWarnings(`
       Apollo Helios
