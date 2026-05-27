@@ -3,7 +3,7 @@
 2.1.0 keeps the main `parseLinkedInPDF` entrypoint and import path, but it
 expands the public result shape and adds helpers for confidence checks, typed
 errors, plain-text/Markdown formatting, grouped work experience, additional
-extra sections, and PDF source debugging.
+sections, and PDF source debugging.
 
 The most common migration work is updating TypeScript mocks, JSON fixtures, and
 golden-file assertions that were written against the 2.0.0 result shape.

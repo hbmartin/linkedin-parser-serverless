@@ -36,6 +36,12 @@ describe('performance measurement script', () => {
     expect(() => parsePositiveIntegerOption('--iterations', '0')).toThrow(
       'positive integer'
     );
+    expect(() => parsePositiveIntegerOption('--iterations', '10ms')).toThrow(
+      'positive integer'
+    );
+    expect(() => parsePositiveIntegerOption('--warmup', '3.5')).toThrow(
+      'positive integer'
+    );
     expect(() => parsePositiveIntegerOption('--warmup', undefined)).toThrow(
       'Missing value'
     );

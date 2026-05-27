@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
@@ -93,10 +93,13 @@ export function parseMeasurePerformanceArgs(argv) {
 export function parsePositiveIntegerOption(name, value) {
   assertCondition(value !== undefined, `Missing value for ${name}`);
 
-  const parsedValue = Number.parseInt(value, 10);
+  const optionValue = String(value).trim();
+  const parsedValue = Number(optionValue);
 
   assertCondition(
-    Number.isInteger(parsedValue) && parsedValue > 0,
+    /^\d+$/.test(optionValue) &&
+      Number.isSafeInteger(parsedValue) &&
+      parsedValue > 0,
     `${name} must be a positive integer`
   );
 
@@ -148,7 +151,7 @@ export function measureBundleArtifacts(bundleSpecs = defaultBundleSpecs) {
     return {
       gzipBytes: gzipSync(file).length,
       name: relativePath,
-      rawBytes: statSync(absolutePath).size,
+      rawBytes: file.length,
     };
   });
 }
@@ -219,7 +222,7 @@ export async function createPerformanceReport({
       file: basename(spec.path),
       kind: spec.kind,
       maxHeapDeltaBytes: measurement.maxHeapDeltaBytes,
-      sizeBytes: statSync(absolutePath).size,
+      sizeBytes: file.length,
       stats: measurement.stats,
     });
   }
