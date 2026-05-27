@@ -122,7 +122,6 @@ export class ExperienceStructuralParser {
     /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC|LLP|LP|Ltd\.?)$/iu;
   private static readonly ORGANIZATION_TERMINAL_ABBREVIATION_PATTERN =
     /\b(?:co|corp|gmbh|inc|llc|ltd|n\.a)\.$/iu;
-  private static readonly ORGANIZATION_HEADER_PARENTHETICAL_TOKEN = 'QUALIFIER';
   // Header checks preserve brand names ending in "!", while boundary checks stay stricter.
   private static readonly ORGANIZATION_HEADER_TERMINAL_PUNCTUATION_PATTERN =
     /[.?]$/u;
@@ -1535,11 +1534,8 @@ export class ExperienceStructuralParser {
 
   private static looksLikeVisualOrganizationHeaderText(line: string): boolean {
     const normalizedLine = line.trim();
-    const headerLine =
-      this.normalizeOrganizationHeaderParentheticalSpans(normalizedLine);
 
     if (
-      headerLine === undefined ||
       normalizedLine.length < 2 ||
       normalizedLine.length > 80 ||
       normalizedLine.includes('@') ||
@@ -1555,7 +1551,7 @@ export class ExperienceStructuralParser {
       return false;
     }
 
-    const words = headerLine.split(/\s+/).filter(Boolean);
+    const words = normalizedLine.split(/\s+/).filter(Boolean);
 
     return (
       words.length > 0 &&
@@ -1576,11 +1572,8 @@ export class ExperienceStructuralParser {
   private static looksLikeWrappedOrganizationHeaderText(line: string): boolean {
     const normalizedLine = line.trim();
     const hasPipeSeparator = normalizedLine.includes('|');
-    const headerLine =
-      this.normalizeOrganizationHeaderParentheticalSpans(normalizedLine);
 
     if (
-      headerLine === undefined ||
       normalizedLine.length < 12 ||
       normalizedLine.length > 140 ||
       normalizedLine.includes('@') ||
@@ -1597,7 +1590,7 @@ export class ExperienceStructuralParser {
       return false;
     }
 
-    const words = headerLine.split(/\s+/).filter(Boolean);
+    const words = normalizedLine.split(/\s+/).filter(Boolean);
     const hasOrganizationCue =
       hasPipeSeparator || this.hasOrganizationSuffixText(normalizedLine);
 
@@ -1623,11 +1616,8 @@ export class ExperienceStructuralParser {
     line: string
   ): boolean {
     const normalizedLine = line.trim();
-    const headerLine =
-      this.normalizeOrganizationHeaderParentheticalSpans(normalizedLine);
 
     if (
-      headerLine === undefined ||
       normalizedLine.length < 12 ||
       normalizedLine.length > 120 ||
       normalizedLine.includes('@') ||
@@ -1643,7 +1633,7 @@ export class ExperienceStructuralParser {
       return false;
     }
 
-    const words = headerLine.split(/\s+/).filter(Boolean);
+    const words = normalizedLine.split(/\s+/).filter(Boolean);
     const hasAcademicOrganizationWord = words.some(word =>
       /^(?:college|laboratory|lab|school|sciences?|university|institute)$/iu.test(
         word.replace(/[(),.]+/g, '')
@@ -1660,93 +1650,6 @@ export class ExperienceStructuralParser {
           /^\([\p{L}\p{M}0-9&.'+!–-]+\)$/u.test(word) ||
           /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word)
       )
-    );
-  }
-
-  private static normalizeOrganizationHeaderParentheticalSpans(
-    line: string
-  ): string | undefined {
-    let currentLine = line.replace(/\s+/g, ' ').trim();
-
-    if (!/[()]/u.test(currentLine)) {
-      return currentLine;
-    }
-
-    let previousLine: string;
-
-    do {
-      previousLine = currentLine;
-      const parentheticalMatches = [
-        ...currentLine.matchAll(/\(([^()]*)\)/gu),
-      ];
-
-      if (parentheticalMatches.length === 0) {
-        break;
-      }
-
-      const hasOnlyHeaderSafeParentheticals = parentheticalMatches.every(
-        match =>
-          this.looksLikeOrganizationHeaderParentheticalText(match[1] ?? '')
-      );
-
-      if (!hasOnlyHeaderSafeParentheticals) {
-        return undefined;
-      }
-
-      currentLine = currentLine
-        .replace(
-          /\([^()]*\)/gu,
-          ` ${this.ORGANIZATION_HEADER_PARENTHETICAL_TOKEN} `
-        )
-        .replace(/\s+/g, ' ')
-        .trim();
-    } while (currentLine !== previousLine);
-
-    return /[()]/u.test(currentLine) ? undefined : currentLine;
-  }
-
-  private static looksLikeOrganizationHeaderParentheticalText(
-    text: string
-  ): boolean {
-    const normalizedText = text.replace(/\s+/g, ' ').trim();
-
-    if (
-      normalizedText.length === 0 ||
-      normalizedText.length > 80 ||
-      normalizedText.includes('@') ||
-      normalizedText.includes('•') ||
-      /https?:\/\//i.test(normalizedText) ||
-      this.looksLikeDuration(normalizedText) ||
-      this.looksLikeMediaDescriptionLine(normalizedText) ||
-      this.looksLikeSentenceLikeDescriptionText(normalizedText)
-    ) {
-      return false;
-    }
-
-    const words = normalizedText.split(/\s+/).filter(Boolean);
-
-    return (
-      words.length > 0 &&
-      words.length <= 8 &&
-      words.every(word =>
-        this.looksLikeOrganizationHeaderParentheticalWord(word)
-      )
-    );
-  }
-
-  private static looksLikeOrganizationHeaderParentheticalWord(
-    word: string
-  ): boolean {
-    const normalizedWord = word.replace(/^[,]+|[,]+$/g, '');
-
-    return (
-      normalizedWord === this.ORGANIZATION_HEADER_PARENTHETICAL_TOKEN ||
-      this.ORGANIZATION_CONNECTOR_WORD_PATTERN.test(normalizedWord) ||
-      this.looksLikeOrganizationSuffixText(normalizedWord) ||
-      /^&$/u.test(normalizedWord) ||
-      /^[|–-]$/u.test(normalizedWord) ||
-      /^[a-z0-9.-]+\.[a-z0-9.-]+$/iu.test(normalizedWord) ||
-      /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(normalizedWord)
     );
   }
 

@@ -1052,51 +1052,6 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
-  test('recognizes visual organizations with nested safe parenthetical qualifiers', () => {
-    const experiences = ExperienceStructuralParser.parseExperience([
-      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
-      textItem({ text: 'X (A (B))', y: 670 }),
-      textItem({ text: 'Research Fellow', y: 650, fontSize: 11.5 }),
-      textItem({ text: 'January 2020 - January 2021', y: 630 }),
-    ]);
-
-    expect(experiences).toEqual([
-      expect.objectContaining({
-        organization: 'X (A (B))',
-        positions: [
-          expect.objectContaining({
-            duration: 'January 2020 - January 2021',
-            title: 'Research Fellow',
-          }),
-        ],
-      }),
-    ]);
-  });
-
-  test('does not promote nested prose parentheticals to organization headers', () => {
-    const experiences = ExperienceStructuralParser.parseExperience([
-      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
-      textItem({ text: 'X (built marketplace (pilot))', y: 670 }),
-      textItem({ text: 'Research Fellow', y: 650, fontSize: 11.5 }),
-      textItem({ text: 'January 2020 - January 2021', y: 630 }),
-      textItem({ text: 'Northstar Labs', y: 590 }),
-      textItem({ text: 'Staff Engineer', y: 570, fontSize: 11.5 }),
-      textItem({ text: 'February 2021 - February 2022', y: 550 }),
-    ]);
-
-    expect(experiences).toEqual([
-      expect.objectContaining({
-        organization: 'Northstar Labs',
-        positions: [
-          expect.objectContaining({
-            duration: 'February 2021 - February 2022',
-            title: 'Staff Engineer',
-          }),
-        ],
-      }),
-    ]);
-  });
-
   test('starts confirmed organizations after descriptions and merges wrapped titles', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -4230,24 +4185,6 @@ describe('ExperienceStructuralParser', () => {
         largerOrganizationCandidate
       )
     ).toBeGreaterThan(0);
-  });
-
-  test('normalizes nested organization header parentheticals inside out', () => {
-    expect(
-      ExperienceStructuralParser[
-        'normalizeOrganizationHeaderParentheticalSpans'
-      ]('X (A (B))')
-    ).toBe('X QUALIFIER');
-    expect(
-      ExperienceStructuralParser[
-        'normalizeOrganizationHeaderParentheticalSpans'
-      ]('X (A (built marketplace))')
-    ).toBeUndefined();
-    expect(
-      ExperienceStructuralParser[
-        'normalizeOrganizationHeaderParentheticalSpans'
-      ]('X (A (B)')
-    ).toBeUndefined();
   });
 
   test('covers header helper fallback branches', () => {
