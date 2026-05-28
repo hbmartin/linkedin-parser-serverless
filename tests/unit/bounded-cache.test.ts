@@ -53,6 +53,23 @@ describe('BoundedStringCache', () => {
     expect(createCalls).toBe(1);
   });
 
+  test('replaces existing entries without evicting newer entries', () => {
+    const cache = new BoundedStringCache<number>(2);
+
+    cache.set('first', 1);
+    cache.set('second', 2);
+    cache.set('first', 10);
+
+    expect(cache.get('first')).toEqual({ hit: true, value: 10 });
+    expect(cache.get('second')).toEqual({ hit: true, value: 2 });
+
+    cache.clear();
+
+    expect(cache.size).toBe(0);
+    expect(cache.get('first')).toEqual({ hit: false });
+    expect(cache.get('second')).toEqual({ hit: false });
+  });
+
   test('rejects invalid cache limits', () => {
     expect(() => new BoundedStringCache<string>(0)).toThrow('positive integer');
   });

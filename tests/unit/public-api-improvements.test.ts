@@ -132,6 +132,21 @@ describe('public parser diagnostics and typed errors', () => {
     );
   });
 
+  test('classifies plain text PDF extraction failures as invalid PDFs', () => {
+    expect(
+      normalizeLinkedInProfileParseError({
+        cause: 'xref table could not be parsed',
+        inputKind: 'pdf',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        cause: 'xref table could not be parsed',
+        code: 'invalid_pdf',
+        message: 'PDF appears to be invalid or unreadable',
+      })
+    );
+  });
+
   test('normalizes unknown text parser failures as typed errors', () => {
     expect(
       normalizeLinkedInProfileParseError({

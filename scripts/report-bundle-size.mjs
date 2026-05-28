@@ -15,9 +15,22 @@ export const defaultBundleArtifacts = [
   'dist/cli.js',
 ];
 
-export function readBundleArtifact(relativePath) {
-  const file = ensureRegularFile(relativePath);
-  const gzipBytes = gzipSync(readFileSync(file.absolutePath)).length;
+const topLevelJavaScriptArtifactPattern = /^[^/\\]+\.(?:cjs|js)$/;
+
+export function isTopLevelJavaScriptArtifactFileName(fileName) {
+  return topLevelJavaScriptArtifactPattern.test(fileName);
+}
+
+export function readBundleArtifact(
+  relativePath,
+  {
+    ensureFile = ensureRegularFile,
+    gzip = gzipSync,
+    readFile = readFileSync,
+  } = {}
+) {
+  const file = ensureFile(relativePath);
+  const gzipBytes = gzip(readFile(file.absolutePath)).length;
 
   return {
     ...file,
@@ -25,21 +38,33 @@ export function readBundleArtifact(relativePath) {
   };
 }
 
-export function listTopLevelDistFileNames() {
-  return readdirSync(repoPath('dist'));
+export function listTopLevelDistFileNames({
+  readDirectory = readdirSync,
+  resolveRepoPath = repoPath,
+} = {}) {
+  return readDirectory(resolveRepoPath('dist')).filter(
+    isTopLevelJavaScriptArtifactFileName
+  );
+}
+
+export function getBundleFileSize(
+  relativePath,
+  { ensureFile = ensureRegularFile } = {}
+) {
+  return ensureFile(relativePath).size;
 }
 
 export function measureBundleSizes({
   bundleArtifacts = defaultBundleArtifacts,
+  getFileSize = getBundleFileSize,
   listDistFileNames = listTopLevelDistFileNames,
   readArtifact = readBundleArtifact,
 } = {}) {
   const artifacts = bundleArtifacts.map(readArtifact);
   const totalTopLevelJavaScriptBytes = listDistFileNames()
-    .filter(fileName => /\.(?:cjs|js)$/.test(fileName))
+    .filter(isTopLevelJavaScriptArtifactFileName)
     .reduce(
-      (totalBytes, fileName) =>
-        totalBytes + readArtifact(`dist/${fileName}`).size,
+      (totalBytes, fileName) => totalBytes + getFileSize(`dist/${fileName}`),
       0
     );
 
@@ -69,15 +94,21 @@ export function formatBundleSizeReport(report) {
   return lines.join('\n');
 }
 
-function main() {
-  console.log(formatBundleSizeReport(measureBundleSizes()));
+export function runBundleSizeReportCli({
+  exit = code => process.exit(code),
+  formatReport = formatBundleSizeReport,
+  measure = measureBundleSizes,
+  writeError = message => console.error(message),
+  writeOutput = message => console.log(message),
+} = {}) {
+  try {
+    writeOutput(formatReport(measure()));
+  } catch (error) {
+    writeError(error instanceof Error ? error.message : error);
+    exit(1);
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  try {
-    main();
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : error);
-    process.exit(1);
-  }
+  runBundleSizeReportCli();
 }
