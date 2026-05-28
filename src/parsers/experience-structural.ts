@@ -100,6 +100,14 @@ interface NextContentLineStartsCanonicalHeaderParams {
   index: number;
 }
 
+interface ClassifyLineTypeParams {
+  allLines?: NormalizedParserLine[];
+  index: number;
+  line: NormalizedParserLine;
+  lineTexts?: string[];
+  state: ExperienceLineState;
+}
+
 interface ExtractCleanOrganizationNameOptions {
   mode: 'anchored_header' | 'standard';
 }
@@ -143,9 +151,17 @@ export class ExperienceStructuralParser {
     /\b(?:Area|Metro(?:politan)?\s+Area)\b.*(?:U\.?\s*S\.?(?:\s*A\.?)?|USA\.?)[,\s]*$/iu;
   private static readonly AREA_WITH_US_SUFFIX_PATTERN =
     /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))[,\s]*(?:U\.?\s*S\.?(?:\s*A\.?)?|USA\.?)[,\s]*$/iu;
+  private static readonly DASH_VARIANT_PATTERN = /[–—−]/g;
+  private static readonly DURATION_TEXT_NEEDS_CHARACTER_NORMALIZATION_PATTERN =
+    /[\uE000-\uF8FF\u00A0–—−]/u;
+  private static readonly MULTIPLE_WHITESPACE_PATTERN = /\s{2,}/u;
+  private static readonly MULTIPLE_WHITESPACE_GLOBAL_PATTERN = /\s+/g;
+  private static readonly NON_BREAKING_SPACE_PATTERN = /\u00A0/g;
+  private static readonly PRIVATE_USE_TEXT_PATTERN = /[\uE000-\uF8FF]/g;
   private static readonly SPLIT_REGION_CODE_PATTERN = /,\s*([A-Z])\s+([A-Z])$/g;
   private static readonly SPACE_BEFORE_COMMA_PATTERN = /\s+,/g;
   private static readonly COMMA_SPACING_PATTERN = /,\s*/g;
+  private static readonly TRAILING_LOCATION_COMMAS_PATTERN = /,+\s*$/u;
   // Header checks preserve brand names ending in "!", while boundary checks stay stricter.
   private static readonly ORGANIZATION_HEADER_TERMINAL_PUNCTUATION_PATTERN =
     /[.?]$/u;
@@ -322,8 +338,11 @@ export class ExperienceStructuralParser {
     const expandedParserLines = this.expandCombinedOrganizationTitleLines(
       normalizedParserLines
     );
-    const canonicalHeaders =
-      this.createCanonicalHeaderLineTypes(expandedParserLines);
+    const lineTexts = expandedParserLines.map(line => line.text);
+    const canonicalHeaders = this.createCanonicalHeaderLineTypes(
+      expandedParserLines,
+      lineTexts
+    );
     let state: ExperienceLineState = 'seeking_company';
 
     for (let index = 0; index < expandedParserLines.length; index++) {
@@ -343,9 +362,9 @@ export class ExperienceStructuralParser {
           canonicalHeaders,
           index,
           inferredType: this.classifyLineType({
-            allLines: expandedParserLines,
             index,
             line: parserLine,
+            lineTexts,
             state,
           }),
           state,
@@ -546,9 +565,15 @@ export class ExperienceStructuralParser {
     parserLines: NormalizedParserLine[],
     startIndex: number
   ): NormalizedParserLine | undefined {
-    return parserLines
-      .slice(startIndex)
-      .find(line => !this.isExperienceNoiseLine(line.text));
+    for (let index = startIndex; index < parserLines.length; index++) {
+      const line = parserLines[index];
+
+      if (!this.isExperienceNoiseLine(line.text)) {
+        return line;
+      }
+    }
+
+    return undefined;
   }
 
   private static previousContentLine(
@@ -630,10 +655,10 @@ export class ExperienceStructuralParser {
   }
 
   private static createCanonicalHeaderLineTypes(
-    parserLines: NormalizedParserLine[]
+    parserLines: NormalizedParserLine[],
+    lineTexts: string[]
   ): CanonicalHeaderLineTypes {
     const lineTypes = new Map<number, StructuralSection['type']>();
-    const lineTexts = parserLines.map(line => line.text);
     const selectedCandidates = this.selectExperienceHeaderCandidates(
       this.createExperienceHeaderCandidates(parserLines, lineTexts)
     );
@@ -1288,12 +1313,8 @@ export class ExperienceStructuralParser {
     index,
     line,
     state,
-  }: {
-    allLines: NormalizedParserLine[];
-    index: number;
-    line: NormalizedParserLine;
-    state: ExperienceLineState;
-  }): StructuralSection['type'] {
+    lineTexts: providedLineTexts,
+  }: ClassifyLineTypeParams): StructuralSection['type'] {
     const text = line.text;
     const lowerLine = text.toLowerCase();
 
@@ -1306,7 +1327,8 @@ export class ExperienceStructuralParser {
       return 'other';
     }
 
-    const lineTexts = allLines.map(candidate => candidate.text);
+    const lineTexts =
+      providedLineTexts ?? allLines?.map(candidate => candidate.text) ?? [];
 
     switch (state) {
       case 'seeking_company':
@@ -1848,9 +1870,17 @@ export class ExperienceStructuralParser {
       return false;
     }
 
-    return allLines
-      .slice(possibleTitleIndex + 1, index + 1 + maxLookahead)
-      .some(nextLine => this.looksLikeDuration(nextLine));
+    for (
+      let nextIndex = possibleTitleIndex + 1;
+      nextIndex < allLines.length && nextIndex < index + 1 + maxLookahead;
+      nextIndex++
+    ) {
+      if (this.looksLikeDuration(allLines[nextIndex])) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private static hasJobDetailsAfterOrganization(
@@ -1899,24 +1929,31 @@ export class ExperienceStructuralParser {
     allLines: string[],
     maxLookahead = 4
   ): boolean {
-    const nextLines = allLines.slice(index + 1, index + 1 + maxLookahead);
+    const totalDurationLine = allLines[index + 1];
 
-    if (!nextLines[0] || !this.looksLikeTotalDuration(nextLines[0])) {
+    if (!totalDurationLine || !this.looksLikeTotalDuration(totalDurationLine)) {
       return false;
     }
 
-    const linesAfterTotalDuration = nextLines.slice(1);
-    const durationIndex = linesAfterTotalDuration.findIndex(nextLine =>
-      this.looksLikeDuration(nextLine)
-    );
+    let hasPositionBeforeDuration = false;
 
-    if (durationIndex === -1) {
-      return false;
+    for (
+      let nextIndex = index + 2;
+      nextIndex < allLines.length && nextIndex < index + 1 + maxLookahead;
+      nextIndex++
+    ) {
+      const nextLine = allLines[nextIndex];
+
+      if (this.looksLikeDuration(nextLine)) {
+        return hasPositionBeforeDuration;
+      }
+
+      if (this.looksLikePosition(nextLine)) {
+        hasPositionBeforeDuration = true;
+      }
     }
 
-    return linesAfterTotalDuration
-      .slice(0, durationIndex)
-      .some(nextLine => this.looksLikePosition(nextLine));
+    return false;
   }
 
   private static hasOwnDurationBeforeBoundary(
@@ -2031,21 +2068,28 @@ export class ExperienceStructuralParser {
     index: number,
     allLines: string[]
   ): boolean {
-    const nextLines = allLines.slice(index + 1, index + 4);
-    const durationIndex = nextLines.findIndex(nextLine =>
-      this.looksLikeDuration(nextLine)
-    );
+    let hasPositionBeforeDuration = false;
 
-    if (durationIndex === -1) {
-      return false;
+    for (
+      let nextIndex = index + 1;
+      nextIndex < allLines.length && nextIndex < index + 4;
+      nextIndex++
+    ) {
+      const nextLine = allLines[nextIndex];
+
+      if (this.looksLikeDuration(nextLine)) {
+        return (
+          !hasPositionBeforeDuration &&
+          this.looksLikePendingTitleContinuationLine(line)
+        );
+      }
+
+      if (this.looksLikePosition(nextLine)) {
+        hasPositionBeforeDuration = true;
+      }
     }
 
-    const linesBeforeDuration = nextLines.slice(0, durationIndex);
-
-    return (
-      !linesBeforeDuration.some(nextLine => this.looksLikePosition(nextLine)) &&
-      this.looksLikePendingTitleContinuationLine(line)
-    );
+    return false;
   }
 
   private static looksLikeDuration(line: string): boolean {
@@ -2088,12 +2132,24 @@ export class ExperienceStructuralParser {
   }
 
   private static normalizeDurationLineText(text: string): string {
-    return text
-      .replace(/[\uE000-\uF8FF]/g, ' ')
-      .replace(/\u00A0/g, ' ')
-      .replace(/[–—−]/g, '-')
-      .replace(/\s+/g, ' ')
-      .trim();
+    let normalizedText = text.trim();
+
+    if (
+      this.DURATION_TEXT_NEEDS_CHARACTER_NORMALIZATION_PATTERN.test(
+        normalizedText
+      )
+    ) {
+      normalizedText = normalizedText
+        .replace(this.PRIVATE_USE_TEXT_PATTERN, ' ')
+        .replace(this.NON_BREAKING_SPACE_PATTERN, ' ')
+        .replace(this.DASH_VARIANT_PATTERN, '-');
+    }
+
+    return this.MULTIPLE_WHITESPACE_PATTERN.test(normalizedText)
+      ? normalizedText
+          .replace(this.MULTIPLE_WHITESPACE_GLOBAL_PATTERN, ' ')
+          .trim()
+      : normalizedText;
   }
 
   private static stripDurationSuffixText(text: string): string {
@@ -2337,10 +2393,9 @@ export class ExperienceStructuralParser {
   }
 
   private static normalizeLocationText(text: string): string {
-    let normalizedText = text.replace(
-      this.BROKEN_YORK_LOCATION_PATTERN,
-      'York'
-    );
+    let normalizedText = text.includes('Y ork')
+      ? text.replace(this.BROKEN_YORK_LOCATION_PATTERN, 'York')
+      : text;
 
     if (this.AREA_WITH_US_SUFFIX_CANDIDATE_PATTERN.test(normalizedText)) {
       // Strip trailing US/USA variants from Greater/Metro Area locations while preserving the captured place name.
@@ -2350,17 +2405,22 @@ export class ExperienceStructuralParser {
       );
     }
 
-    return normalizedText
-      .replace(this.SPLIT_REGION_CODE_PATTERN, ', $1$2')
-      .replace(this.SPACE_BEFORE_COMMA_PATTERN, ',')
-      .replace(this.COMMA_SPACING_PATTERN, ', ')
-      .trim();
+    if (normalizedText.includes(',')) {
+      normalizedText = normalizedText
+        .replace(this.SPLIT_REGION_CODE_PATTERN, ', $1$2')
+        .replace(this.SPACE_BEFORE_COMMA_PATTERN, ',')
+        .replace(this.COMMA_SPACING_PATTERN, ', ');
+    }
+
+    return normalizedText.trim();
   }
 
   private static normalizeCompletedLocationText(text: string): string {
-    return this.normalizeLocationText(text)
-      .replace(/,+\s*$/u, '')
-      .trim();
+    const normalizedText = this.normalizeLocationText(text);
+
+    return normalizedText.endsWith(',')
+      ? normalizedText.replace(this.TRAILING_LOCATION_COMMAS_PATTERN, '').trim()
+      : normalizedText;
   }
 
   /**
