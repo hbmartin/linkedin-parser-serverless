@@ -1,5 +1,17 @@
 import { isLikelyScoredLocationText } from './location-classifier.js';
 import { PROFILE_SECTION_HEADER_ENTRIES } from './profile-section-headers.js';
+import { BoundedStringCache } from './bounded-cache.js';
+
+const PROFILE_TEXT_CACHE_LIMIT = 2048;
+const normalizedProfileTextCache = new BoundedStringCache<string>(
+  PROFILE_TEXT_CACHE_LIMIT
+);
+const positionTitleTextCache = new BoundedStringCache<boolean>(
+  PROFILE_TEXT_CACHE_LIMIT
+);
+const organizationNameTextCache = new BoundedStringCache<boolean>(
+  PROFILE_TEXT_CACHE_LIMIT
+);
 
 const EXPERIENCE_SECTION_HEADER_TEXT = new Set([
   'berufserfahrung',
@@ -196,6 +208,12 @@ export function isEducationSectionHeaderText(text: string): boolean {
 }
 
 export function looksLikePositionTitleText(text: string): boolean {
+  return positionTitleTextCache.getOrSet(text, () =>
+    looksLikePositionTitleTextUncached(text)
+  );
+}
+
+function looksLikePositionTitleTextUncached(text: string): boolean {
   const normalizedText = normalizeProfileText(text);
   const lowerText = normalizedText.toLowerCase();
   const hasPositionKeyword = POSITION_KEYWORD_PATTERN.test(lowerText);
@@ -254,6 +272,12 @@ export function looksLikeExperienceDetailText(text: string): boolean {
 }
 
 export function looksLikeOrganizationNameText(text: string): boolean {
+  return organizationNameTextCache.getOrSet(text, () =>
+    looksLikeOrganizationNameTextUncached(text)
+  );
+}
+
+function looksLikeOrganizationNameTextUncached(text: string): boolean {
   const normalizedText = normalizeProfileText(text);
 
   if (
@@ -354,10 +378,12 @@ export function looksLikePersonNameText(text: string): boolean {
 }
 
 function normalizeProfileText(text: string): string {
-  return text
-    .replace(/[\uE000-\uF8FF]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return normalizedProfileTextCache.getOrSet(text, () =>
+    text
+      .replace(/[\uE000-\uF8FF]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 function hasEllipsisText(text: string): boolean {

@@ -228,4 +228,52 @@ describe('location classifier', () => {
     expect(secondResult).not.toBe(firstResult);
     expect(secondResult.signals).not.toBe(firstResult.signals);
   });
+
+  test('keeps classification cache entries context-sensitive', () => {
+    const defaultResult = classifyLocationText({ text: 'Boston' });
+    const metadataResult = classifyLocationText({
+      context: { structuralContext: 'metadata' },
+      text: 'Boston',
+    });
+
+    expect(defaultResult).toEqual(
+      expect.objectContaining({
+        isLocation: true,
+        score: 5,
+        signals: expect.arrayContaining(['exact-place', 'proper-shape']),
+      })
+    );
+    expect(metadataResult).toEqual(
+      expect.objectContaining({
+        isLocation: false,
+        score: 3,
+        signals: expect.arrayContaining(['exact-place', 'proper-shape']),
+      })
+    );
+  });
+
+  test('does not match single-word known places inside larger words', () => {
+    const result = classifyLocationText({
+      context: { structuralContext: 'after-duration' },
+      text: 'Bostonian',
+    });
+
+    expect(result.isLocation).toBe(false);
+    expect(result.signals).not.toContain('known-place');
+    expect(result.signals).not.toContain('exact-place');
+  });
+
+  test('continues to match delimited multi-word known places', () => {
+    const result = classifyLocationText({
+      context: { structuralContext: 'after-duration' },
+      text: 'Greater New York Area',
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isLocation: true,
+        signals: expect.arrayContaining(['known-place', 'qualified-area']),
+      })
+    );
+  });
 });

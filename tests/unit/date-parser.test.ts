@@ -228,4 +228,9 @@ describe('profile date parser', () => {
       expect(secondResult.end).not.toBe(firstResult.end);
     }
   });
+
+  test('returns stable undefined results for repeated invalid date parses', () => {
+    expect(parseProfileDateRange('sometime later')).toBeUndefined();
+    expect(parseProfileDateRange('sometime later')).toBeUndefined();
+  });
 });
