@@ -48,7 +48,8 @@ export function createStructuralLines({
     }
   }
 
-  return lines.toSorted(
+  // oxlint-disable-next-line unicorn/no-array-sort -- The lines array is local and safe to sort in place.
+  return lines.sort(
     (first, second) => second.y - first.y || first.x - second.x
   );
 }
