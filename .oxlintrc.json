@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "off"
+  },
+  "ignorePatterns": ["dist", "coverage", "node_modules", "*.js"],
+  "rules": {
+    "eslint/no-console": "off",
+    "eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "eslint/prefer-const": "error",
+    "typescript/no-explicit-any": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["src/**/__tests__/**/*.ts", "src/**/*.test.ts"],
+      "rules": {
+        "typescript/no-explicit-any": "off"
+      }
+    }
+  ]
+}
