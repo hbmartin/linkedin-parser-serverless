@@ -1588,6 +1588,68 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('detects organization-title-duration headers across noise within lookahead', () => {
+    const headerWithNoise = [
+      'Northstar Solutions',
+      'Page 1 of 2',
+      'Principal Engineer',
+      '2020 - Present',
+    ];
+
+    expect(
+      ExperienceStructuralParser[
+        'hasImmediateTitleAndDurationAfterOrganization'
+      ](0, headerWithNoise)
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser[
+        'hasImmediateTitleAndDurationAfterOrganization'
+      ](0, headerWithNoise, 2)
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser[
+        'hasImmediateTitleAndDurationAfterOrganization'
+      ](0, ['Northstar Solutions', 'Principal Engineer', 'Remote', '2020'])
+    ).toBe(true);
+  });
+
+  test('rejects invalid immediate title candidates after organizations', () => {
+    const replacementOrganizationHeader = [
+      'Northstar Solutions',
+      'Cobalt Systems',
+      'Staff Engineer',
+      '2022 - Present',
+    ];
+
+    expect(
+      ExperienceStructuralParser['looksLikeOrganizationBoundaryCandidate'](
+        'Cobalt Systems',
+        1,
+        replacementOrganizationHeader
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser[
+        'hasImmediateTitleAndDurationAfterOrganization'
+      ](0, replacementOrganizationHeader)
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser[
+        'hasImmediateTitleAndDurationAfterOrganization'
+      ](0, ['Northstar Solutions', 'Page 1 of 2'])
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser[
+        'hasImmediateTitleAndDurationAfterOrganization'
+      ](0, ['Northstar Solutions', 'Built APIs safely.', '2020 - Present'])
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['looksLikePotentialPositionTitleLine'](
+        'Built APIs safely.'
+      )
+    ).toBe(false);
+  });
+
   test('detects generic organizations without a source allowlist', () => {
     const items = [
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -1746,6 +1808,27 @@ describe('ExperienceStructuralParser', () => {
 
     const [experience] = ExperienceStructuralParser.parseExperience(items);
 
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        location: 'New York, NY',
+      })
+    );
+  });
+
+  test('normalizes broken York whitespace variants in locations', () => {
+    const items = [
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Research Systems Group', y: 670 }),
+      textItem({ text: 'Principal Engineer', y: 650, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2024', y: 630 }),
+      textItem({ text: 'New Y  ork, N Y', y: 610 }),
+    ];
+
+    const [experience] = ExperienceStructuralParser.parseExperience(items);
+
+    expect(
+      ExperienceStructuralParser['normalizeLocationText']('New Y\tork, N Y')
+    ).toBe('New York, NY');
     expect(experience.positions[0]).toEqual(
       expect.objectContaining({
         location: 'New York, NY',

@@ -2393,9 +2393,10 @@ export class ExperienceStructuralParser {
   }
 
   private static normalizeLocationText(text: string): string {
-    let normalizedText = text.includes('Y ork')
-      ? text.replace(this.BROKEN_YORK_LOCATION_PATTERN, 'York')
-      : text;
+    let normalizedText = text.replace(
+      this.BROKEN_YORK_LOCATION_PATTERN,
+      'York'
+    );
 
     if (this.AREA_WITH_US_SUFFIX_CANDIDATE_PATTERN.test(normalizedText)) {
       // Strip trailing US/USA variants from Greater/Metro Area locations while preserving the captured place name.
