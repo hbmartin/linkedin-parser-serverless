@@ -17,6 +17,28 @@ describe('BoundedStringCache', () => {
     expect(cache.size).toBe(2);
   });
 
+  test('keeps retained entries warm when evicting at the limit', () => {
+    const cache = new BoundedStringCache<number>(2);
+    const createdKeys: string[] = [];
+    const createValue =
+      (key: string, value: number): (() => number) =>
+      () => {
+        createdKeys.push(key);
+
+        return value;
+      };
+
+    expect(cache.getOrSet('first', createValue('first', 1))).toBe(1);
+    expect(cache.getOrSet('second', createValue('second', 2))).toBe(2);
+    expect(cache.get('first')).toEqual({ hit: true, value: 1 });
+    expect(cache.getOrSet('third', createValue('third', 3))).toBe(3);
+
+    expect(cache.getOrSet('first', createValue('first', 10))).toBe(1);
+    expect(cache.getOrSet('third', createValue('third', 30))).toBe(3);
+    expect(cache.getOrSet('second', createValue('second', 20))).toBe(20);
+    expect(createdKeys).toEqual(['first', 'second', 'third', 'second']);
+  });
+
   test('caches undefined values without recomputing them', () => {
     const cache = new BoundedStringCache<string | undefined>(2);
     let createCalls = 0;

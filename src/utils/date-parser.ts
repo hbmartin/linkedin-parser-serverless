@@ -8,8 +8,8 @@ type ChronoParser = {
 };
 
 interface DatePortion {
-  text: string;
-  durationText?: string;
+  readonly text: string;
+  readonly durationText?: string;
 }
 
 const PARSED_DATE_RANGE_CACHE_LIMIT = 512;

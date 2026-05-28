@@ -229,6 +229,38 @@ describe('profile date parser', () => {
     }
   });
 
+  test('does not let caller mutations contaminate cached date parses', () => {
+    const dateRangeText = 'Feb 2020 - Apr 2021 · 1 yr 3 mos';
+    const firstResult = parseProfileDateRange(dateRangeText);
+
+    if (firstResult?.kind !== 'completed') {
+      throw new Error('Expected completed date range');
+    }
+
+    firstResult.durationText = '99 yrs';
+    firstResult.end.iso = '1900-02';
+    firstResult.end.text = 'February 1900';
+    firstResult.originalText = 'mutated';
+    firstResult.start.iso = '1900-01';
+    firstResult.start.text = 'January 1900';
+
+    expect(parseProfileDateRange(dateRangeText)).toEqual({
+      durationText: '1 yr 3 mos',
+      end: {
+        iso: '2021-04',
+        precision: 'month',
+        text: 'April 2021',
+      },
+      kind: 'completed',
+      originalText: 'Feb 2020 - Apr 2021 · 1 yr 3 mos',
+      start: {
+        iso: '2020-02',
+        precision: 'month',
+        text: 'February 2020',
+      },
+    });
+  });
+
   test('returns stable undefined results for repeated invalid date parses', () => {
     expect(parseProfileDateRange('sometime later')).toBeUndefined();
     expect(parseProfileDateRange('sometime later')).toBeUndefined();
