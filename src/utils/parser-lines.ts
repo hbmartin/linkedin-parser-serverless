@@ -49,6 +49,18 @@ const BOUNDARY_SECTION_HEADERS = new Set([
   'recommendations',
   'interests',
 ]);
+const SECTION_HEADER_CANDIDATE_LENGTH_PADDING = 8;
+const MAX_SECTION_HEADER_CANDIDATE_LENGTH =
+  Math.max(
+    ...[...TARGET_SECTION_HEADERS.keys(), ...BOUNDARY_SECTION_HEADERS].map(
+      header => header.length
+    )
+  ) + SECTION_HEADER_CANDIDATE_LENGTH_PADDING;
+const NON_ASCII_TEXT_PATTERN = /[^\u0000-\u007F]/u;
+const COMBINING_MARK_PATTERN = /\p{M}/gu;
+const AMPERSAND_PATTERN = /&/g;
+const NON_HEADER_WORD_PATTERN = /[^a-zA-Z\s]/g;
+const MULTIPLE_SPACES_PATTERN = /\s+/g;
 
 export function createTextParserLines(text: string): NormalizedParserLine[] {
   return enrichParserLines(
@@ -83,12 +95,15 @@ export function createGroupedTextItemParserLines(
 }
 
 function normalizeSectionHeader(text: string): string {
-  return normalizeWhitespace(text)
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .replace(/&/g, ' and ')
-    .replace(/[^a-zA-Z\s]/g, ' ')
-    .replace(/\s+/g, ' ')
+  const whitespaceNormalized = normalizeWhitespace(text);
+  const accentlessText = NON_ASCII_TEXT_PATTERN.test(whitespaceNormalized)
+    ? whitespaceNormalized.normalize('NFD').replace(COMBINING_MARK_PATTERN, '')
+    : whitespaceNormalized;
+
+  return accentlessText
+    .replace(AMPERSAND_PATTERN, ' and ')
+    .replace(NON_HEADER_WORD_PATTERN, ' ')
+    .replace(MULTIPLE_SPACES_PATTERN, ' ')
     .trim()
     .toLowerCase();
 }
@@ -96,6 +111,15 @@ function normalizeSectionHeader(text: string): string {
 export function getParserLineSectionHeader(
   text: string
 ): SectionHeader | undefined {
+  const trimmedText = text.trim();
+
+  if (
+    trimmedText.length === 0 ||
+    trimmedText.length > MAX_SECTION_HEADER_CANDIDATE_LENGTH
+  ) {
+    return undefined;
+  }
+
   const normalizedHeader = normalizeSectionHeader(text);
   const section = TARGET_SECTION_HEADERS.get(normalizedHeader);
 

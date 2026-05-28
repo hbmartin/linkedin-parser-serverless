@@ -1,3 +1,5 @@
+import { BoundedStringCache } from './bounded-cache.js';
+
 type LocationStructuralContext = 'profile' | 'metadata' | 'after-duration';
 
 type LocationSignal =
@@ -37,6 +39,15 @@ interface LocationClassification {
 
 const locationThreshold = 4;
 const afterDurationLocationThreshold = 4;
+const LOCATION_TEXT_CACHE_LIMIT = 2048;
+const locationClassificationCache =
+  new BoundedStringCache<LocationClassification>(LOCATION_TEXT_CACHE_LIMIT);
+const visibleTextCache = new BoundedStringCache<string>(
+  LOCATION_TEXT_CACHE_LIMIT
+);
+const lookupTextCache = new BoundedStringCache<string>(
+  LOCATION_TEXT_CACHE_LIMIT
+);
 
 const connectorWords: ReadonlySet<string> = new Set([
   'and',
@@ -290,7 +301,39 @@ const sentenceStartVerbs: ReadonlySet<string> = new Set([
   'worked',
 ]);
 
+interface KnownPhraseIndex {
+  multiWordPhrases: readonly string[];
+  singleWordPhrases: ReadonlySet<string>;
+}
+
+const knownPlacePhraseIndex = createKnownPhraseIndex(knownPlaceNames);
+const countryAndRegionPhraseIndex = createKnownPhraseIndex(
+  countryAndRegionNames
+);
+const adminRegionPhraseIndex = createKnownPhraseIndex(adminRegionNames);
+
 export function classifyLocationText({
+  context,
+  text,
+}: ClassifyLocationTextParams): LocationClassification {
+  const cacheKey = locationClassificationCacheKey({ context, text });
+  const cachedClassification = locationClassificationCache.get(cacheKey);
+
+  if (cachedClassification.hit) {
+    return cloneLocationClassification(cachedClassification.value);
+  }
+
+  const classification = classifyLocationTextUncached({ context, text });
+
+  locationClassificationCache.set(
+    cacheKey,
+    freezeLocationClassification(classification)
+  );
+
+  return cloneLocationClassification(classification);
+}
+
+function classifyLocationTextUncached({
   context,
   text,
 }: ClassifyLocationTextParams): LocationClassification {
@@ -328,6 +371,7 @@ export function classifyLocationText({
   const lookupText = normalizeLookupText(normalizedText);
   const words = visibleWords(normalizedText);
   const lookupWords = lookupWordsFor(lookupText);
+  const lookupCommaSegments = lookupCommaSegmentsFor(normalizedText);
 
   if (startsWithSentenceVerb(lookupWords)) {
     add('sentence-verb', -4);
@@ -358,19 +402,32 @@ export function classifyLocationText({
 
   const exactPlace = knownPlaceNames.has(lookupText);
   const hasKnownPlace =
-    exactPlace || containsKnownPhrase(lookupText, knownPlaceNames);
+    exactPlace ||
+    containsKnownPhrase({
+      phraseIndex: knownPlacePhraseIndex,
+      text: lookupText,
+      words: lookupWords,
+    });
   const hasCountryOrRegion =
     countryAndRegionNames.has(lookupText) ||
-    containsKnownPhrase(lookupText, countryAndRegionNames);
+    containsKnownPhrase({
+      phraseIndex: countryAndRegionPhraseIndex,
+      text: lookupText,
+      words: lookupWords,
+    });
   const hasAdminRegion =
     adminRegionNames.has(lookupText) ||
-    containsKnownPhrase(lookupText, adminRegionNames);
+    containsKnownPhrase({
+      phraseIndex: adminRegionPhraseIndex,
+      text: lookupText,
+      words: lookupWords,
+    });
   const hasRegionCode = hasContextualRegionCode({
     hasKnownPlace,
+    lookupCommaSegments,
     lookupWords,
-    normalizedText,
   });
-  const hasCommaRegion = hasCommaSeparatedRegionEvidence(normalizedText);
+  const hasCommaRegion = hasCommaSeparatedRegionEvidence(lookupCommaSegments);
   const hasAfterDurationCommaLocation =
     context?.structuralContext === 'after-duration' &&
     hasProperCommaLocationShape(normalizedText, words) &&
@@ -441,24 +498,28 @@ export function isLikelyScoredLocationText(text: string): boolean {
 }
 
 function normalizeVisibleText(text: string): string {
-  return text
-    .replace(/[\uE000-\uF8FF]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/,+$/u, '')
-    .trim();
+  return visibleTextCache.getOrSet(text, () =>
+    text
+      .replace(/[\uE000-\uF8FF]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/,+$/u, '')
+      .trim()
+  );
 }
 
 function normalizeLookupText(text: string): string {
-  return text
-    .normalize('NFKC')
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/[‐‑‒–—]/g, '-')
-    .replace(/-/g, ' ')
-    .replace(/[().,]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
+  return lookupTextCache.getOrSet(text, () =>
+    text
+      .normalize('NFKC')
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
+      .replace(/[‐‑‒–—]/g, '-')
+      .replace(/-/g, ' ')
+      .replace(/[().,]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase()
+  );
 }
 
 function visibleWords(text: string): string[] {
@@ -470,6 +531,13 @@ function visibleWords(text: string): string[] {
 
 function lookupWordsFor(lookupText: string): string[] {
   return lookupText.split(/\s+/u).filter(word => word.length > 0);
+}
+
+function lookupCommaSegmentsFor(text: string): string[] {
+  return text
+    .split(',')
+    .map(segment => normalizeLookupText(segment))
+    .filter(segment => segment.length > 0);
 }
 
 function endsWithSentencePunctuation(words: readonly string[]): boolean {
@@ -507,12 +575,21 @@ function startsWithSentenceVerb(words: readonly string[]): boolean {
   return firstWord !== undefined && sentenceStartVerbs.has(firstWord);
 }
 
-function containsKnownPhrase(
-  text: string,
-  phrases: ReadonlySet<string>
-): boolean {
-  for (const phrase of phrases) {
-    if (phrase.length > 0 && containsDelimitedPhrase(text, phrase)) {
+function containsKnownPhrase({
+  phraseIndex,
+  text,
+  words,
+}: {
+  phraseIndex: KnownPhraseIndex;
+  text: string;
+  words: readonly string[];
+}): boolean {
+  if (words.some(word => phraseIndex.singleWordPhrases.has(word))) {
+    return true;
+  }
+
+  for (const phrase of phraseIndex.multiWordPhrases) {
+    if (containsDelimitedPhrase(text, phrase)) {
       return true;
     }
   }
@@ -549,12 +626,12 @@ function isDelimiter(value: string | undefined): boolean {
 
 function hasContextualRegionCode({
   hasKnownPlace,
+  lookupCommaSegments,
   lookupWords,
-  normalizedText,
 }: {
   hasKnownPlace: boolean;
+  lookupCommaSegments: readonly string[];
   lookupWords: readonly string[];
-  normalizedText: string;
 }): boolean {
   const codeWords = regionCodeCandidates(lookupWords).filter(word =>
     regionCodes.has(word)
@@ -572,22 +649,21 @@ function hasContextualRegionCode({
     return true;
   }
 
-  const commaSegments = normalizedText
-    .split(',')
-    .map(segment => segment.trim())
-    .filter(segment => segment.length > 0);
-
-  if (commaSegments.length < 2) {
+  if (lookupCommaSegments.length < 2) {
     return false;
   }
 
   // Comma-separated locations need segment-level evidence so full-text place matches
   // or ambiguous region codes do not promote unrelated segments.
-  return commaSegments.some(segment => {
-    const lookupSegment = normalizeLookupText(segment);
+  return lookupCommaSegments.some(lookupSegment => {
     const segmentWords = lookupWordsFor(lookupSegment);
     const hasKnownPlaceSegment =
-      hasKnownPlace && containsKnownPhrase(lookupSegment, knownPlaceNames);
+      hasKnownPlace &&
+      containsKnownPhrase({
+        phraseIndex: knownPlacePhraseIndex,
+        text: lookupSegment,
+        words: segmentWords,
+      });
     const hasUnambiguousRegionCodeSegment = regionCodeCandidates(
       segmentWords
     ).some(word => regionCodes.has(word) && !ambiguousRegionCodes.has(word));
@@ -620,17 +696,14 @@ function regionCodeCandidates(words: readonly string[]): string[] {
   return candidates;
 }
 
-function hasCommaSeparatedRegionEvidence(text: string): boolean {
-  const parts = text
-    .split(',')
-    .map(part => normalizeLookupText(part))
-    .filter(part => part.length > 0);
-
-  if (parts.length < 2 || parts.length > 3) {
+function hasCommaSeparatedRegionEvidence(
+  lookupCommaSegments: readonly string[]
+): boolean {
+  if (lookupCommaSegments.length < 2 || lookupCommaSegments.length > 3) {
     return false;
   }
 
-  return parts
+  return lookupCommaSegments
     .slice(1)
     .some(
       part =>
@@ -691,4 +764,55 @@ function looksLikeProperLocationShape(words: readonly string[]): boolean {
       );
     })
   );
+}
+
+function createKnownPhraseIndex(
+  phrases: ReadonlySet<string>
+): KnownPhraseIndex {
+  const singleWordPhrases = new Set<string>();
+  const multiWordPhrases: string[] = [];
+
+  for (const phrase of phrases) {
+    if (phrase.length === 0) {
+      continue;
+    }
+
+    if (phrase.includes(' ')) {
+      multiWordPhrases.push(phrase);
+    } else {
+      singleWordPhrases.add(phrase);
+    }
+  }
+
+  return {
+    multiWordPhrases,
+    singleWordPhrases,
+  };
+}
+
+function locationClassificationCacheKey({
+  context,
+  text,
+}: ClassifyLocationTextParams): string {
+  return `${context?.structuralContext ?? 'default'}\u0000${text}`;
+}
+
+function freezeLocationClassification(
+  classification: LocationClassification
+): LocationClassification {
+  return {
+    isLocation: classification.isLocation,
+    score: classification.score,
+    signals: Object.freeze([...classification.signals]),
+  };
+}
+
+function cloneLocationClassification(
+  classification: LocationClassification
+): LocationClassification {
+  return {
+    isLocation: classification.isLocation,
+    score: classification.score,
+    signals: [...classification.signals],
+  };
 }

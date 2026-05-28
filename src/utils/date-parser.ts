@@ -1,18 +1,31 @@
 import * as chrono from 'chrono-node';
 import type { ParsedComponents, ParsedResult } from 'chrono-node';
 import type { ParsedDateRange, ParsedProfileDate } from '../types/profile.js';
+import { BoundedStringCache } from './bounded-cache.js';
 
 type ChronoParser = {
   parse(text: string): ParsedResult[];
 };
 
 interface DatePortion {
-  text: string;
-  durationText?: string;
+  readonly text: string;
+  readonly durationText?: string;
 }
 
 const PARSED_DATE_RANGE_CACHE_LIMIT = 512;
-const parsedDateRangeCache = new Map<string, ParsedDateRange | undefined>();
+const DATE_TEXT_CACHE_LIMIT = 1024;
+const parsedDateRangeCache = new BoundedStringCache<
+  ParsedDateRange | undefined
+>(PARSED_DATE_RANGE_CACHE_LIMIT);
+const cleanDateTextCache = new BoundedStringCache<string>(
+  DATE_TEXT_CACHE_LIMIT
+);
+const datePortionCache = new BoundedStringCache<DatePortion>(
+  DATE_TEXT_CACHE_LIMIT
+);
+const localizedDateTextCache = new BoundedStringCache<string>(
+  DATE_TEXT_CACHE_LIMIT
+);
 
 const CHRONO_PARSERS: ChronoParser[] = [
   chrono.en.casual,
@@ -165,12 +178,14 @@ export function parseProfileDateRange(
     return undefined;
   }
 
-  if (parsedDateRangeCache.has(originalText)) {
-    return cloneParsedDateRange(parsedDateRangeCache.get(originalText));
+  const cachedDateRange = parsedDateRangeCache.get(originalText);
+
+  if (cachedDateRange.hit) {
+    return cloneParsedDateRange(cachedDateRange.value);
   }
 
   const parsedDateRange = parseCleanProfileDateRange(originalText);
-  cacheParsedDateRange(originalText, parsedDateRange);
+  parsedDateRangeCache.set(originalText, parsedDateRange);
 
   return cloneParsedDateRange(parsedDateRange);
 }
@@ -229,17 +244,6 @@ function parseCleanProfileDateRange(
     originalText,
     start,
   });
-}
-
-function cacheParsedDateRange(
-  text: string,
-  parsedDateRange: ParsedDateRange | undefined
-): void {
-  if (parsedDateRangeCache.size >= PARSED_DATE_RANGE_CACHE_LIMIT) {
-    parsedDateRangeCache.clear();
-  }
-
-  parsedDateRangeCache.set(text, parsedDateRange);
 }
 
 function cloneParsedDateRange(
@@ -499,30 +503,32 @@ function endTextFromChronoResult(result: ParsedResult): string {
 }
 
 function extractDatePortion(text: string): DatePortion {
-  // LinkedIn often appends durations after a middle dot or pipe; keep the left
-  // side as the date range while preserving duration text for the parsed result.
-  const dotParts = text.split(/\s*[·|]\s*/);
-  const durationText = dotParts
-    .slice(1)
-    .map(part => cleanDateText(part.replace(/[()]/g, '')))
-    .find(part => containsDurationWord(part));
-  const parentheticalDurationMatch = Array.from(
-    dotParts[0].matchAll(/\(([^)]*)\)/gu)
-  ).find(match => containsDurationWord(match[1]));
-  const parentheticalDuration = parentheticalDurationMatch
-    ? cleanDateText(parentheticalDurationMatch[1])
-    : undefined;
-  // Parenthetical durations belong in durationText, not in the chrono input.
-  const dateText = trimLeadingNonDateText(
-    parentheticalDurationMatch
-      ? dotParts[0].replace(parentheticalDurationMatch[0], '')
-      : dotParts[0]
-  );
+  return datePortionCache.getOrSet(text, () => {
+    // LinkedIn often appends durations after a middle dot or pipe; keep the left
+    // side as the date range while preserving duration text for the parsed result.
+    const dotParts = text.split(/\s*[·|]\s*/);
+    const durationText = dotParts
+      .slice(1)
+      .map(part => cleanDateText(part.replace(/[()]/g, '')))
+      .find(part => containsDurationWord(part));
+    const parentheticalDurationMatch = Array.from(
+      dotParts[0].matchAll(/\(([^)]*)\)/gu)
+    ).find(match => containsDurationWord(match[1]));
+    const parentheticalDuration = parentheticalDurationMatch
+      ? cleanDateText(parentheticalDurationMatch[1])
+      : undefined;
+    // Parenthetical durations belong in durationText, not in the chrono input.
+    const dateText = trimLeadingNonDateText(
+      parentheticalDurationMatch
+        ? dotParts[0].replace(parentheticalDurationMatch[0], '')
+        : dotParts[0]
+    );
 
-  return {
-    durationText: durationText ?? parentheticalDuration,
-    text: cleanDateText(dateText),
-  };
+    return {
+      durationText: durationText ?? parentheticalDuration,
+      text: cleanDateText(dateText),
+    };
+  });
 }
 
 function trimLeadingNonDateText(text: string): string {
@@ -564,33 +570,37 @@ function splitDateRange(text: string): string[] {
 }
 
 function normalizeLocalizedDateText(text: string): string {
-  let normalizedText = cleanDateText(text).toLowerCase();
+  return localizedDateTextCache.getOrSet(text, () => {
+    let normalizedText = cleanDateText(text).toLowerCase();
 
-  // Replace localized month names with English equivalents before chrono runs.
-  for (const { englishMonth, pattern } of MONTH_REPLACEMENT_PATTERNS) {
-    normalizedText = normalizedText.replace(pattern, `$1${englishMonth}`);
-  }
+    // Replace localized month names with English equivalents before chrono runs.
+    for (const { englishMonth, pattern } of MONTH_REPLACEMENT_PATTERNS) {
+      normalizedText = normalizedText.replace(pattern, `$1${englishMonth}`);
+    }
 
-  return (
-    normalizedText
-      // Collapse forms such as "março de 2024" or "March of 2024".
-      .replace(
-        /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:de|of|del|du)\s+((?:19|20)\d{2})\b/giu,
-        '$1 $2'
-      )
-      // Normalize whitespace introduced by replacements and PDF extraction.
-      .replace(/\s+/g, ' ')
-      .trim()
-  );
+    return (
+      normalizedText
+        // Collapse forms such as "março de 2024" or "March of 2024".
+        .replace(
+          /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:de|of|del|du)\s+((?:19|20)\d{2})\b/giu,
+          '$1 $2'
+        )
+        // Normalize whitespace introduced by replacements and PDF extraction.
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
+  });
 }
 
 function cleanDateText(text: string): string {
-  return text
-    .replace(/[\uE000-\uF8FF]/g, ' ')
-    .replace(/\u00A0/g, ' ')
-    .replace(/[–—−]/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return cleanDateTextCache.getOrSet(text, () =>
+    text
+      .replace(/[\uE000-\uF8FF]/g, ' ')
+      .replace(/\u00A0/g, ' ')
+      .replace(/[–—−]/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 function isCurrentText(text: string): boolean {

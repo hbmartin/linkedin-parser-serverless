@@ -22,6 +22,20 @@ describe('profile text heuristics', () => {
     expect(looksLikeOrganizationNameText('International Bank')).toBe(true);
   });
 
+  test('matches position keywords across hyphen and punctuation boundaries', () => {
+    expect(looksLikePositionTitleText('Co-Founder')).toBe(true);
+    expect(looksLikePositionTitleText('Co Founder')).toBe(true);
+    expect(looksLikePositionTitleText('Software-Engineer')).toBe(true);
+    expect(looksLikePositionTitleText('Engineer, Platform')).toBe(true);
+    expect(looksLikePositionTitleText('Staff (ENGINEER)')).toBe(true);
+  });
+
+  test('rejects position keywords embedded inside larger words', () => {
+    expect(looksLikePositionTitleText('Engineership')).toBe(false);
+    expect(looksLikePositionTitleText('Preengineer')).toBe(false);
+    expect(looksLikePositionTitleText('Software Engineering')).toBe(false);
+  });
+
   test('keeps dotted position titles from looking like organizations', () => {
     expect(looksLikePositionTitleText('Manager.')).toBe(true);
     expect(looksLikeOrganizationNameText('Manager.')).toBe(false);
