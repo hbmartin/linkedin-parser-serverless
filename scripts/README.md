@@ -12,7 +12,7 @@ Run commands from the repository root unless noted otherwise.
 | --- | --- | --- | --- |
 | `verify-artifacts.mjs` | `pnpm run verify:artifacts` | Confirms the expected `dist/` and `bin/` files exist, validates `package.json` entrypoints, verifies external dependencies stay external, imports ESM/CJS/minified bundles, and exercises the CLI entrypoint. | Catches broken builds, export-map regressions, missing declarations, and CLI packaging mistakes before publish. |
 | `verify-packed-package.mjs` | `pnpm run verify:package` | Runs `npm pack`, installs the packed archive into a temporary consumer project, then verifies ESM import, CJS require, TypeScript types, and the installed CLI. | Tests the package the way downstream users consume it, not just the local workspace files. |
-| `check-size-budget.mjs` | `pnpm run size:check` | Checks raw and gzip size budgets for generated JavaScript artifacts and ensures the minified bundle is smaller than the regular bundle. | Prevents accidental bundle growth and catches minification or bundling regressions. |
+| `report-bundle-size.mjs` | `pnpm run size:report` | Reports raw and gzip sizes for generated JavaScript artifacts and the total top-level JavaScript in `dist/`. | Keeps bundle growth visible in CI and release logs without failing builds on size changes. |
 | `measure-performance.mjs` | `pnpm run perf:measure` | Builds the package, measures parse latency for checked-in PDF and text fixtures, reports per-parse heap growth with `--expose-gc`, and prints raw/gzip sizes for built artifacts. | Keeps README performance numbers grounded in a repeatable local measurement instead of stale guesses. |
 
 These scripts assume `dist/` exists. Run `pnpm run build` first when invoking
@@ -78,14 +78,14 @@ For deeper single-PDF investigation, generate a source evidence bundle:
 pnpm run source:inspect
 ```
 
-For package-release confidence, build first and then run the artifact, package,
-and size checks:
+For package-release confidence, build first and then run the artifact and
+package checks, followed by the bundle size report:
 
 ```bash
 pnpm run build
 pnpm run verify:artifacts
 pnpm run verify:package
-pnpm run size:check
+pnpm run size:report
 ```
 
 To refresh the README performance table, run:

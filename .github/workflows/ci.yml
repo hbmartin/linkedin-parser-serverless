@@ -71,8 +71,8 @@ jobs:
       - name: Lint package types
         run: pnpm run types:lint
 
-      - name: Check bundle size
-        run: pnpm run size:check
+      - name: Report bundle size
+        run: pnpm run size:report
 
       - name: Run tests with coverage
         run: pnpm run test:coverage

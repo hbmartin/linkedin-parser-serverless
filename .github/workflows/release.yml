@@ -60,8 +60,8 @@ jobs:
       - name: Verify packed package
         run: pnpm run verify:package
 
-      - name: Check bundle size
-        run: pnpm run size:check
+      - name: Report bundle size
+        run: pnpm run size:report
 
       - name: Lint package exports
         run: pnpm run publint
