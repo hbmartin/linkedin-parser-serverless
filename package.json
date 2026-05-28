@@ -1,6 +1,6 @@
 {
 	"name": "linkedin-parser-serverless",
-	"version": "2.2.0",
+	"version": "2.3.0",
 	"description": "Parse LinkedIn PDF exports into structured data with unpdf. Serverless-ready TypeScript library for Node, Vercel Edge, and other JS runtimes.",
 	"main": "dist/index.cjs",
 	"module": "dist/index.js",

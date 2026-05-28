@@ -732,7 +732,8 @@ export class ExperienceStructuralParser {
       selectedCandidates.push(candidate);
     }
 
-    return selectedCandidates.toSorted(
+    // oxlint-disable-next-line unicorn/no-array-sort -- The selected candidates array is local and safe to sort in place.
+    return selectedCandidates.sort(
       (left, right) =>
         left.organizationLine.index - right.organizationLine.index
     );
