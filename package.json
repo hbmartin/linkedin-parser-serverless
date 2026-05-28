@@ -96,7 +96,6 @@
 		"@types/node": "^22",
 		"@typescript-eslint/eslint-plugin": "^8.60.0",
 		"@typescript-eslint/parser": "^8.60.0",
-		"clinic": "^13.0.0",
 		"eslint": "^9.39.1",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-prettier": "^5.5.4",
