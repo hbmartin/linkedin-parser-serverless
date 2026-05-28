@@ -11,7 +11,6 @@ import type {
 } from '../types/profile.js';
 import {
   extractProfileDateRangeText,
-  looksLikeDateRangeText,
   parseProfileDateRange,
 } from '../utils/date-parser.js';
 import { classifyLocationText } from '../utils/location-classifier.js';
@@ -139,6 +138,14 @@ export class ExperienceStructuralParser {
     /\b(?:ag|co|corp|gmbh|inc|llc|llp|lp|ltd|n\.a|plc|pte|s\.a)\.?$/iu;
   private static readonly ORGANIZATION_TERMINAL_SUFFIX_PATTERN =
     /\b(?:agency|ag|co|company|corp|corporation|gmbh|inc|limited|llc|llp|lp|ltd|n\.a|plc|pte|s\.a)\.?$/iu;
+  private static readonly BROKEN_YORK_LOCATION_PATTERN = /\bY\s+ork\b/g;
+  private static readonly AREA_WITH_US_SUFFIX_CANDIDATE_PATTERN =
+    /\b(?:Area|Metro(?:politan)?\s+Area)\b.*(?:U\.?\s*S\.?(?:\s*A\.?)?|USA\.?)[,\s]*$/iu;
+  private static readonly AREA_WITH_US_SUFFIX_PATTERN =
+    /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))[,\s]*(?:U\.?\s*S\.?(?:\s*A\.?)?|USA\.?)[,\s]*$/iu;
+  private static readonly SPLIT_REGION_CODE_PATTERN = /,\s*([A-Z])\s+([A-Z])$/g;
+  private static readonly SPACE_BEFORE_COMMA_PATTERN = /\s+,/g;
+  private static readonly COMMA_SPACING_PATTERN = /,\s*/g;
   // Header checks preserve brand names ending in "!", while boundary checks stay stricter.
   private static readonly ORGANIZATION_HEADER_TERMINAL_PUNCTUATION_PATTERN =
     /[.?]$/u;
@@ -2062,7 +2069,7 @@ export class ExperienceStructuralParser {
     const normalizedLine = this.normalizeDurationLineText(line);
     const dateRangeText = extractProfileDateRangeText(normalizedLine);
 
-    if (!dateRangeText || !looksLikeDateRangeText(normalizedLine)) {
+    if (!dateRangeText) {
       return false;
     }
 
@@ -2330,19 +2337,24 @@ export class ExperienceStructuralParser {
   }
 
   private static normalizeLocationText(text: string): string {
-    return (
-      text
-        .replace(/\bY\s+ork\b/g, 'York')
-        // Strip trailing US/USA variants from Greater/Metro Area locations while preserving the captured place name.
-        .replace(
-          /\b((?:Greater\s+)?[\p{L}\p{M}.'-]+(?:\s+[\p{L}\p{M}.'-]+){0,5}\s+(?:Area|Metro(?:politan)?\s+Area))[,\s]*(?:U\.?\s*S\.?(?:\s*A\.?)?|USA\.?)[,\s]*$/iu,
-          '$1'
-        )
-        .replace(/,\s*([A-Z])\s+([A-Z])$/g, ', $1$2')
-        .replace(/\s+,/g, ',')
-        .replace(/,\s*/g, ', ')
-        .trim()
+    let normalizedText = text.replace(
+      this.BROKEN_YORK_LOCATION_PATTERN,
+      'York'
     );
+
+    if (this.AREA_WITH_US_SUFFIX_CANDIDATE_PATTERN.test(normalizedText)) {
+      // Strip trailing US/USA variants from Greater/Metro Area locations while preserving the captured place name.
+      normalizedText = normalizedText.replace(
+        this.AREA_WITH_US_SUFFIX_PATTERN,
+        '$1'
+      );
+    }
+
+    return normalizedText
+      .replace(this.SPLIT_REGION_CODE_PATTERN, ', $1$2')
+      .replace(this.SPACE_BEFORE_COMMA_PATTERN, ',')
+      .replace(this.COMMA_SPACING_PATTERN, ', ')
+      .trim();
   }
 
   private static normalizeCompletedLocationText(text: string): string {

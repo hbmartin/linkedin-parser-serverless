@@ -39,21 +39,32 @@ export class StructuralParser {
     const pdf = await getDocumentProxy(data);
     const { items } = await extractTextItems(pdf);
 
-    const allTextItems: TextItem[] = items.flatMap((pageItems, pageIndex) =>
-      pageItems
-        .map(item => ({
-          text: item.str.trim(),
+    const allTextItems: TextItem[] = [];
+
+    for (let pageIndex = 0; pageIndex < items.length; pageIndex += 1) {
+      const pageItems = items[pageIndex];
+      const pageYOffset = pageIndex * 10000;
+
+      for (const item of pageItems) {
+        const text = item.str.trim();
+
+        if (text.length === 0) {
+          continue;
+        }
+
+        allTextItems.push({
+          text,
           x: item.x,
           // PDF pages reuse the same coordinate space; offset pages before flattening.
-          y: item.y - pageIndex * 10000,
+          y: item.y - pageYOffset,
           pageIndex,
           fontSize: item.fontSize,
           fontFamily: item.fontFamily || 'unknown',
           width: item.width,
           height: item.height,
-        }))
-        .filter(item => item.text.length > 0)
-    );
+        });
+      }
+    }
 
     // Detect layout
     const layout = this.detectLayout(allTextItems);
@@ -104,21 +115,28 @@ export class StructuralParser {
   }
 
   private static detectPageLayouts(textItems: TextItem[]): LayoutInfo[] {
-    const itemsByPage = new Map<number, TextItem[]>();
+    const itemsByPage: TextItem[][] = [];
 
     for (const item of textItems) {
       const pageIndex = item.pageIndex ?? inferPageIndex(item);
-      const pageItems = itemsByPage.get(pageIndex) ?? [];
+      const pageItems = itemsByPage[pageIndex];
 
-      pageItems.push(item);
-      itemsByPage.set(pageIndex, pageItems);
+      if (pageItems) {
+        pageItems.push(item);
+      } else {
+        itemsByPage[pageIndex] = [item];
+      }
     }
 
     const pageLayouts: LayoutInfo[] = [];
 
-    for (const [pageIndex, pageItems] of Array.from(itemsByPage.entries()).sort(
-      ([firstPage], [secondPage]) => firstPage - secondPage
-    )) {
+    for (let pageIndex = 0; pageIndex < itemsByPage.length; pageIndex += 1) {
+      const pageItems = itemsByPage[pageIndex];
+
+      if (!pageItems) {
+        continue;
+      }
+
       pageLayouts[pageIndex] = this.detectPageLayout(pageItems);
     }
 
@@ -232,18 +250,6 @@ export class StructuralParser {
     }
 
     return bestCluster.minX;
-  }
-
-  private static mergeBounds(
-    bounds: Array<LayoutInfo['sidebarBounds']>
-  ): LayoutInfo['sidebarBounds'] {
-    let mergedBounds: LayoutBounds | undefined;
-
-    for (const bound of bounds) {
-      mergedBounds = this.mergeBound(mergedBounds, bound);
-    }
-
-    return mergedBounds;
   }
 
   private static mergeLayoutBounds(

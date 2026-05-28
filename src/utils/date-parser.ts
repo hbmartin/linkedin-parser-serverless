@@ -11,6 +11,9 @@ interface DatePortion {
   durationText?: string;
 }
 
+const PARSED_DATE_RANGE_CACHE_LIMIT = 512;
+const parsedDateRangeCache = new Map<string, ParsedDateRange | undefined>();
+
 const CHRONO_PARSERS: ChronoParser[] = [
   chrono.en.casual,
   chrono.pt.casual,
@@ -162,6 +165,19 @@ export function parseProfileDateRange(
     return undefined;
   }
 
+  if (parsedDateRangeCache.has(originalText)) {
+    return cloneParsedDateRange(parsedDateRangeCache.get(originalText));
+  }
+
+  const parsedDateRange = parseCleanProfileDateRange(originalText);
+  cacheParsedDateRange(originalText, parsedDateRange);
+
+  return cloneParsedDateRange(parsedDateRange);
+}
+
+function parseCleanProfileDateRange(
+  originalText: string
+): ParsedDateRange | undefined {
   if (!hasProfileDateSignal(originalText)) {
     return undefined;
   }
@@ -213,6 +229,53 @@ export function parseProfileDateRange(
     originalText,
     start,
   });
+}
+
+function cacheParsedDateRange(
+  text: string,
+  parsedDateRange: ParsedDateRange | undefined
+): void {
+  if (parsedDateRangeCache.size >= PARSED_DATE_RANGE_CACHE_LIMIT) {
+    parsedDateRangeCache.clear();
+  }
+
+  parsedDateRangeCache.set(text, parsedDateRange);
+}
+
+function cloneParsedDateRange(
+  parsedDateRange: ParsedDateRange | undefined
+): ParsedDateRange | undefined {
+  if (!parsedDateRange) {
+    return undefined;
+  }
+
+  const base = {
+    ...(parsedDateRange.durationText
+      ? { durationText: parsedDateRange.durationText }
+      : {}),
+    originalText: parsedDateRange.originalText,
+    start: { ...parsedDateRange.start },
+  };
+
+  if (parsedDateRange.kind === 'completed') {
+    return {
+      ...base,
+      end: { ...parsedDateRange.end },
+      kind: 'completed',
+    };
+  }
+
+  if (parsedDateRange.kind === 'current') {
+    return {
+      ...base,
+      kind: 'current',
+    };
+  }
+
+  return {
+    ...base,
+    kind: 'single',
+  };
 }
 
 export function extractProfileDateRangeText(text: string): string | undefined {

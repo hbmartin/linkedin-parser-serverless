@@ -212,4 +212,20 @@ describe('profile date parser', () => {
       })
     );
   });
+
+  test('returns independent objects for repeated date parses', () => {
+    const firstResult = parseProfileDateRange('Jan 2020 - Mar 2021');
+    const secondResult = parseProfileDateRange('Jan 2020 - Mar 2021');
+
+    expect(secondResult).toEqual(firstResult);
+    expect(secondResult).not.toBe(firstResult);
+
+    if (
+      firstResult?.kind === 'completed' &&
+      secondResult?.kind === 'completed'
+    ) {
+      expect(secondResult.start).not.toBe(firstResult.start);
+      expect(secondResult.end).not.toBe(firstResult.end);
+    }
+  });
 });

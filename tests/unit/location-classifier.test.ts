@@ -213,4 +213,19 @@ describe('location classifier', () => {
       expect(result.signals).not.toContain('comma-region');
     }
   });
+
+  test('returns independent objects for repeated classifications', () => {
+    const firstResult = classifyLocationText({
+      context: { structuralContext: 'after-duration' },
+      text: 'San Francisco, CA',
+    });
+    const secondResult = classifyLocationText({
+      context: { structuralContext: 'after-duration' },
+      text: 'San Francisco, CA',
+    });
+
+    expect(secondResult).toEqual(firstResult);
+    expect(secondResult).not.toBe(firstResult);
+    expect(secondResult.signals).not.toBe(firstResult.signals);
+  });
 });
