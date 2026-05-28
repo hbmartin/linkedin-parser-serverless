@@ -48,7 +48,7 @@ export function createStructuralLines({
     }
   }
 
-  return lines.sort(
+  return lines.toSorted(
     (first, second) => second.y - first.y || first.x - second.x
   );
 }
@@ -68,7 +68,7 @@ function groupItemsByY(
   textItems: TextItem[],
   maxYDistance: number
 ): TextItem[][] {
-  const sortedItems = [...textItems].sort((first, second) => {
+  const sortedItems = textItems.toSorted((first, second) => {
     const yComparison = second.y - first.y;
 
     return yComparison === 0 ? first.x - second.x : yComparison;
@@ -107,7 +107,7 @@ function createStructuralLine(
   group: TextItem[],
   column: StructuralColumn
 ): StructuralLine {
-  const sortedGroup = [...group].sort((first, second) => first.x - second.x);
+  const sortedGroup = group.toSorted((first, second) => first.x - second.x);
   const text = normalizeWhitespace(
     sortedGroup
       .map(item => item.text)

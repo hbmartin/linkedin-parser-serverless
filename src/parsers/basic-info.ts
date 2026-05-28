@@ -319,7 +319,7 @@ export class BasicInfoParser {
 
     const summaryParts: string[] = [];
 
-    for (const line of sectionLines.map(line => line.text)) {
+    for (const line of sectionLines.map(sectionLine => sectionLine.text)) {
       const trimmedLine = line.trim();
 
       // Skip short leading fragments as noise, but keep short continuation

@@ -56,7 +56,7 @@ const MAX_SECTION_HEADER_CANDIDATE_LENGTH =
       header => header.length
     )
   ) + SECTION_HEADER_CANDIDATE_LENGTH_PADDING;
-const NON_ASCII_TEXT_PATTERN = /[^\u0000-\u007F]/u;
+const ASCII_MAX_CODE_POINT = 0x7f;
 const COMBINING_MARK_PATTERN = /\p{M}/gu;
 const AMPERSAND_PATTERN = /&/g;
 const NON_HEADER_WORD_PATTERN = /[^a-zA-Z\s]/g;
@@ -96,7 +96,7 @@ export function createGroupedTextItemParserLines(
 
 function normalizeSectionHeader(text: string): string {
   const whitespaceNormalized = normalizeWhitespace(text);
-  const accentlessText = NON_ASCII_TEXT_PATTERN.test(whitespaceNormalized)
+  const accentlessText = hasNonAsciiText(whitespaceNormalized)
     ? whitespaceNormalized.normalize('NFD').replace(COMBINING_MARK_PATTERN, '')
     : whitespaceNormalized;
 
@@ -106,6 +106,18 @@ function normalizeSectionHeader(text: string): string {
     .replace(MULTIPLE_SPACES_PATTERN, ' ')
     .trim()
     .toLowerCase();
+}
+
+function hasNonAsciiText(text: string): boolean {
+  for (const character of text) {
+    const codePoint = character.codePointAt(0);
+
+    if (codePoint !== undefined && codePoint > ASCII_MAX_CODE_POINT) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function getParserLineSectionHeader(

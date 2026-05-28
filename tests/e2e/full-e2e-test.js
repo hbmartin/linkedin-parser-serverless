@@ -137,6 +137,4 @@ async function runFullE2ETest() {
   }
 }
 
-runFullE2ETest().then(success => {
-  process.exit(success ? 0 : 1);
-});
+runFullE2ETest().then(success => process.exit(success ? 0 : 1));

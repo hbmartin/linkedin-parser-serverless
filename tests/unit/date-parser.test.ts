@@ -221,12 +221,14 @@ describe('profile date parser', () => {
     expect(secondResult).not.toBe(firstResult);
 
     if (
-      firstResult?.kind === 'completed' &&
-      secondResult?.kind === 'completed'
+      firstResult?.kind !== 'completed' ||
+      secondResult?.kind !== 'completed'
     ) {
-      expect(secondResult.start).not.toBe(firstResult.start);
-      expect(secondResult.end).not.toBe(firstResult.end);
+      throw new Error('Expected completed date ranges');
     }
+
+    expect(secondResult.start).not.toBe(firstResult.start);
+    expect(secondResult.end).not.toBe(firstResult.end);
   });
 
   test('does not let caller mutations contaminate cached date parses', () => {
