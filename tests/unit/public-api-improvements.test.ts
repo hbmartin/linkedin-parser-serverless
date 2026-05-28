@@ -203,10 +203,12 @@ describe('public parser diagnostics and typed errors', () => {
 
     expect(result.success).toBe(false);
 
-    if (!result.success) {
-      expect(result.error).toBeInstanceOf(LinkedInProfileParseError);
-      expect(result.error.code).toBe('text_extraction_failed');
-      expect(result.error.message).toBe('Input text is empty or too short');
+    if (result.success) {
+      throw new Error('Expected safe parser failure');
     }
+
+    expect(result.error).toBeInstanceOf(LinkedInProfileParseError);
+    expect(result.error.code).toBe('text_extraction_failed');
+    expect(result.error.message).toBe('Input text is empty or too short');
   });
 });

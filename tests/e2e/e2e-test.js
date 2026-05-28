@@ -80,11 +80,13 @@ async function runE2ETest() {
     };
 
     let passedChecks = 0;
-    let totalChecks = Object.keys(checks).length;
+    const totalChecks = Object.keys(checks).length;
 
     Object.entries(checks).forEach(([check, passed]) => {
       console.log(`${passed ? '✅' : '❌'} ${check}: ${passed}`);
-      if (passed) passedChecks++;
+      if (passed) {
+        passedChecks++;
+      }
     });
 
     console.log(
@@ -110,7 +112,7 @@ async function runE2ETest() {
 runE2ETest()
   .then(success => {
     console.log(`\n🏁 E2E Test Result: ${success ? 'SUCCESS' : 'FAILED'}`);
-    process.exit(success ? 0 : 1);
+    return process.exit(success ? 0 : 1);
   })
   .catch(error => {
     console.error('❌ Unexpected error:', error);

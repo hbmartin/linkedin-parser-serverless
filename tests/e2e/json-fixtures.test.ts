@@ -31,7 +31,7 @@ describe('PDF/JSON fixture baselines', () => {
     const jsonFileNames = fs
       .readdirSync(fixturesPath)
       .filter(fileName => fileName.toLowerCase().endsWith('.json'))
-      .sort((left, right) => left.localeCompare(right));
+      .toSorted((left, right) => left.localeCompare(right));
 
     expect(jsonFileNames).toEqual(['Profile.json', 'test_resume.json']);
 
@@ -48,7 +48,7 @@ describe('PDF/JSON fixture baselines', () => {
     const pdfFileNames = fs
       .readdirSync(fixturesPath)
       .filter(fileName => fileName.toLowerCase().endsWith('.pdf'))
-      .sort((left, right) => left.localeCompare(right));
+      .toSorted((left, right) => left.localeCompare(right));
 
     expect(pdfFileNames).toEqual(['Profile.pdf', 'test_resume.pdf']);
 

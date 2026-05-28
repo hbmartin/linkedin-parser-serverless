@@ -1,5 +1,5 @@
 import { getDocumentProxy, extractTextItems } from 'unpdf';
-import { TextItem, LayoutInfo } from '../types/structural.js';
+import type { TextItem, LayoutInfo } from '../types/structural.js';
 import { getTextItemStructuralColumn } from '../utils/structural-layout.js';
 
 export interface GroupTextByProximityParams {
@@ -384,7 +384,7 @@ export class StructuralParser {
     maxYDistance = 5
   ): TextItem[][] {
     // Sort by Y position (top to bottom)
-    const sorted = [...textItems].sort((a, b) => b.y - a.y);
+    const sorted = textItems.toSorted((a, b) => b.y - a.y);
     const groups: TextItem[][] = [];
     let currentGroup: TextItem[] = [];
 
@@ -416,7 +416,7 @@ export class StructuralParser {
   static combineGroupedText(groups: TextItem[][]): string[] {
     return groups.map(group => {
       // Sort by X position within group (left to right)
-      const sortedGroup = group.sort((a, b) => a.x - b.x);
+      const sortedGroup = group.toSorted((a, b) => a.x - b.x);
       return sortedGroup
         .map(item => item.text)
         .join(' ')

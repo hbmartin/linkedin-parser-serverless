@@ -445,7 +445,6 @@ export class EducationParser {
 
     if (!existingDegree) {
       education.degree = degree;
-      return;
     }
   }
 

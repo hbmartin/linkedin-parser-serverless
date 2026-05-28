@@ -32,6 +32,15 @@ const fakeArtifactFor = (relativePath: string): BundleArtifact => ({
   size: relativePath.endsWith('.min.js') ? 1024 : 2048,
 });
 
+const oversizedArtifactFor: ReadArtifact = relativePath => ({
+  absolutePath: `/repo/${relativePath}`,
+  gzipBytes: 2 * 1024 * 1024,
+  relativePath,
+  size: 10 * 1024 * 1024,
+});
+
+const getOversizedFileSize: GetFileSize = () => 10 * 1024 * 1024;
+
 describe('bundle size report script', () => {
   test('reports artifact and top-level JavaScript sizes', () => {
     const readArtifact: ReadArtifact = fakeArtifactFor;
@@ -69,21 +78,12 @@ describe('bundle size report script', () => {
   });
 
   test('does not reject artifacts by size budget', () => {
-    const readArtifact: ReadArtifact = relativePath => ({
-      absolutePath: `/repo/${relativePath}`,
-      gzipBytes: 2 * 1024 * 1024,
-      relativePath,
-      size: 10 * 1024 * 1024,
-    });
-
-    const getFileSize: GetFileSize = () => 10 * 1024 * 1024;
-
     expect(() =>
       measureBundleSizes({
         bundleArtifacts: ['dist/index.js'],
         listDistFileNames: () => ['index.js'],
-        readArtifact,
-        getFileSize,
+        readArtifact: oversizedArtifactFor,
+        getFileSize: getOversizedFileSize,
       })
     ).not.toThrow();
   });

@@ -368,7 +368,7 @@ function listFilesByExtension(
     .filter(
       entry => entry.kind === 'file' && hasFileExtension(entry.name, extension)
     )
-    .sort((left, right) => left.name.localeCompare(right.name));
+    .toSorted((left, right) => left.name.localeCompare(right.name));
 }
 
 function createMatchedPairs(
@@ -935,17 +935,17 @@ function appendObjectKeyPathSegment(
 }
 
 function formatJsonValueChange(change: JsonValueChange): string {
-  const path = formatJsonPath(change.path);
+  const jsonPath = formatJsonPath(change.path);
 
   if (change.kind === 'added') {
-    return `+ ${path}: ${formatInlineJson(change.value)}`;
+    return `+ ${jsonPath}: ${formatInlineJson(change.value)}`;
   }
 
   if (change.kind === 'removed') {
-    return `- ${path}: ${formatInlineJson(change.value)}`;
+    return `- ${jsonPath}: ${formatInlineJson(change.value)}`;
   }
 
-  return `~ ${path}: ${formatInlineJson(change.expectedValue)} -> ${formatInlineJson(change.generatedValue)}`;
+  return `~ ${jsonPath}: ${formatInlineJson(change.expectedValue)} -> ${formatInlineJson(change.generatedValue)}`;
 }
 
 function formatJsonPath(pathSegments: JsonPathSegment[]): string {

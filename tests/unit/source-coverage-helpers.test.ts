@@ -933,7 +933,9 @@ describe('source coverage helpers', () => {
   });
 });
 
-function parsedJsonWithProfile(profile: Record<string, unknown>) {
+function parsedJsonWithProfile(
+  profile: Record<string, unknown>
+): Record<string, unknown> {
   return {
     profile: {
       name: '',

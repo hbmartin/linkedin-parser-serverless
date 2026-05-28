@@ -1,4 +1,4 @@
-import {
+import type {
   LayoutInfo,
   TextItem,
   WorkExperience,
@@ -349,7 +349,9 @@ export class ExperienceStructuralParser {
       const parserLine = expandedParserLines[index];
       const line = parserLine.text;
 
-      if (!line.trim() || line.length < 2) continue;
+      if (!line.trim() || line.length < 2) {
+        continue;
+      }
 
       const fontSize = parserLine.fontSize ?? 0;
       const y = parserLine.y ?? 0;
@@ -714,7 +716,7 @@ export class ExperienceStructuralParser {
     candidates: ExperienceHeaderCandidate[]
   ): ExperienceHeaderCandidate[] {
     const selectedCandidates: ExperienceHeaderCandidate[] = [];
-    const sortedCandidates = [...candidates].sort((left, right) =>
+    const sortedCandidates = candidates.toSorted((left, right) =>
       this.compareExperienceHeaderCandidates(left, right)
     );
 
@@ -730,7 +732,7 @@ export class ExperienceStructuralParser {
       selectedCandidates.push(candidate);
     }
 
-    return selectedCandidates.sort(
+    return selectedCandidates.toSorted(
       (left, right) =>
         left.organizationLine.index - right.organizationLine.index
     );
@@ -2454,21 +2456,30 @@ export class ExperienceStructuralParser {
 
     switch (type) {
       case 'organization':
-        if (fontSize > 12) confidence += 0.2;
-        if (line.length < 30) confidence += 0.2;
+        if (fontSize > 12) {
+          confidence += 0.2;
+        }
+        if (line.length < 30) {
+          confidence += 0.2;
+        }
         break;
       case 'position':
         if (
           line.toLowerCase().includes('manager') ||
           line.toLowerCase().includes('engineer')
-        )
+        ) {
           confidence += 0.3;
+        }
         break;
       case 'duration':
-        if (/\d{4}/.test(line)) confidence += 0.3;
+        if (/\d{4}/.test(line)) {
+          confidence += 0.3;
+        }
         break;
       case 'location':
-        if (line.includes(',')) confidence += 0.2;
+        if (line.includes(',')) {
+          confidence += 0.2;
+        }
         break;
     }
 
@@ -2560,7 +2571,7 @@ export class ExperienceStructuralParser {
           descriptionLines = [];
           break;
 
-        case 'duration':
+        case 'duration': {
           const cleanDuration = this.extractCleanDuration(section.text);
           const dates = parseProfileDateRange(section.text);
           if (currentPosition) {
@@ -2581,6 +2592,7 @@ export class ExperienceStructuralParser {
             currentWorkExperience.totalDuration = cleanDuration;
           }
           break;
+        }
 
         case 'location':
           if (currentPosition) {
@@ -2834,7 +2846,7 @@ export class ExperienceStructuralParser {
     let cleanText = normalizedText;
 
     // Remove bullet points and common leading text
-    cleanText = cleanText.replace(/^[•\-\*]\s*/, '');
+    cleanText = cleanText.replace(/^[•*-]\s*/, '');
     cleanText = cleanText.replace(
       /^(Provided|Led|Managed|Built|Developed|Implemented|Created|Designed|Worked|Coordinated|Contributed)\s+.*?(?=\b[A-Z][a-z]+\s+\d{4}|\d{4})/i,
       ''

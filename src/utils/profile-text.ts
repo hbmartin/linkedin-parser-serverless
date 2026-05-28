@@ -465,8 +465,8 @@ function looksLikePersonNameWord(word: string): boolean {
 }
 
 function createWholeKeywordPattern(keywords: readonly string[]): RegExp {
-  const keywordAlternatives = [...keywords]
-    .sort((left, right) => right.length - left.length)
+  const keywordAlternatives = keywords
+    .toSorted((left, right) => right.length - left.length)
     .map(keyword =>
       keyword
         .split(/\s+/)
