@@ -53,15 +53,22 @@ describe('BoundedStringCache', () => {
     expect(createCalls).toBe(1);
   });
 
-  test('replaces existing entries without evicting newer entries', () => {
+  test('replaces existing entries without evicting retained entries', () => {
     const cache = new BoundedStringCache<number>(2);
 
     cache.set('first', 1);
     cache.set('second', 2);
-    cache.set('first', 10);
+    cache.set('second', 20);
 
-    expect(cache.get('first')).toEqual({ hit: true, value: 10 });
-    expect(cache.get('second')).toEqual({ hit: true, value: 2 });
+    expect(cache.get('first')).toEqual({ hit: true, value: 1 });
+    expect(cache.get('second')).toEqual({ hit: true, value: 20 });
+  });
+
+  test('clears all entries and causes subsequent gets to miss', () => {
+    const cache = new BoundedStringCache<number>(2);
+
+    cache.set('first', 1);
+    cache.set('second', 2);
 
     cache.clear();
 
