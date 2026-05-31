@@ -1631,6 +1631,8 @@ export class ExperienceStructuralParser {
 
   private static looksLikeVisualOrganizationHeaderText(line: string): boolean {
     const normalizedLine = line.trim();
+    const hasInlineOrganizationDelimiterCue =
+      this.hasInlineOrganizationDelimiterCueText(normalizedLine);
 
     if (
       normalizedLine.length < 2 ||
@@ -1640,7 +1642,8 @@ export class ExperienceStructuralParser {
       /https?:\/\//i.test(normalizedLine) ||
       /^page\s+\d+\s+of\s+\d+$/i.test(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
-      this.looksLikeLocation(normalizedLine) ||
+      (!hasInlineOrganizationDelimiterCue &&
+        this.looksLikeLocation(normalizedLine)) ||
       this.looksLikePosition(normalizedLine) ||
       this.looksLikeMediaDescriptionLine(normalizedLine) ||
       isSectionHeaderText(normalizedLine)
@@ -1664,6 +1667,10 @@ export class ExperienceStructuralParser {
           /^[\p{Lu}0-9][\p{L}\p{M}0-9&.'+!–-]*$/u.test(word)
       )
     );
+  }
+
+  private static hasInlineOrganizationDelimiterCueText(text: string): boolean {
+    return /\s(?:&|\||[-–])\s/u.test(text);
   }
 
   private static looksLikeWrappedOrganizationHeaderText(line: string): boolean {
@@ -2949,7 +2956,7 @@ export class ExperienceStructuralParser {
       this.looksLikePosition(normalizedLine) ||
       this.looksLikeLoosePositionTitle(normalizedLine, index, allLines)
     ) {
-      return true;
+      return this.hasOwnDurationBeforeBoundary(index, allLines);
     }
 
     return (
