@@ -1211,6 +1211,99 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('keeps short role-shaped description lines when no duration follows', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 820, fontSize: 16 }),
+      textItem({ text: 'NYU Entrepreneurial Institute', y: 790 }),
+      textItem({ text: 'Mentor', y: 770, fontSize: 11.5 }),
+      textItem({
+        text: 'December 2015 - December 2019 (4 years 1 month)',
+        y: 750,
+      }),
+      textItem({ text: 'Greater New York City Area', y: 730 }),
+      textItem({ text: 'Summer Launchpad Mentor', y: 710 }),
+      textItem({ text: 'Ignite Coach', y: 690 }),
+      textItem({ text: 'InnoVention Mentor', y: 670 }),
+      textItem({ text: 'Guest Lectures', y: 650 }),
+      textItem({ text: 'Tech Venture Competition Judge', y: 630 }),
+      textItem({ text: 'VENTURE CATALYST', y: 590 }),
+      textItem({ text: 'Co-Founder', y: 570, fontSize: 11.5 }),
+      textItem({ text: '2016 - 2019 (3 years)', y: 550 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'NYU Entrepreneurial Institute',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Summer Launchpad Mentor Ignite Coach InnoVention Mentor Guest Lectures Tech Venture Competition Judge',
+            duration: 'December 2015 - December 2019',
+            location: 'Greater New York City Area',
+            title: 'Mentor',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'VENTURE CATALYST',
+        positions: [
+          expect.objectContaining({
+            duration: '2016 - 2019',
+            title: 'Co-Founder',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps dash-delimited organization names that include location words', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 820, fontSize: 16 }),
+      textItem({ text: 'San Jose Giants', y: 790 }),
+      textItem({ text: 'Business Development', y: 770, fontSize: 11.5 }),
+      textItem({ text: '2004 - 2005 (1 year)', y: 750 }),
+      textItem({ text: 'Ogilvy & Mather - London', y: 710 }),
+      textItem({ text: 'Account Development', y: 690, fontSize: 11.5 }),
+      textItem({ text: '2003 - 2003 (less than a year)', y: 670 }),
+      textItem({ text: 'North American Sports Network (NASN)', y: 630 }),
+      textItem({ text: 'Business Development', y: 610, fontSize: 11.5 }),
+      textItem({ text: '2003 - 2003 (less than a year)', y: 590 }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value).toEqual([
+      expect.objectContaining({
+        organization: 'San Jose Giants',
+        positions: [
+          expect.objectContaining({
+            description: '',
+            duration: '2004 - 2005',
+            title: 'Business Development',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Ogilvy & Mather - London',
+        positions: [
+          expect.objectContaining({
+            duration: '2003 - 2003',
+            title: 'Account Development',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'North American Sports Network (NASN)',
+        positions: [
+          expect.objectContaining({
+            duration: '2003 - 2003',
+            title: 'Business Development',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('keeps a confirmed organization before a long wrapped business title', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
