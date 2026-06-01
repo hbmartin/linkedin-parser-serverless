@@ -58,11 +58,21 @@ const DURATION_WORDS = [
   'months',
   'jahr',
   'jahre',
+  'an',
+  'ans',
   'ano',
   'anos',
+  'anno',
+  'anni',
   'mes',
   'mês',
   'meses',
+  'mese',
+  'mesi',
+  'mois',
+  'måned',
+  'måneder',
+  'år',
 ];
 
 const MONTH_REPLACEMENTS: ReadonlyArray<readonly [string, string]> = [

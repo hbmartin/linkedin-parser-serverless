@@ -32,6 +32,32 @@ describe('profile date parser', () => {
     );
   });
 
+  test('extracts localized parenthetical duration text', () => {
+    expect(
+      parseProfileDateRange('aprile 2015 - agosto 2018 (3 anni 5 mesi)')
+    ).toEqual(
+      expect.objectContaining({
+        durationText: '3 anni 5 mesi',
+        end: expect.objectContaining({ iso: '2018-08' }),
+        start: expect.objectContaining({ iso: '2015-04' }),
+      })
+    );
+    expect(parseProfileDateRange('mars 2022 - Present (4 ans 4 mois)')).toEqual(
+      expect.objectContaining({
+        durationText: '4 ans 4 mois',
+        kind: 'current',
+        start: expect.objectContaining({ iso: '2022-03' }),
+      })
+    );
+    expect(parseProfileDateRange('august 2025 - Present (11 måneder)')).toEqual(
+      expect.objectContaining({
+        durationText: '11 måneder',
+        kind: 'current',
+        start: expect.objectContaining({ iso: '2025-08' }),
+      })
+    );
+  });
+
   test('parses current roles without inventing an end date', () => {
     expect(parseProfileDateRange('Jan 2020 - Present')).toEqual({
       kind: 'current',

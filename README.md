@@ -10,6 +10,7 @@
 A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsing LinkedIn PDF resumes and extracting structured profile data.
 
 - [Features](#features)
+- [🌐 Language Support](#-language-support)
 - [📦 Installation](#-installation)
 - [🖥️ CLI Usage](#️-cli-usage)
 - [🚀 Quick Start](#-quick-start)
@@ -31,6 +32,28 @@ A clean, lightweight, serverless (e.g. Vercel Edge) TypeScript library for parsi
 - **Fast**: Optimized parsing algorithms
 - **Well Tested**: Comprehensive Jest test suite
 - **ESM Ready**: Modern ES module support
+
+## 🌐 Language Support
+
+The parser preserves Unicode text from LinkedIn PDF exports, so names, headlines,
+company names, titles, descriptions, skills, and education values can be returned
+in their original language.
+
+Localized parsing support is heuristic and field-specific:
+
+- Section headers are recognized for English plus common LinkedIn labels in
+  Portuguese, Spanish, French, Italian, Norwegian, and selected German labels.
+- Date ranges recognize English, Portuguese, Spanish, French, German, Italian,
+  Dutch, and Norwegian month or duration words where they appear in LinkedIn
+  exports.
+- The `languages` profile section accepts Unicode language names and common
+  LinkedIn proficiency labels such as `Native or Bilingual`, `Professional
+  Working`, `Limited Working`, and `Elementary`.
+
+Unsupported localized labels usually produce partial results rather than fatal
+errors. Check `warnings` and `diagnostics.sectionsFound` when working with a new
+LinkedIn export locale, and use `includeRawText: true` if you need to inspect
+the original extracted text.
 
 ## 📦 Installation
 
