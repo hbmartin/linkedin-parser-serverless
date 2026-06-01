@@ -155,10 +155,17 @@ export class ExperienceStructuralParser {
     /\b(?:and|at|by|for|from|in|of|on|the|their|to|with)$/i;
   private static readonly WRAPPED_TITLE_KEYWORD_PATTERN =
     /\b(?:advisor|analyst|associate|board|ceo|chief|commander|co[-\s]?founder|cofounder|coo|director|engineer|executive|fellow|founder|manager|member|partner|president|producer|scientist|vp)\b/iu;
-  private static readonly DURATION_WORD_PATTERN =
-    /\b(?:yr|yrs|year|years|mo|mos|month|months|jahr|jahre|ano|anos|anno|anni|an|ans|år|mes|mês|mese|meses|mesi|mois|måned|måneder)\b/iu;
-  private static readonly TOTAL_DURATION_LINE_PATTERN =
-    /^(?:less than a year|\d+\s+(?:yr|yrs|year|years|mo|mos|month|months|ano|anos|anno|anni|an|ans|år|mes|mês|mese|meses|mesi|mois|måned|måneder|jahr|jahre)(?:\s+\d+\s+(?:yr|yrs|year|years|mo|mos|month|months|ano|anos|anno|anni|an|ans|år|mes|mês|mese|meses|mesi|mois|måned|måneder|jahr|jahre))?)$/iu;
+  private static readonly DURATION_UNIT_PATTERN =
+    'yr|yrs|year|years|mo|mos|month|months|jahr|jahre|ano|anos|anno|anni|an|ans|år|mes|mês|mese|meses|mesi|mois|måned|måneder';
+  private static readonly TOTAL_DURATION_LINE_PATTERN: RegExp = new RegExp(
+    `^(?:less than a year|\\d+\\s+(?:${ExperienceStructuralParser.DURATION_UNIT_PATTERN})(?:\\s+\\d+\\s+(?:${ExperienceStructuralParser.DURATION_UNIT_PATTERN}))?)$`,
+    'iu'
+  );
+  private static readonly PARENTHESIZED_DURATION_SUFFIX_PATTERN: RegExp =
+    new RegExp(
+      `\\s*\\(\\s*(?:less\\s+than\\s+a\\s+year|\\d+\\s+(?:${ExperienceStructuralParser.DURATION_UNIT_PATTERN})(?:\\s+\\d+\\s+(?:${ExperienceStructuralParser.DURATION_UNIT_PATTERN}))*)\\s*\\)\\s*$`,
+      'iu'
+    );
   private static readonly MEDIA_DESCRIPTION_LINE_PATTERN =
     /^(?:(?:directed|executive\s+produced|produced|written)\s+by\s+.+|(?:documentary|feature|short|television|tv|web)\s+(?:film|series|show))$/iu;
   private static readonly ORGANIZATION_CONNECTOR_WORD_PATTERN =
@@ -2412,13 +2419,7 @@ export class ExperienceStructuralParser {
   private static stripDurationSuffixText(text: string): string {
     return this.normalizeDurationLineText(text)
       .replace(/\s*[·|]\s*.*$/u, '')
-      .replace(
-        new RegExp(
-          `\\s*\\([^)]*(?:less\\s+than\\s+a\\s+year|${this.DURATION_WORD_PATTERN.source})[^)]*\\)\\s*$`,
-          'iu'
-        ),
-        ''
-      )
+      .replace(this.PARENTHESIZED_DURATION_SUFFIX_PATTERN, '')
       .trim();
   }
 

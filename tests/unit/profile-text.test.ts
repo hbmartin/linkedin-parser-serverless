@@ -15,6 +15,8 @@ describe('profile text heuristics', () => {
     expect(looksLikePositionTitleText('Business & Technology Executive')).toBe(
       true
     );
+    expect(looksLikePositionTitleText('Company Commander')).toBe(true);
+    expect(looksLikePositionTitleText('COO')).toBe(true);
     expect(looksLikePositionTitleText('Sr. Programmer / Project Lead')).toBe(
       true
     );
@@ -33,6 +35,7 @@ describe('profile text heuristics', () => {
   test('rejects position keywords embedded inside larger words', () => {
     expect(looksLikePositionTitleText('Engineership')).toBe(false);
     expect(looksLikePositionTitleText('Preengineer')).toBe(false);
+    expect(looksLikePositionTitleText('Cooing')).toBe(false);
     expect(looksLikePositionTitleText('Software Engineering')).toBe(false);
   });
 
@@ -73,6 +76,9 @@ describe('profile text heuristics', () => {
     expect(looksLikeOrganizationNameText('Fulldome Film Society')).toBe(true);
     expect(looksLikeOrganizationNameText('Stage Venture Partners')).toBe(true);
     expect(looksLikeOrganizationNameText('São Paulo Tech')).toBe(true);
+    expect(looksLikeOrganizationNameText('National Defense Fund')).toBe(true);
+    expect(looksLikeOrganizationNameText('Armed Forces')).toBe(true);
+    expect(looksLikeOrganizationNameText('defense strategy')).toBe(false);
     expect(looksLikeOrganizationNameText('Remote')).toBe(false);
   });
 

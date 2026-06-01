@@ -56,6 +56,32 @@ describe('profile date parser', () => {
         start: expect.objectContaining({ iso: '2025-08' }),
       })
     );
+    expect(parseProfileDateRange('janvier 2020 - février 2021 (1 an)')).toEqual(
+      expect.objectContaining({
+        durationText: '1 an',
+        end: expect.objectContaining({ iso: '2021-02' }),
+        start: expect.objectContaining({ iso: '2020-01' }),
+      })
+    );
+  });
+
+  test('does not treat parenthetical prose as duration text', () => {
+    const result = parseProfileDateRange(
+      'Jan 2020 - Mar 2021 (an internship)'
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        end: expect.objectContaining({ iso: '2021-03' }),
+        kind: 'completed',
+        originalText: 'Jan 2020 - Mar 2021 (an internship)',
+        start: expect.objectContaining({ iso: '2020-01' }),
+      })
+    );
+    expect(result).not.toHaveProperty('durationText');
+    expect(
+      extractProfileDateRangeText('Jan 2020 - Mar 2021 (an internship)')
+    ).toBe('Jan 2020 - Mar 2021');
   });
 
   test('parses current roles without inventing an end date', () => {

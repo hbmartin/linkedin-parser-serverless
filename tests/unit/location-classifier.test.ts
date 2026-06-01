@@ -112,6 +112,9 @@ describe('location classifier', () => {
       'Dubai, Vereinigte Arabische Emirate',
       'Reno, Nevada Area',
       'Kauai, Hawaii',
+      'West Hollywood',
+      'États Unis',
+      "Stati Uniti d'America",
     ]) {
       expect(
         classifyLocationText({

@@ -4492,6 +4492,16 @@ describe('ExperienceStructuralParser', () => {
       )
     ).toBe(true);
     expect(
+      ExperienceStructuralParser['looksLikeDuration'](
+        'Jan 2020 - Mar 2021 (an internship)'
+      )
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['looksLikeDuration'](
+        'janvier 2020 - février 2021 (1 an)'
+      )
+    ).toBe(true);
+    expect(
       ExperienceStructuralParser['classifyLineType']({
         allLines: [
           parserLine({ index: 0, text: 'Partner' }),
