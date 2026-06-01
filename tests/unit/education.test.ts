@@ -146,6 +146,52 @@ describe('EducationParser', () => {
     ]);
   });
 
+  test('recognizes localized structural education headers', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Formation', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'University of Southern California',
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'Master’s Degree, Petroleum Engineering · (2014 - 2015)',
+        y: 710,
+      }),
+      structuralLine({ fontSize: 16, text: 'Expérience', y: 680 }),
+    ]);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'Master’s Degree, Petroleum Engineering',
+        institution: 'University of Southern California',
+        year: '2014 - 2015',
+      }),
+    ]);
+  });
+
+  test('repairs missing grade separator in structural degree text', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({ fontSize: 14, text: 'CHIPPING NORTON SCHOOL', y: 730 }),
+      structuralLine({
+        fontSize: 10,
+        text: "11 GCSE'SA*-C, ART, DESIGN, P.E, FRENCH, GEOGRAPHY, MATHS,",
+        y: 710,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: 'SCIENCE, ENGLISH, R.E, ICT · (2004 - 2006)',
+        y: 690,
+      }),
+    ]);
+
+    expect(educations[0]?.degree).toBe(
+      "11 GCSE'S A*-C, ART, DESIGN, P.E, FRENCH, GEOGRAPHY, MATHS, SCIENCE, ENGLISH, R.E, ICT"
+    );
+  });
+
   test('joins wrapped structural degree lines before extracting dates', () => {
     const educations = EducationParser.parseStructural([
       structuralLine({ fontSize: 16, text: 'Education', y: 760 }),

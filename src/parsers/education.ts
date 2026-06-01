@@ -344,10 +344,14 @@ export class EducationParser {
     return {
       ...(dates ? { dates } : {}),
       institution: education.institution || '',
-      degree: education.degree || '',
+      degree: this.normalizeDegreeText(education.degree || ''),
       year: education.year || '',
       location: education.location || '',
     };
+  }
+
+  private static normalizeDegreeText(text: string): string {
+    return normalizeWhitespace(text.replace(/\b(GCSE'S)(?=[A-Z]\*)/giu, '$1 '));
   }
 
   private static extractStructuralEducationLines(

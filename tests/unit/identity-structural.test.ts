@@ -97,6 +97,20 @@ describe('IdentityStructuralParser', () => {
     expect(identity.location).toBe('United States');
   });
 
+  test('stops identity extraction at localized experience headers', () => {
+    const identity = IdentityStructuralParser.parse([
+      line({ fontSize: 26, text: 'Hauk Hofseth', y: 760 }),
+      line({ fontSize: 12, text: 'Family Office Investments', y: 730 }),
+      line({ fontSize: 12, text: 'USA', y: 710 }),
+      line({ fontSize: 16, text: 'Erfaring', y: 680 }),
+      line({ fontSize: 12, text: 'Private Office', y: 660 }),
+      line({ fontSize: 11, text: 'Family Officer', y: 640 }),
+    ]);
+
+    expect(identity.headline).toBe('Family Office Investments');
+    expect(identity.location).toBe('USA');
+  });
+
   test('splits metropolitan area identity locations out of headlines', () => {
     const identity = IdentityStructuralParser.parse([
       line({ fontSize: 26, text: 'Victor Wu', y: 760 }),

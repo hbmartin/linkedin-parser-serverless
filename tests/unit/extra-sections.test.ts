@@ -82,6 +82,25 @@ describe('ExtraSectionParser', () => {
     expect(sections.organizations).toEqual([]);
   });
 
+  test('does not promote sentence fragments ending in section words to headers', () => {
+    const sections = ExtraSectionParser.parseStructural([
+      line({ text: 'Experience', y: 760 }),
+      line({
+        text: 'Produced location based themed attractions and other audio / video',
+        y: 740,
+      }),
+      line({ text: 'projects.', y: 720 }),
+      line({ text: 'Square USA', y: 700 }),
+      line({
+        text: 'Associate Marketing Manager / Associate Producer',
+        y: 680,
+      }),
+      line({ text: 'Education', y: 640 }),
+    ]);
+
+    expect(sections.projects).toEqual([]);
+  });
+
   test('extracts honors-awards as a supported extra section', () => {
     const sections = ExtraSectionParser.parseStructural([
       line({ column: 'left', text: 'Honors-Awards', y: 760 }),

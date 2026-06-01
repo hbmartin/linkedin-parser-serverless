@@ -116,7 +116,8 @@ export function getParserLineSectionHeader(
 
   if (
     trimmedText.length === 0 ||
-    trimmedText.length > MAX_SECTION_HEADER_CANDIDATE_LENGTH
+    trimmedText.length > MAX_SECTION_HEADER_CANDIDATE_LENGTH ||
+    /[.!?]$/u.test(trimmedText)
   ) {
     return undefined;
   }

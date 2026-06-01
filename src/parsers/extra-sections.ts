@@ -291,6 +291,10 @@ function createEmptySections(): ExtraProfileSections {
 }
 
 function getSectionHeader(line: string): SectionHeader | undefined {
+  if (hasSentenceTerminalPunctuation(line)) {
+    return undefined;
+  }
+
   const normalizedHeader = normalizeSectionHeader(line);
   const targetSection = TARGET_SECTION_HEADERS.get(normalizedHeader);
 
@@ -304,6 +308,10 @@ function getSectionHeader(line: string): SectionHeader | undefined {
   return BOUNDARY_SECTION_HEADERS.has(normalizedHeader)
     ? { kind: 'boundary' }
     : undefined;
+}
+
+function hasSentenceTerminalPunctuation(line: string): boolean {
+  return /[.!?]\s*$/u.test(line.trim());
 }
 
 function cleanSectionLine(line: string): string {

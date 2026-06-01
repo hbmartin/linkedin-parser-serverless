@@ -175,6 +175,25 @@ describe('BasicInfoParser', () => {
     );
   });
 
+  test('recognizes localized structural summary boundaries', () => {
+    const result = BasicInfoParser.parseStructuralWithWarnings(
+      ['Riepilogo', 'Builds market expansion systems.', 'Esperienza'].join(
+        '\n'
+      ),
+      [
+        structuralLine({ column: 'right', text: 'Riepilogo', y: 700 }),
+        structuralLine({
+          column: 'right',
+          text: 'Builds market expansion systems.',
+          y: 680,
+        }),
+        structuralLine({ column: 'right', text: 'Esperienza', y: 660 }),
+      ]
+    );
+
+    expect(result.value.summary).toBe('Builds market expansion systems.');
+  });
+
   test('keeps short structural summary continuation lines', () => {
     const result = BasicInfoParser.parseStructuralWithWarnings(
       ['Summary', 'Long enough summary line', 'my life.', 'Experience'].join(
