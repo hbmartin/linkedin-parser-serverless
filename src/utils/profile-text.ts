@@ -462,6 +462,10 @@ export function isLikelyLocationText(text: string): boolean {
   return isLikelyScoredLocationText(normalizeProfileText(text));
 }
 
+export function hasSentenceTerminalPunctuation(text: string): boolean {
+  return /[.!?]\s*$/u.test(text);
+}
+
 function looksLikePersonNameWord(word: string): boolean {
   if (LOWERCASE_CONNECTOR_WORDS.has(word.toLowerCase())) {
     return true;

@@ -7,6 +7,7 @@ import {
   canMergeWrappedStructuralListLine,
   mergeWrappedStructuralListLines,
 } from '../utils/sidebar-list-lines.js';
+import { hasSentenceTerminalPunctuation } from '../utils/profile-text.js';
 import { normalizeWhitespace, splitLines } from '../utils/text-utils.js';
 import type {
   ParsedSectionResult,
@@ -308,10 +309,6 @@ function getSectionHeader(line: string): SectionHeader | undefined {
   return BOUNDARY_SECTION_HEADERS.has(normalizedHeader)
     ? { kind: 'boundary' }
     : undefined;
-}
-
-function hasSentenceTerminalPunctuation(line: string): boolean {
-  return /[.!?]\s*$/u.test(line.trim());
 }
 
 function cleanSectionLine(line: string): string {

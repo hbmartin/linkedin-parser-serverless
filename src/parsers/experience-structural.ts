@@ -65,6 +65,20 @@ interface CombinedOrganizationTitleLine {
   title: string;
 }
 
+const pendingTitleContinuationModifiers: ReadonlySet<string> = new Set([
+  'contract',
+  'contractor',
+  'consultant',
+  'freelance',
+  'full time',
+  'fulltime',
+  'intern',
+  'internship',
+  'part time',
+  'parttime',
+  'promoted',
+]);
+
 interface DescriptionLineParams {
   allLines: string[];
   index: number;
@@ -141,10 +155,17 @@ export class ExperienceStructuralParser {
     /\b(?:and|at|by|for|from|in|of|on|the|their|to|with)$/i;
   private static readonly WRAPPED_TITLE_KEYWORD_PATTERN =
     /\b(?:advisor|analyst|associate|board|ceo|chief|commander|co[-\s]?founder|cofounder|coo|director|engineer|executive|fellow|founder|manager|member|partner|president|producer|scientist|vp)\b/iu;
-  private static readonly DURATION_WORD_PATTERN =
-    /\b(?:yr|yrs|year|years|mo|mos|month|months|jahr|jahre|ano|anos|anno|anni|an|ans|år|mes|mês|mese|meses|mesi|mois|måned|måneder)\b/iu;
-  private static readonly TOTAL_DURATION_LINE_PATTERN =
-    /^(?:less than a year|\d+\s+(?:yr|yrs|year|years|mo|mos|month|months|ano|anos|anno|anni|an|ans|år|mes|mês|mese|meses|mesi|mois|måned|måneder|jahr|jahre)(?:\s+\d+\s+(?:yr|yrs|year|years|mo|mos|month|months|ano|anos|anno|anni|an|ans|år|mes|mês|mese|meses|mesi|mois|måned|måneder|jahr|jahre))?)$/iu;
+  private static readonly DURATION_UNIT_PATTERN =
+    'yr|yrs|year|years|mo|mos|month|months|jahr|jahre|ano|anos|anno|anni|an|ans|år|mes|mês|mese|meses|mesi|mois|måned|måneder';
+  private static readonly TOTAL_DURATION_LINE_PATTERN: RegExp = new RegExp(
+    `^(?:less than a year|\\d+\\s+(?:${ExperienceStructuralParser.DURATION_UNIT_PATTERN})(?:\\s+\\d+\\s+(?:${ExperienceStructuralParser.DURATION_UNIT_PATTERN}))?)$`,
+    'iu'
+  );
+  private static readonly PARENTHESIZED_DURATION_SUFFIX_PATTERN: RegExp =
+    new RegExp(
+      `\\s*\\(\\s*(?:less\\s+than\\s+a\\s+year|\\d+\\s+(?:${ExperienceStructuralParser.DURATION_UNIT_PATTERN})(?:\\s+\\d+\\s+(?:${ExperienceStructuralParser.DURATION_UNIT_PATTERN}))*)\\s*\\)\\s*$`,
+      'iu'
+    );
   private static readonly MEDIA_DESCRIPTION_LINE_PATTERN =
     /^(?:(?:directed|executive\s+produced|produced|written)\s+by\s+.+|(?:documentary|feature|short|television|tv|web)\s+(?:film|series|show))$/iu;
   private static readonly ORGANIZATION_CONNECTOR_WORD_PATTERN =
@@ -533,7 +554,11 @@ export class ExperienceStructuralParser {
 
     if (
       !previousLine ||
-      !this.canStartCanonicalExperienceHeader(previousLine.text)
+      !this.canStartCanonicalExperienceHeader(previousLine.text) ||
+      !this.hasPreviousHeaderProminence({
+        previousLine,
+        titleLine: line,
+      })
     ) {
       return false;
     }
@@ -546,6 +571,20 @@ export class ExperienceStructuralParser {
       wordCount >= 4 &&
       hasBusinessTitlePunctuation &&
       this.looksLikePotentialPositionTitleLine(normalizedLine)
+    );
+  }
+
+  private static hasPreviousHeaderProminence({
+    previousLine,
+    titleLine,
+  }: {
+    previousLine: NormalizedParserLine;
+    titleLine: NormalizedParserLine;
+  }): boolean {
+    return (
+      previousLine.fontSize === undefined ||
+      titleLine.fontSize === undefined ||
+      previousLine.fontSize + 0.5 >= titleLine.fontSize
     );
   }
 
@@ -2380,13 +2419,7 @@ export class ExperienceStructuralParser {
   private static stripDurationSuffixText(text: string): string {
     return this.normalizeDurationLineText(text)
       .replace(/\s*[·|]\s*.*$/u, '')
-      .replace(
-        new RegExp(
-          `\\s*\\([^)]*(?:less\\s+than\\s+a\\s+year|${this.DURATION_WORD_PATTERN.source})[^)]*\\)\\s*$`,
-          'iu'
-        ),
-        ''
-      )
+      .replace(this.PARENTHESIZED_DURATION_SUFFIX_PATTERN, '')
       .trim();
   }
 
@@ -3021,11 +3054,7 @@ export class ExperienceStructuralParser {
   private static looksLikePendingTitleContinuationLine(line: string): boolean {
     const normalizedLine = line.trim();
 
-    if (
-      /^\((?:promoted|contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\)$/iu.test(
-        normalizedLine
-      )
-    ) {
+    if (this.titleContinuationModifierFromParenthetical(normalizedLine)) {
       return true;
     }
 
@@ -3041,6 +3070,53 @@ export class ExperienceStructuralParser {
       !this.looksLikeLocation(normalizedLine) &&
       !isSectionHeaderText(normalizedLine)
     );
+  }
+
+  private static titleContinuationModifierFromParenthetical(
+    line: string
+  ): string | undefined {
+    const innerText = this.unwrapSingleParenthesizedText(line);
+
+    if (innerText === undefined) {
+      return undefined;
+    }
+
+    const normalizedModifier =
+      this.normalizeTitleContinuationModifier(innerText);
+
+    return pendingTitleContinuationModifiers.has(normalizedModifier)
+      ? normalizedModifier
+      : undefined;
+  }
+
+  private static unwrapSingleParenthesizedText(
+    line: string
+  ): string | undefined {
+    if (!line.startsWith('(') || !line.endsWith(')')) {
+      return undefined;
+    }
+
+    const innerText = line.slice(1, -1).trim();
+
+    if (
+      innerText.length === 0 ||
+      innerText.includes('(') ||
+      innerText.includes(')')
+    ) {
+      return undefined;
+    }
+
+    return innerText;
+  }
+
+  private static normalizeTitleContinuationModifier(text: string): string {
+    return text
+      .normalize('NFKC')
+      .replace(/[‐‑‒–—-]/gu, ' ')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
   }
 
   private static looksLikeTerminalTitleContinuationLine(line: string): boolean {

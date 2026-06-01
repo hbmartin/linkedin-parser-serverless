@@ -186,6 +186,29 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('keeps spaced parenthetical title continuations before duration lines', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Google', y: 730 }),
+      textItem({ text: 'Global Partnerships Lead', y: 710, fontSize: 11.5 }),
+      textItem({ text: '( Promoted )', y: 690, fontSize: 11.5 }),
+      textItem({ text: 'May 2014 - November 2016 (2 years 7 months)', y: 670 }),
+      textItem({ text: 'Mountain View, CA', y: 650 }),
+      textItem({ text: 'Program Manager', y: 610, fontSize: 11.5 }),
+      textItem({ text: '(Part-Time)', y: 590, fontSize: 11.5 }),
+      textItem({ text: 'January 2013 - April 2014 (1 year 4 months)', y: 570 }),
+    ]);
+
+    expect(experience.positions[0]?.title).toBe(
+      'Global Partnerships Lead ( Promoted )'
+    );
+    expect(experience.positions[0]?.duration).toBe(
+      'May 2014 - November 2016'
+    );
+    expect(experience.positions[1]?.title).toBe('Program Manager (Part-Time)');
+    expect(experience.positions[1]?.duration).toBe('January 2013 - April 2014');
+  });
+
   test('splits wrapped title-like experience entities before author roles', () => {
     const experiences = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 760, fontSize: 16 }),
@@ -1039,6 +1062,92 @@ describe('ExperienceStructuralParser', () => {
     expect(experience.organization).toBe(
       'WhereTo - Business Travel Reimagined'
     );
+  });
+
+  test('keeps location lines before the next canonical company boundary', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'SPIDR Tech', y: 730 }),
+      textItem({ text: 'Board Member', y: 710, fontSize: 11.5 }),
+      textItem({
+        text: 'September 2017 - January 2019 (1 year 5 months)',
+        y: 690,
+      }),
+      textItem({ text: 'Manhattan Beach, CA', y: 670, fontSize: 10.5 }),
+      textItem({
+        text: 'WhereTo - Business Travel Reimagined',
+        y: 630,
+      }),
+      textItem({ text: 'Board Member', y: 610, fontSize: 11.5 }),
+      textItem({ text: 'April 2017 - February 2018 (11 months)', y: 590 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'SPIDR Tech',
+        positions: [
+          expect.objectContaining({
+            description: '',
+            duration: 'September 2017 - January 2019',
+            location: 'Manhattan Beach, CA',
+            title: 'Board Member',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'WhereTo - Business Travel Reimagined',
+        positions: [
+          expect.objectContaining({
+            duration: 'April 2017 - February 2018',
+            title: 'Board Member',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps prose descriptions before the next canonical company boundary', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 780, fontSize: 16 }),
+      textItem({ text: 'Droice Labs', y: 750 }),
+      textItem({ text: 'Advisor', y: 730, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2023 (3 years)', y: 710 }),
+      textItem({ text: 'New York, United States', y: 690, fontSize: 10.5 }),
+      textItem({
+        text: 'AI-data builder for clinicians, life-science and insurance companies',
+        y: 670,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Ajlan & Bros Holding Group Abilitii', y: 630 }),
+      textItem({ text: 'Director, Asset Management', y: 610, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2021 (less than a year)', y: 590 }),
+      textItem({ text: 'Riyadh, Saudi Arabia', y: 570, fontSize: 10.5 }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Droice Labs',
+        positions: [
+          expect.objectContaining({
+            description:
+              'AI-data builder for clinicians, life-science and insurance companies',
+            duration: '2020 - 2023',
+            location: 'New York, United States',
+            title: 'Advisor',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Ajlan & Bros Holding Group Abilitii',
+        positions: [
+          expect.objectContaining({
+            duration: '2021 - 2021',
+            location: 'Riyadh, Saudi Arabia',
+            title: 'Director, Asset Management',
+          }),
+        ],
+      }),
+    ]);
   });
 
   test('parses board-advisor organization names with lowercase connectors', () => {
@@ -4380,6 +4489,16 @@ describe('ExperienceStructuralParser', () => {
     expect(
       ExperienceStructuralParser['looksLikeDuration'](
         '2020 - 2020 (less than a year)'
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeDuration'](
+        'Jan 2020 - Mar 2021 (an internship)'
+      )
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['looksLikeDuration'](
+        'janvier 2020 - février 2021 (1 an)'
       )
     ).toBe(true);
     expect(

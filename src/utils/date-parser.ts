@@ -164,7 +164,12 @@ const MONTH_REPLACEMENTS: ReadonlyArray<readonly [string, string]> = [
 ];
 
 const CURRENT_TEXT_PATTERN = createWordListPattern(CURRENT_WORDS);
-const DURATION_TEXT_PATTERN = createWordListPattern(DURATION_WORDS);
+const DURATION_UNIT_PATTERN_TEXT = DURATION_WORDS.map(escapeRegExp).join('|');
+const DURATION_QUANTITY_PATTERN_TEXT = `\\d+\\s*(?:${DURATION_UNIT_PATTERN_TEXT})(?=[^\\p{L}]|$)`;
+const DURATION_TEXT_PATTERN = new RegExp(
+  `^(?:less\\s+than\\s+a\\s+year|${DURATION_QUANTITY_PATTERN_TEXT}(?:[\\s,]+${DURATION_QUANTITY_PATTERN_TEXT})*)$`,
+  'iu'
+);
 const MONTH_REPLACEMENT_PATTERNS = MONTH_REPLACEMENTS.map(
   ([localizedMonth, englishMonth]) => ({
     englishMonth,
@@ -520,18 +525,20 @@ function extractDatePortion(text: string): DatePortion {
     const durationText = dotParts
       .slice(1)
       .map(part => cleanDateText(part.replace(/[()]/g, '')))
-      .find(part => containsDurationWord(part));
+      .find(part => looksLikeDurationText(part));
     const parentheticalDurationMatch = Array.from(
       dotParts[0].matchAll(/\(([^)]*)\)/gu)
-    ).find(match => containsDurationWord(match[1]));
+    ).find(match => looksLikeDurationText(match[1]));
     const parentheticalDuration = parentheticalDurationMatch
       ? cleanDateText(parentheticalDurationMatch[1])
       : undefined;
     // Parenthetical durations belong in durationText, not in the chrono input.
-    const dateText = trimLeadingNonDateText(
-      parentheticalDurationMatch
-        ? dotParts[0].replace(parentheticalDurationMatch[0], '')
-        : dotParts[0]
+    const dateText = trimTrailingNonDateParentheticalText(
+      trimLeadingNonDateText(
+        parentheticalDurationMatch
+          ? dotParts[0].replace(parentheticalDurationMatch[0], '')
+          : dotParts[0]
+      )
     );
 
     return {
@@ -539,6 +546,14 @@ function extractDatePortion(text: string): DatePortion {
       text: cleanDateText(dateText),
     };
   });
+}
+
+function trimTrailingNonDateParentheticalText(text: string): string {
+  return cleanDateText(
+    text.replace(/\s+\(([^)]*)\)\s*$/u, (match, content: string) =>
+      hasProfileDateSignal(content) ? match : ''
+    )
+  );
 }
 
 function trimLeadingNonDateText(text: string): string {
@@ -619,8 +634,8 @@ function isCurrentText(text: string): boolean {
   return CURRENT_TEXT_PATTERN.test(normalizedText);
 }
 
-function containsDurationWord(text: string): boolean {
-  const lowerText = text.toLowerCase();
+function looksLikeDurationText(text: string): boolean {
+  const lowerText = cleanDateText(text).toLowerCase();
 
   return DURATION_TEXT_PATTERN.test(lowerText);
 }

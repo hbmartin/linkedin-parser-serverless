@@ -13,66 +13,133 @@ export type ProfileSectionKey =
   | 'experience'
   | 'education';
 
+interface ProfileSectionHeaderAliasGroup {
+  section: ProfileSectionKey;
+  texts: readonly string[];
+}
+
+const PROFILE_SECTION_HEADER_ALIAS_GROUPS: readonly ProfileSectionHeaderAliasGroup[] =
+  [
+    {
+      section: 'contact',
+      texts: [
+        'contact',
+        'contact info',
+        'contatta',
+        'contatti',
+        'coordonnees',
+        'coordonnées',
+        'forbindelse',
+        'kontakt',
+      ],
+    },
+    {
+      section: 'summary',
+      texts: ['summary', 'resume', 'résumé', 'riepilogo'],
+    },
+    {
+      section: 'top_skills',
+      texts: [
+        'top skills',
+        'skills',
+        'competencias',
+        'competências',
+        'habilidades',
+        'competenze principali',
+        'principales competences',
+        'principales compétences',
+      ],
+    },
+    {
+      section: 'languages',
+      texts: ['languages', 'idiomas'],
+    },
+    {
+      section: 'experience',
+      texts: [
+        'berufserfahrung',
+        'erfaring',
+        'experience',
+        'experiencia',
+        'experiência',
+        'esperienza',
+        'expérience',
+      ],
+    },
+    {
+      section: 'education',
+      texts: [
+        'education',
+        'formacao',
+        'formação',
+        'formazione',
+        'formation',
+        'utdanning',
+      ],
+    },
+    {
+      section: 'certifications',
+      texts: [
+        'certifications',
+        'licenses and certifications',
+        'licences and certifications',
+        'certificacoes',
+        'certificações',
+        'certificacoes e licencas',
+        'certificações e licenças',
+      ],
+    },
+    {
+      section: 'honors_awards',
+      texts: [
+        'honors awards',
+        'honors and awards',
+        'honours awards',
+        'honours and awards',
+      ],
+    },
+    {
+      section: 'projects',
+      texts: ['projects', 'projetos'],
+    },
+    {
+      section: 'publications',
+      texts: ['publications'],
+    },
+    {
+      section: 'patents',
+      texts: ['patents', 'patent'],
+    },
+    {
+      section: 'organizations',
+      texts: ['organizations', 'organisations', 'memberships', 'membership'],
+    },
+    {
+      section: 'volunteer_work',
+      texts: [
+        'volunteer experience',
+        'volunteer work',
+        'volunteering',
+        'experiencia voluntaria',
+        'experiência voluntária',
+      ],
+    },
+  ];
+
 export const PROFILE_SECTION_HEADER_ENTRIES: ReadonlyArray<
   readonly [text: string, section: ProfileSectionKey]
-> = [
-  ['contact', 'contact'],
-  ['contact info', 'contact'],
-  ['contatta', 'contact'],
-  ['coordonnees', 'contact'],
-  ['coordonnées', 'contact'],
-  ['forbindelse', 'contact'],
-  ['kontakt', 'contact'],
-  ['summary', 'summary'],
-  ['resume', 'summary'],
-  ['résumé', 'summary'],
-  ['riepilogo', 'summary'],
-  ['top skills', 'top_skills'],
-  ['skills', 'top_skills'],
-  ['competencias', 'top_skills'],
-  ['competências', 'top_skills'],
-  ['habilidades', 'top_skills'],
-  ['competenze principali', 'top_skills'],
-  ['principales competences', 'top_skills'],
-  ['principales compétences', 'top_skills'],
-  ['languages', 'languages'],
-  ['idiomas', 'languages'],
-  ['berufserfahrung', 'experience'],
-  ['erfaring', 'experience'],
-  ['experience', 'experience'],
-  ['experiencia', 'experience'],
-  ['experiência', 'experience'],
-  ['esperienza', 'experience'],
-  ['expérience', 'experience'],
-  ['education', 'education'],
-  ['formacao', 'education'],
-  ['formação', 'education'],
-  ['formazione', 'education'],
-  ['formation', 'education'],
-  ['utdanning', 'education'],
-  ['certifications', 'certifications'],
-  ['licenses and certifications', 'certifications'],
-  ['licences and certifications', 'certifications'],
-  ['certificacoes', 'certifications'],
-  ['certificações', 'certifications'],
-  ['certificacoes e licencas', 'certifications'],
-  ['certificações e licenças', 'certifications'],
-  ['honors awards', 'honors_awards'],
-  ['honors and awards', 'honors_awards'],
-  ['honours awards', 'honors_awards'],
-  ['honours and awards', 'honors_awards'],
-  ['projects', 'projects'],
-  ['projetos', 'projects'],
-  ['publications', 'publications'],
-  ['patents', 'patents'],
-  ['patent', 'patents'],
-  ['organizations', 'organizations'],
-  ['organisations', 'organizations'],
-  ['memberships', 'organizations'],
-  ['membership', 'organizations'],
-  ['volunteer experience', 'volunteer_work'],
-  ['volunteer work', 'volunteer_work'],
-  ['volunteering', 'volunteer_work'],
-  ['experiencia voluntaria', 'volunteer_work'],
-  ['experiência voluntária', 'volunteer_work'],
-];
+> = PROFILE_SECTION_HEADER_ALIAS_GROUPS.flatMap(group =>
+  group.texts.map(text =>
+    createProfileSectionHeaderEntry({ section: group.section, text })
+  )
+);
+
+function createProfileSectionHeaderEntry({
+  section,
+  text,
+}: {
+  section: ProfileSectionKey;
+  text: string;
+}): readonly [text: string, section: ProfileSectionKey] {
+  return [text, section];
+}

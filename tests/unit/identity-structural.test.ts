@@ -124,19 +124,21 @@ describe('IdentityStructuralParser', () => {
     expect(identity.location).toBe('Los Angeles, Californie, États-Unis');
   });
 
-  test('stops identity extraction at localized experience headers', () => {
-    const identity = IdentityStructuralParser.parse([
-      line({ fontSize: 26, text: 'Hauk Hofseth', y: 760 }),
-      line({ fontSize: 12, text: 'Family Office Investments', y: 730 }),
-      line({ fontSize: 12, text: 'USA', y: 710 }),
-      line({ fontSize: 16, text: 'Erfaring', y: 680 }),
-      line({ fontSize: 12, text: 'Private Office', y: 660 }),
-      line({ fontSize: 11, text: 'Family Officer', y: 640 }),
-    ]);
+  for (const locationVariant of ['US', 'U.S.', 'USA', 'U.S.A.']) {
+    test(`stops identity extraction at localized experience headers for ${locationVariant}`, () => {
+      const identity = IdentityStructuralParser.parse([
+        line({ fontSize: 26, text: 'Hauk Hofseth', y: 760 }),
+        line({ fontSize: 12, text: 'Family Office Investments', y: 730 }),
+        line({ fontSize: 12, text: locationVariant, y: 710 }),
+        line({ fontSize: 16, text: 'Erfaring', y: 680 }),
+        line({ fontSize: 12, text: 'Private Office', y: 660 }),
+        line({ fontSize: 11, text: 'Family Officer', y: 640 }),
+      ]);
 
-    expect(identity.headline).toBe('Family Office Investments');
-    expect(identity.location).toBe('USA');
-  });
+      expect(identity.headline).toBe('Family Office Investments');
+      expect(identity.location).toBe(locationVariant);
+    });
+  }
 
   test('splits metropolitan area identity locations out of headlines', () => {
     const identity = IdentityStructuralParser.parse([

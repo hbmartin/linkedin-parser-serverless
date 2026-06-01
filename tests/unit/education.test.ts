@@ -55,6 +55,22 @@ describe('EducationParser', () => {
     ]);
   });
 
+  test('cleans Unicode dash date ranges from degree text', () => {
+    const educations = EducationParser.parse(`
+      Education
+      Unicode Dash Institute
+      Certificate in Strategy · (January 2019 – December 2020)
+    `);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'Certificate in Strategy',
+        institution: 'Unicode Dash Institute',
+        year: 'January 2019 - December 2020',
+      }),
+    ]);
+  });
+
   test('cleans localized month-qualified dates from degree text', () => {
     const educations = EducationParser.parseStructural([
       structuralLine({ fontSize: 16, text: 'Utdanning', y: 760 }),

@@ -87,7 +87,7 @@
 		"dist"
 	],
 	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.18.2",
+		"@arethetypeswrong/cli": "^0.18.3",
 		"@jest/globals": "^30.4.1",
 		"@rollup/plugin-node-resolve": "^16.0.3",
 		"@rollup/plugin-terser": "^1.0.0",
@@ -97,7 +97,7 @@
 		"fta-cli": "^3.0.0",
 		"jest": "^30.2.0",
 		"jscpd": "^4.2.4",
-		"knip": "^6.14.2",
+		"knip": "^6.15.0",
 		"oxfmt": "^0.52.0",
 		"oxlint": "^1.67.0",
 		"publint": "^0.3.20",

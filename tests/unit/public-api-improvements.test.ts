@@ -8,6 +8,18 @@ import {
 } from '../../src/index.js';
 import { normalizeLinkedInProfileParseError } from '../../src/errors.js';
 import { StructuralParser } from '../../src/parsers/structural-parser.js';
+import type { WarningSection } from '../../src/types/profile.js';
+
+interface TerminalHeaderCase {
+  line: string;
+  section: WarningSection;
+}
+
+const terminalHeaderCases: TerminalHeaderCase[] = [
+  { line: 'Summary.', section: 'summary' },
+  { line: 'Experience!', section: 'experience' },
+  { line: 'Education?', section: 'education' },
+];
 
 describe('public parser diagnostics and typed errors', () => {
   afterEach(() => {
@@ -49,6 +61,22 @@ describe('public parser diagnostics and typed errors', () => {
     expect(result.diagnostics.isLikelyLinkedInExport).toBe(true);
     expect(result.diagnostics.isEmpty).toBe(false);
   });
+
+  test.each(terminalHeaderCases)(
+    'does not detect sentence-terminal header line $line',
+    async ({ line, section }) => {
+      const result = await parseLinkedInPDF(`
+        Dana Terminal
+        dana@example.com
+        LinkedIn
+
+        ${line}
+        This line should not become a section.
+      `);
+
+      expect(result.diagnostics.sectionsFound).not.toContain(section);
+    }
+  );
 
   test('distinguishes sparse LinkedIn-like input from random readable text', async () => {
     const sparseResult = await parseLinkedInPDF(`

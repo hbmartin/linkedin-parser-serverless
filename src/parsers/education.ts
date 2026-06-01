@@ -40,13 +40,20 @@ interface StructuralDegreeContinuationParams {
   degreePart: string;
 }
 
+interface RemoveDateTextFromLineParams {
+  dateText: string;
+  line: string;
+}
+
 export class EducationParser {
   private static readonly MONTH_NAMES_PATTERN =
     'January|February|March|April|May|June|July|August|September|October|November|December';
   private static readonly OPTIONAL_MONTH_PREFIX = `(?:(?:${EducationParser.MONTH_NAMES_PATTERN})\\s+)?`;
   private static readonly YEAR_PATTERN = '(?:19|20)\\d{2}';
+  private static readonly DATE_RANGE_DASH_PATTERN = '[\\-–—−]';
+  private static readonly OPTIONAL_DATE_SEPARATOR_PATTERN = '[·\\-–—−]?';
   private static readonly YEAR_RANGE_REGEXP: RegExp = new RegExp(
-    `\\(${EducationParser.OPTIONAL_MONTH_PREFIX}\\d{4}\\s*-\\s*${EducationParser.OPTIONAL_MONTH_PREFIX}\\d{4}\\)`,
+    `\\(${EducationParser.OPTIONAL_MONTH_PREFIX}\\d{4}\\s*${EducationParser.DATE_RANGE_DASH_PATTERN}\\s*${EducationParser.OPTIONAL_MONTH_PREFIX}\\d{4}\\)`,
     'i'
   );
   private static readonly MONTH_YEAR_REGEXP: RegExp = new RegExp(
@@ -54,11 +61,11 @@ export class EducationParser {
     'i'
   );
   private static readonly PARENTHESIZED_YEAR_RANGE_PATTERN: RegExp = new RegExp(
-    `\\s*[·-]?\\s*\\(${EducationParser.OPTIONAL_MONTH_PREFIX}${EducationParser.YEAR_PATTERN}\\s*-\\s*${EducationParser.OPTIONAL_MONTH_PREFIX}${EducationParser.YEAR_PATTERN}\\)\\s*`,
+    `\\s*${EducationParser.OPTIONAL_DATE_SEPARATOR_PATTERN}\\s*\\(${EducationParser.OPTIONAL_MONTH_PREFIX}${EducationParser.YEAR_PATTERN}\\s*${EducationParser.DATE_RANGE_DASH_PATTERN}\\s*${EducationParser.OPTIONAL_MONTH_PREFIX}${EducationParser.YEAR_PATTERN}\\)\\s*`,
     'gi'
   );
   private static readonly PARENTHESIZED_MONTH_YEAR_PATTERN: RegExp = new RegExp(
-    `\\s*[·-]?\\s*\\((?:${EducationParser.MONTH_NAMES_PATTERN})\\s+${EducationParser.YEAR_PATTERN}\\)\\s*`,
+    `\\s*${EducationParser.OPTIONAL_DATE_SEPARATOR_PATTERN}\\s*\\((?:${EducationParser.MONTH_NAMES_PATTERN})\\s+${EducationParser.YEAR_PATTERN}\\)\\s*`,
     'gi'
   );
   private static readonly LOCATION_PATTERN: RegExp =
@@ -329,16 +336,19 @@ export class EducationParser {
   private static removeYearFromDegree(line: string): string {
     const dateText = this.extractYearFromLine(line);
     const dateStrippedLine = dateText
-      ? this.removeDateTextFromLine(line, dateText)
+      ? this.removeDateTextFromLine({ dateText, line })
       : line;
 
     return normalizeWhitespace(
       dateStrippedLine
         .replace(EducationParser.PARENTHESIZED_YEAR_RANGE_PATTERN, ' ')
         .replace(EducationParser.PARENTHESIZED_MONTH_YEAR_PATTERN, ' ')
-        .replace(/\s*[·-]?\s*(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\s*/g, ' ')
-        .replace(/\s*[·-]?\s*\((?:19|20)\d{2}\)\s*/g, ' ')
-        .replace(/\s*[·-]?\s*\b(?:19|20)\d{2}\b\s*/g, ' ')
+        .replace(
+          /\s*[·–—−-]?\s*(?:19|20)\d{2}\s*[–—−-]\s*(?:19|20)\d{2}\s*/g,
+          ' '
+        )
+        .replace(/\s*[·–—−-]?\s*\((?:19|20)\d{2}\)\s*/g, ' ')
+        .replace(/\s*[·–—−-]?\s*\b(?:19|20)\d{2}\b\s*/g, ' ')
         .replace(/[·()]+$/g, '')
     );
   }
@@ -359,18 +369,30 @@ export class EducationParser {
     return extractProfileDateRangeText(line) ?? '';
   }
 
-  private static removeDateTextFromLine(
-    line: string,
-    dateText: string
-  ): string {
-    const escapedDateText = escapeRegExp(dateText);
+  private static removeDateTextFromLine({
+    dateText,
+    line,
+  }: RemoveDateTextFromLineParams): string {
+    const escapedDateText = escapeRegExp(dateText).replace(
+      /-/g,
+      EducationParser.DATE_RANGE_DASH_PATTERN
+    );
 
     return line
       .replace(
-        new RegExp(`\\s*[·-]?\\s*\\(${escapedDateText}\\)\\s*`, 'giu'),
+        new RegExp(
+          `\\s*${EducationParser.OPTIONAL_DATE_SEPARATOR_PATTERN}\\s*\\(${escapedDateText}\\)\\s*`,
+          'giu'
+        ),
         ' '
       )
-      .replace(new RegExp(`\\s*[·-]?\\s*${escapedDateText}\\s*`, 'giu'), ' ');
+      .replace(
+        new RegExp(
+          `\\s*${EducationParser.OPTIONAL_DATE_SEPARATOR_PATTERN}\\s*${escapedDateText}\\s*`,
+          'giu'
+        ),
+        ' '
+      );
   }
 
   private static looksLikeLocation(line: string): boolean {
@@ -586,10 +608,11 @@ export class EducationParser {
   }
 
   private static hasUnclosedParentheticalDateFragment(line: string): boolean {
+    const openCount = line.split('(').length - 1;
+    const closeCount = line.split(')').length - 1;
+
     return (
-      Array.from(line.matchAll(/\(/g)).length >
-        Array.from(line.matchAll(/\)/g)).length &&
-      /\(\s*[\p{L}\p{M}]+\s*$/u.test(line.trim())
+      openCount > closeCount && /\(\s*[\p{L}\p{M}]+\s*$/u.test(line.trim())
     );
   }
 
