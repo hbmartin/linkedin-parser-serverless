@@ -1,6 +1,13 @@
 import { BasicInfoParser } from '../../src/parsers/basic-info.js';
 import type { StructuralLine } from '../../src/utils/structural-lines.js';
 
+interface LocalizedHeaderWarningCase {
+  readonly alias: string;
+  readonly field: 'contact' | 'summary';
+  readonly language: string;
+  readonly section: 'contact' | 'summary';
+}
+
 describe('BasicInfoParser', () => {
   test('does not classify spaced email addresses as short company headlines', () => {
     const profile = BasicInfoParser.parse(`
@@ -114,6 +121,53 @@ describe('BasicInfoParser', () => {
       ]);
     });
   }
+
+  const localizedHeaderWarningCases: readonly LocalizedHeaderWarningCase[] = [
+    {
+      alias: 'forbindelse',
+      field: 'contact',
+      language: 'Danish',
+      section: 'contact',
+    },
+    {
+      alias: 'kontakt',
+      field: 'contact',
+      language: 'Norwegian',
+      section: 'contact',
+    },
+    {
+      alias: 'coordonnées',
+      field: 'contact',
+      language: 'French',
+      section: 'contact',
+    },
+    {
+      alias: 'riepilogo',
+      field: 'summary',
+      language: 'Italian',
+      section: 'summary',
+    },
+  ];
+
+  test.each(localizedHeaderWarningCases)(
+    'recognizes the $language $alias header as a $section section warning',
+    ({ alias, field, section }) => {
+      const result = BasicInfoParser.parseWithWarnings(`
+        Apollo Helios
+        Principal Advisor
+        ${alias}
+        Available on request
+        Experience
+      `);
+
+      expect(result.warnings).toContainEqual(
+        expect.objectContaining({
+          field,
+          section,
+        })
+      );
+    }
+  );
 
   test('stops header warnings at later target sections', () => {
     const result = BasicInfoParser.parseWithWarnings(`

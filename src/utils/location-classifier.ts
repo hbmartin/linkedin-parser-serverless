@@ -583,6 +583,11 @@ function isAmbiguousLowercaseUnitedStatesAlias(text: string): boolean {
   return normalizeCountryAliasKey(visibleText) === 'us' && visibleText === 'us';
 }
 
+// Generate canonical country-alias lookup keys from visible text: normalize
+// private-use/spacing artifacts, decompose accents with NFKD, strip combining
+// marks via \p{M}, remove non-letter/number characters, then lowercase. This
+// makes variants like "U.S.A.", "U S A", "U.S.", and accented country names
+// comparable for reliable alias matching.
 function normalizeCountryAliasKey(text: string): string {
   return normalizeVisibleText(text)
     .normalize('NFKD')

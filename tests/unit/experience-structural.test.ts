@@ -209,6 +209,26 @@ describe('ExperienceStructuralParser', () => {
     expect(experience.positions[1]?.duration).toBe('January 2013 - April 2014');
   });
 
+  test('keeps wrapped business-title continuation separate when the organization header is less prominent', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Google', y: 730, fontSize: 10 }),
+      textItem({
+        text: 'Global Partnerships, Online Markets',
+        y: 710,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'Revenue Growth', y: 690, fontSize: 11.5 }),
+      textItem({ text: 'May 2014 - November 2016 (2 years 7 months)', y: 670 }),
+      textItem({ text: 'Mountain View, CA', y: 650 }),
+    ]);
+
+    expect(experience.positions[0]?.title).toBe('Revenue Growth');
+    expect(experience.positions[0]?.title).not.toBe(
+      'Global Partnerships, Online Markets Revenue Growth'
+    );
+  });
+
   test('splits wrapped title-like experience entities before author roles', () => {
     const experiences = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 760, fontSize: 16 }),
@@ -4852,6 +4872,129 @@ describe('ExperienceStructuralParser', () => {
         title: 'Sales Manager regione Campania',
       })
     );
+  });
+
+  test('keeps repeated comma locations before the next company header', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 860, fontSize: 16 }),
+      textItem({ text: 'Sapio Group', y: 830 }),
+      textItem({ text: 'Sales Specialist', y: 814, fontSize: 11.5 }),
+      textItem({
+        text: 'gennaio 2015 - dicembre 2021 (7 anni)',
+        y: 799,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Avellino, Campania, Italy',
+        y: 784,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Global Medical Service (Sold)', y: 742 }),
+      textItem({ text: 'General Manager', y: 726, fontSize: 11.5 }),
+      textItem({
+        text: 'febbraio 2014 - dicembre 2019 (5 anni 11 mesi)',
+        y: 711,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Napoli, Italia', y: 696, fontSize: 10.5 }),
+      textItem({ text: 'Sofar S.p.A.', y: 654 }),
+      textItem({
+        text: 'Sales Manager regione Campania',
+        y: 638,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'aprile 2015 - agosto 2018 (3 anni 5 mesi)',
+        y: 623,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Napoli, Italia', y: 608, fontSize: 10.5 }),
+      textItem({ text: 'Ortotek srl (Exit)', y: 566 }),
+      textItem({ text: 'Amministratore', y: 550, fontSize: 11.5 }),
+      textItem({
+        text: 'gennaio 2010 - ottobre 2014 (4 anni 10 mesi)',
+        y: 535,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experiences.map(experience => experience.organization)).toEqual([
+      'Sapio Group',
+      'Global Medical Service (Sold)',
+      'Sofar S.p.A.',
+      'Ortotek srl (Exit)',
+    ]);
+    expect(experiences[2]?.positions[0]).toEqual(
+      expect.objectContaining({
+        description: '',
+        location: 'Napoli, Italia',
+        title: 'Sales Manager regione Campania',
+      })
+    );
+  });
+
+  test('extracts short city lines after localized date rows as locations', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'MBDA', y: 730 }),
+      textItem({
+        text: 'Internship in Propulsion Engineering',
+        y: 714,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'juin 2008 - juillet 2008 (2 mois)',
+        y: 699,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Filton', y: 684, fontSize: 10.5 }),
+      textItem({
+        text: 'During this internship, Pierre performed error analyses.',
+        y: 663,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'BritAir', y: 625 }),
+      textItem({
+        text: 'Internship in Aircraft Maintenance',
+        y: 609,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'juillet 2004 - août 2004 (2 mois)',
+        y: 594,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Morlaix', y: 579, fontSize: 10.5 }),
+      textItem({
+        text: 'Assisted in performing scheduled maintenance.',
+        y: 558,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'MBDA',
+        positions: [
+          expect.objectContaining({
+            description:
+              'During this internship, Pierre performed error analyses.',
+            location: 'Filton',
+            title: 'Internship in Propulsion Engineering',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'BritAir',
+        positions: [
+          expect.objectContaining({
+            description: 'Assisted in performing scheduled maintenance.',
+            location: 'Morlaix',
+            title: 'Internship in Aircraft Maintenance',
+          }),
+        ],
+      }),
+    ]);
   });
 
   test('keeps page-break locations and following positions in multi-position companies', () => {
