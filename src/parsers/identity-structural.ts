@@ -93,7 +93,14 @@ export class IdentityStructuralParser {
     const searchLines =
       nameIndex === -1 ? identityLines : identityLines.slice(nameIndex + 1);
 
-    return searchLines.find(line => isLikelyLocationText(line.text));
+    return searchLines.find(line => this.isIdentityLocationLine(line.text));
+  }
+
+  private static isIdentityLocationLine(text: string): boolean {
+    return (
+      isLikelyLocationText(text) ||
+      /^(?:U\.?\s*S\.?\s*A\.?|USA)$/iu.test(text.trim())
+    );
   }
 
   private static extractHeadline({

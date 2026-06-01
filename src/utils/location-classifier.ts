@@ -442,9 +442,23 @@ function classifyLocationTextUncached({
       hasRegionCode ||
       hasStandaloneQualifiedProperArea);
   const hasProperShape = looksLikeProperLocationShape(words);
+  const hasEmbeddedPlaceProperNounShape =
+    !exactPlace &&
+    hasKnownPlace &&
+    !hasCountryOrRegion &&
+    !hasAdminRegion &&
+    !hasRegionCode &&
+    !hasCommaRegion &&
+    !hasQualifiedArea &&
+    hasProperShape &&
+    words.length >= 4;
 
   if (hasRelationalConnector && hasKnownPlace && hasCountryOrRegion) {
     add('relational-connector', -6);
+  }
+
+  if (!hasBlockedDomainWord && hasEmbeddedPlaceProperNounShape) {
+    add('title-or-organization', -4);
   }
 
   if (exactPlace) {

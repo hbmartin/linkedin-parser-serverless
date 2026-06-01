@@ -65,6 +65,10 @@ function detectSectionsFromWarnings(
 }
 
 function sectionFromLine(line: string): WarningSection | undefined {
+  if (/[.!?]\s*$/u.test(line.trim())) {
+    return undefined;
+  }
+
   const normalizedLine = normalizeSectionHeaderText(line);
   const ampersandAsAndLine = normalizedLine.replace(/\s*&\s*/g, ' and ');
 

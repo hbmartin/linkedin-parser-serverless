@@ -13,9 +13,30 @@ describe('parser line utilities', () => {
       kind: 'target',
       section: 'experience',
     });
+    expect(getParserLineSectionHeader('Expérience')).toEqual({
+      kind: 'target',
+      section: 'experience',
+    });
+    expect(getParserLineSectionHeader('Esperienza')).toEqual({
+      kind: 'target',
+      section: 'experience',
+    });
+    expect(getParserLineSectionHeader('Erfaring')).toEqual({
+      kind: 'target',
+      section: 'experience',
+    });
+    expect(getParserLineSectionHeader('Riepilogo')).toEqual({
+      kind: 'target',
+      section: 'summary',
+    });
+    expect(getParserLineSectionHeader('Utdanning')).toEqual({
+      kind: 'target',
+      section: 'education',
+    });
     expect(getParserLineSectionHeader('Recommendations')).toEqual({
       kind: 'boundary',
     });
+    expect(getParserLineSectionHeader('projects.')).toBeUndefined();
   });
 
   test('tracks active sections without treating long prose as a header', () => {

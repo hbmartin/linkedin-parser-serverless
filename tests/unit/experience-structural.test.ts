@@ -98,6 +98,176 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('accepts lower-camel brand organizations with structural job evidence', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'iMedical Strategies', y: 730 }),
+      textItem({ text: 'Founder / CEO', y: 710, fontSize: 11.5 }),
+      textItem({ text: 'May 2022 - Present (4 years 2 months)', y: 690 }),
+      textItem({ text: 'Los Angeles, California, United States', y: 670 }),
+      textItem({
+        text: 'Formulation of iMedical Strategies (IMS), a healthcare tech consulting',
+        y: 650,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'AI LA', y: 610 }),
+      textItem({
+        text: 'Health and Equity Committee Chair | Ambassador',
+        y: 590,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'January 2024 - Present (2 years 6 months)', y: 570 }),
+      textItem({ text: 'Los Angeles, California, United States', y: 550 }),
+      textItem({
+        text: 'Through our network at AI LA, we strive to explore the transformative potential',
+        y: 530,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'in the Greater Los Angeles area through the focus on STEAM',
+        y: 510,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experiences[0]?.organization).toBe('iMedical Strategies');
+    expect(experiences[0]?.positions[0]).toEqual(
+      expect.objectContaining({
+        title: 'Founder / CEO',
+        location: 'Los Angeles, California, United States',
+        description: expect.stringContaining('Formulation of iMedical'),
+      })
+    );
+    expect(experiences[1]?.positions[0]?.location).toBe(
+      'Los Angeles, California, United States'
+    );
+    expect(experiences[1]?.positions[0]?.description).toContain(
+      'in the Greater Los Angeles area'
+    );
+  });
+
+  test('keeps parenthetical title continuations before duration lines', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Google', y: 730 }),
+      textItem({ text: '4 years 5 months', y: 710 }),
+      textItem({
+        text: 'Global Head of Channel Partnerships, Online Partnerships Group',
+        y: 690,
+        fontSize: 11.5,
+      }),
+      textItem({ text: '(Promoted)', y: 670, fontSize: 11.5 }),
+      textItem({ text: 'May 2014 - November 2016 (2 years 7 months)', y: 650 }),
+      textItem({ text: 'Mountain View, CA', y: 630 }),
+      textItem({
+        text: '• Sponsor of Partner acquisition team and mobile web initiative in North',
+        y: 610,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'America', y: 590, fontSize: 10.5 }),
+      textItem({
+        text: 'SMB Publisher Sales Manager, Online Partnerships Group',
+        y: 550,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'January 2014 - January 2015 (1 year 1 month)', y: 530 }),
+    ]);
+
+    expect(experience.organization).toBe('Google');
+    expect(experience.positions[0]).toEqual(
+      expect.objectContaining({
+        title:
+          'Global Head of Channel Partnerships, Online Partnerships Group (Promoted)',
+        description: expect.stringContaining('North America'),
+      })
+    );
+    expect(experience.positions[1]?.title).toBe(
+      'SMB Publisher Sales Manager, Online Partnerships Group'
+    );
+  });
+
+  test('splits wrapped title-like experience entities before author roles', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'The Anti-Retirement Club', y: 730 }),
+      textItem({ text: 'Founder', y: 710, fontSize: 11.5 }),
+      textItem({ text: 'February 2023 - Present (3 years 5 months)', y: 690 }),
+      textItem({
+        text: 'We provide longevity programming across Los Angeles at many venues',
+        y: 670,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Smart Money; Family First: How to Be a Hero at Home & Your Life',
+        y: 630,
+      }),
+      textItem({ text: 'by Design.', y: 610 }),
+      textItem({ text: 'Author', y: 590, fontSize: 11.5 }),
+      textItem({ text: 'August 2008 - Present (17 years 11 months)', y: 570 }),
+      textItem({
+        text: 'Just published Smart Money: 8 Strategies for your financial security,',
+        y: 550,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'significance and success. www.smartmoney.vip; Family First: How',
+        y: 530,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'www.yourlifebydesignbook.com.', y: 510, fontSize: 10.5 }),
+      textItem({ text: 'The Los Angeles Suitcase Party', y: 470 }),
+      textItem({ text: 'Founder', y: 450, fontSize: 11.5 }),
+      textItem({ text: 'July 2011 - Present (15 years)', y: 430 }),
+      textItem({ text: 'Greater Los Angeles Area', y: 410 }),
+    ]);
+
+    expect(experiences.map(experience => experience.organization)).toEqual([
+      'The Anti-Retirement Club',
+      'Smart Money; Family First: How to Be a Hero at Home & Your Life by Design.',
+      'The Los Angeles Suitcase Party',
+    ]);
+    expect(experiences[1]?.positions[0]).toEqual(
+      expect.objectContaining({
+        title: 'Author',
+        description: expect.stringContaining('www.yourlifebydesignbook.com'),
+      })
+    );
+    expect(experiences[1]?.positions[0]?.location).toBeUndefined();
+    expect(experiences[2]?.positions[0]).toEqual(
+      expect.objectContaining({
+        duration: 'July 2011 - Present',
+        location: 'Greater Los Angeles Area',
+        title: 'Founder',
+      })
+    );
+  });
+
+  test('keeps connector and parenthesized URL fragments in descriptions', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'SciOne', y: 730 }),
+      textItem({ text: 'Investor', y: 710, fontSize: 11.5 }),
+      textItem({ text: 'January 2020 - Present (6 years)', y: 690 }),
+      textItem({
+        text: '- SciOne Inventory: Simplified Management & Compliance for Lab Chemicals',
+        y: 670,
+        fontSize: 10.5,
+      }),
+      textItem({ text: '& Consumables', y: 650, fontSize: 10.5 }),
+      textItem({
+        text: 'Appletree keeps parents informed on student progress.',
+        y: 630,
+        fontSize: 10.5,
+      }),
+      textItem({ text: '(www.goappletree.com)', y: 610, fontSize: 10.5 }),
+    ]);
+
+    expect(experience.positions[0]?.description).toContain('& Consumables');
+    expect(experience.positions[0]?.description).toContain(
+      '(www.goappletree.com)'
+    );
+  });
+
   test('parses academic multi-position entries without empty organizations', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -4180,6 +4350,7 @@ describe('ExperienceStructuralParser', () => {
       'Spatial AI',
       'Comcast NBCUniversal SportsTech Accelerator, HeadVantage is redefining',
       'After securing an exclusive partnership with Warner Music, Prescient is now',
+      'The Los Angeles Suitcase Party',
     ]) {
       expect(
         ExperienceStructuralParser['looksLikeLocation'](falseLocation)

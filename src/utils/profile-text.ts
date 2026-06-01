@@ -15,15 +15,21 @@ const organizationNameTextCache = new BoundedStringCache<boolean>(
 
 const EXPERIENCE_SECTION_HEADER_TEXT = new Set([
   'berufserfahrung',
+  'erfaring',
   'experience',
   'experiencia',
   'experiência',
+  'esperienza',
+  'expérience',
 ]);
 
 const EDUCATION_SECTION_HEADER_TEXT = new Set([
   'education',
   'formacao',
   'formação',
+  'formazione',
+  'formation',
+  'utdanning',
 ]);
 
 const SECTION_HEADER_TEXT = new Set([
