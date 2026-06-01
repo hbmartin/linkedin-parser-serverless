@@ -1,6 +1,7 @@
 import {
   classifyLocationText,
   isKnownCountryAliasText,
+  isUnambiguousCountryAliasText,
   normalizeCountryAliasText,
 } from '../../src/utils/location-classifier.js';
 
@@ -201,8 +202,12 @@ describe('location classifier', () => {
     for (const text of ['US', 'U.S.', 'U S', 'USA', 'U.S.A.']) {
       expect(normalizeCountryAliasText(text)).toBe('united states');
       expect(isKnownCountryAliasText(text)).toBe(true);
+      expect(isUnambiguousCountryAliasText(text)).toBe(true);
     }
 
+    expect(normalizeCountryAliasText('us')).toBe('united states');
+    expect(isKnownCountryAliasText('us')).toBe(true);
+    expect(isUnambiguousCountryAliasText('us')).toBe(false);
     expect(normalizeCountryAliasText('California')).toBeUndefined();
     expect(classifyLocationText({ text: 'US' }).isLocation).toBe(false);
   });

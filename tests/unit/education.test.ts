@@ -55,6 +55,22 @@ describe('EducationParser', () => {
     ]);
   });
 
+  test('cleans ASCII dash date ranges without consuming degree hyphens', () => {
+    const educations = EducationParser.parse(`
+      Education
+      Strategy Institute
+      Certificate in Evidence-Based Strategy · (January 2019 - December 2020)
+    `);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'Certificate in Evidence-Based Strategy',
+        institution: 'Strategy Institute',
+        year: 'January 2019 - December 2020',
+      }),
+    ]);
+  });
+
   test('cleans Unicode dash date ranges from degree text', () => {
     const educations = EducationParser.parse(`
       Education

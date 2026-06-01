@@ -374,7 +374,7 @@ export class EducationParser {
     line,
   }: RemoveDateTextFromLineParams): string {
     const escapedDateText = escapeRegExp(dateText).replace(
-      /-/g,
+      /\\?-/g,
       EducationParser.DATE_RANGE_DASH_PATTERN
     );
 

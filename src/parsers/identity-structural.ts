@@ -6,7 +6,7 @@ import type {
 import { TOP_SKILLS_LIMIT } from '../utils/parser-limits.js';
 import {
   classifyLocationText,
-  isKnownCountryAliasText,
+  isUnambiguousCountryAliasText,
 } from '../utils/location-classifier.js';
 import {
   getParserLineSectionHeader,
@@ -113,7 +113,7 @@ export class IdentityStructuralParser {
     return (
       isLikelyLocationText(text) ||
       locationClassification.isLocation ||
-      isKnownCountryAliasText(text)
+      isUnambiguousCountryAliasText(text)
     );
   }
 

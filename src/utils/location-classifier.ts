@@ -530,6 +530,16 @@ export function isKnownCountryAliasText(text: string): boolean {
   return normalizeCountryAliasText(text) !== undefined;
 }
 
+export function isUnambiguousCountryAliasText(text: string): boolean {
+  const normalizedAlias = normalizeCountryAliasText(text);
+
+  if (normalizedAlias === undefined) {
+    return false;
+  }
+
+  return !isAmbiguousLowercaseUnitedStatesAlias(text);
+}
+
 export function normalizeCountryAliasText(text: string): string | undefined {
   return countryAliasTextCache.getOrSet(text, () => {
     const aliasKey = normalizeCountryAliasKey(text);
@@ -565,6 +575,12 @@ function normalizeLookupText(text: string): string {
       .trim()
       .toLowerCase()
   );
+}
+
+function isAmbiguousLowercaseUnitedStatesAlias(text: string): boolean {
+  const visibleText = normalizeVisibleText(text);
+
+  return normalizeCountryAliasKey(visibleText) === 'us' && visibleText === 'us';
 }
 
 function normalizeCountryAliasKey(text: string): string {
