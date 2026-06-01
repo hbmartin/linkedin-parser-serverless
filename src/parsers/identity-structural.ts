@@ -110,7 +110,7 @@ export class IdentityStructuralParser {
     return (
       isLikelyLocationText(text) ||
       locationClassification.isLocation ||
-      /^(?:U\.?\s*S\.?\s*A\.?|USA)$/iu.test(text.trim())
+      /^(?:U\.?\s*S(?:\.?\s*A)?\.?)$/iu.test(text.trim())
     );
   }
 

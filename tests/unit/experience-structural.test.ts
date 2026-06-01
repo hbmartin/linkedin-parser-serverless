@@ -186,6 +186,24 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('keeps spaced parenthetical title continuations before duration lines', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Google', y: 730 }),
+      textItem({ text: 'Global Partnerships Lead', y: 710, fontSize: 11.5 }),
+      textItem({ text: '( Promoted )', y: 690, fontSize: 11.5 }),
+      textItem({ text: 'May 2014 - November 2016 (2 years 7 months)', y: 670 }),
+      textItem({ text: 'Mountain View, CA', y: 650 }),
+    ]);
+
+    expect(experience.positions[0]?.title).toBe(
+      'Global Partnerships Lead ( Promoted )'
+    );
+    expect(experience.positions[0]?.duration).toBe(
+      'May 2014 - November 2016'
+    );
+  });
+
   test('splits wrapped title-like experience entities before author roles', () => {
     const experiences = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 760, fontSize: 16 }),

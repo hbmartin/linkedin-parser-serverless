@@ -96,6 +96,23 @@ describe('BasicInfoParser', () => {
     ]);
   });
 
+  test('recognizes the Italian contact header as a contact section', () => {
+    const result = BasicInfoParser.parseWithWarnings(`
+      Apollo Helios
+      Principal Advisor
+      Contatti
+      Available on request
+      Experience
+    `);
+
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        field: 'contact',
+        section: 'contact',
+      }),
+    ]);
+  });
+
   test('stops header warnings at later target sections', () => {
     const result = BasicInfoParser.parseWithWarnings(`
       Apollo Helios

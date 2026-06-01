@@ -3040,7 +3040,7 @@ export class ExperienceStructuralParser {
     const normalizedLine = line.trim();
 
     if (
-      /^\((?:promoted|contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\)$/iu.test(
+      /^\(\s*(?:promoted|contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\s*\)$/iu.test(
         normalizedLine
       )
     ) {

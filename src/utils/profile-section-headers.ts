@@ -18,7 +18,7 @@ export const PROFILE_SECTION_HEADER_ENTRIES: ReadonlyArray<
 > = [
   ['contact', 'contact'],
   ['contact info', 'contact'],
-  ['contatta', 'contact'],
+  ['contatti', 'contact'],
   ['coordonnees', 'contact'],
   ['coordonnées', 'contact'],
   ['forbindelse', 'contact'],
