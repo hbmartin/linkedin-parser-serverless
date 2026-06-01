@@ -463,7 +463,7 @@ export function isLikelyLocationText(text: string): boolean {
 }
 
 export function hasSentenceTerminalPunctuation(text: string): boolean {
-  return /[.!?]\s*$/u.test(text);
+  return /[.!?]\s*$/u.test(normalizeProfileText(text));
 }
 
 function looksLikePersonNameWord(word: string): boolean {

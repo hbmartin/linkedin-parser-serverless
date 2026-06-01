@@ -140,6 +140,18 @@ describe('IdentityStructuralParser', () => {
     });
   }
 
+  test('keeps lowercase us pronoun text in the headline', () => {
+    const identity = IdentityStructuralParser.parse([
+      line({ fontSize: 26, text: 'Hauk Hofseth', y: 760 }),
+      line({ fontSize: 12, text: 'Family Office Investments', y: 730 }),
+      line({ fontSize: 12, text: 'us', y: 710 }),
+      line({ fontSize: 16, text: 'Erfaring', y: 680 }),
+    ]);
+
+    expect(identity.headline).toBe('Family Office Investments us');
+    expect(identity.location).toBeUndefined();
+  });
+
   test('splits metropolitan area identity locations out of headlines', () => {
     const identity = IdentityStructuralParser.parse([
       line({ fontSize: 26, text: 'Victor Wu', y: 760 }),

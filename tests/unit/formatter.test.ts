@@ -452,6 +452,68 @@ describe('formatLinkedInProfile', () => {
       ].join('\n')
     );
   });
+
+  test('formats sparse markdown fallbacks without a profile name', () => {
+    expect(
+      formatLinkedInProfile(
+        {
+          ...createEmptyProfile(),
+          contact: {
+            location: 'Remote',
+          },
+          education: [
+            {
+              degree: 'Certificate in Systems',
+              institution: '',
+            },
+            {
+              degree: '',
+              description: 'Independent study',
+              institution: '',
+            },
+          ],
+          experience: [
+            {
+              company: 'Solo Company',
+              description: '',
+              duration: '',
+              location: '',
+              title: '',
+            },
+            {
+              company: '',
+              description: 'Advised early teams.',
+              duration: '',
+              location: '',
+              title: '',
+            },
+          ],
+          headline: 'Independent Advisor',
+        },
+        {
+          includeContact: true,
+          outputFormat: 'markdown',
+        }
+      )
+    ).toBe(
+      [
+        'Independent Advisor',
+        '',
+        '## Contact',
+        'Location: Remote',
+        '',
+        '## Experience',
+        'Solo Company',
+        '',
+        'Advised early teams.',
+        '',
+        '## Education',
+        'Certificate in Systems',
+        '',
+        'Independent study',
+      ].join('\n')
+    );
+  });
 });
 
 function createProfile(): LinkedInProfile {

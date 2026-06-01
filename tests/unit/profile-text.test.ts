@@ -1,4 +1,5 @@
 import {
+  hasSentenceTerminalPunctuation,
   isLikelyLocationText,
   looksLikeOrganizationNameText,
   looksLikePositionTitleText,
@@ -60,6 +61,11 @@ describe('profile text heuristics', () => {
         'Executive Produced by Achilles Pelides & Circe Aeaea'
       )
     ).toBe(false);
+  });
+
+  test('detects terminal punctuation before private-use PDF glyphs', () => {
+    expect(hasSentenceTerminalPunctuation('Managed teams.\uE001')).toBe(true);
+    expect(hasSentenceTerminalPunctuation('Managed teams\uE001')).toBe(false);
   });
 
   test('accepts only one allowlisted trailing title parenthetical', () => {
