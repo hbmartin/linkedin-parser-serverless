@@ -112,6 +112,7 @@ const knownPlaceNames: ReadonlySet<string> = new Set([
   'tokyo',
   'toronto',
   'washington',
+  'west hollywood',
 ]);
 
 const countryAndRegionNames: ReadonlySet<string> = new Set([
@@ -122,6 +123,8 @@ const countryAndRegionNames: ReadonlySet<string> = new Set([
   'china',
   'england',
   'estonia',
+  'etats unis',
+  'états unis',
   'france',
   'germany',
   'deutschland',
@@ -136,6 +139,8 @@ const countryAndRegionNames: ReadonlySet<string> = new Set([
   'scotland',
   'singapore',
   'spain',
+  'stati uniti',
+  'stati uniti d america',
   'netherlands',
   'switzerland',
   'united kingdom',

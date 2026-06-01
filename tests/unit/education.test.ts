@@ -55,6 +55,53 @@ describe('EducationParser', () => {
     ]);
   });
 
+  test('cleans localized month-qualified dates from degree text', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Utdanning', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: "King's College London",
+        y: 730,
+      }),
+      structuralLine({
+        fontSize: 10,
+        text: "Bachelor's degree, Politics, Philosophy and Economics · (september",
+        y: 710,
+      }),
+      structuralLine({ fontSize: 10, text: '2018 - juni 2021)', y: 696 }),
+      structuralLine({ fontSize: 14, text: 'Blindern VGS', y: 680 }),
+      structuralLine({
+        fontSize: 10,
+        text: 'International Baccalaureate · (august 2016 - juni 2018)',
+        y: 660,
+      }),
+      structuralLine({ fontSize: 16, text: 'Erfaring', y: 620 }),
+    ]);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        dates: expect.objectContaining({
+          originalText: 'september 2018 - juni 2021',
+          start: expect.objectContaining({ iso: '2018-09' }),
+          end: expect.objectContaining({ iso: '2021-06' }),
+        }),
+        degree: "Bachelor's degree, Politics, Philosophy and Economics",
+        institution: "King's College London",
+        year: 'september 2018 - juni 2021',
+      }),
+      expect.objectContaining({
+        dates: expect.objectContaining({
+          originalText: 'august 2016 - juni 2018',
+          start: expect.objectContaining({ iso: '2016-08' }),
+          end: expect.objectContaining({ iso: '2018-06' }),
+        }),
+        degree: 'International Baccalaureate',
+        institution: 'Blindern VGS',
+        year: 'august 2016 - juni 2018',
+      }),
+    ]);
+  });
+
   test('recognizes Brazilian Portuguese degree names', () => {
     const educations = EducationParser.parse(`
       Education
@@ -398,6 +445,33 @@ describe('EducationParser', () => {
         year: '2002 - 2004',
       })
     );
+  });
+
+  test('joins same-size school-of institution continuations before degree parsing', () => {
+    const educations = EducationParser.parseStructural([
+      structuralLine({ fontSize: 16, text: 'Education', y: 760 }),
+      structuralLine({
+        fontSize: 14,
+        text: 'Massachusetts Institute of Technology - Sloan School of',
+        y: 730,
+      }),
+      structuralLine({ fontSize: 14, text: 'Management', y: 716 }),
+      structuralLine({
+        fontSize: 10,
+        text: 'MBA · (August 2010 - August 2012)',
+        y: 696,
+      }),
+      structuralLine({ fontSize: 16, text: 'Experience', y: 660 }),
+    ]);
+
+    expect(educations).toEqual([
+      expect.objectContaining({
+        degree: 'MBA',
+        institution:
+          'Massachusetts Institute of Technology - Sloan School of Management',
+        year: 'August 2010 - August 2012',
+      }),
+    ]);
   });
 
   test('does not append comma-adjacent non-academic details to degree text', () => {

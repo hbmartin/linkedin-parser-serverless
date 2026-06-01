@@ -6,6 +6,7 @@ import type {
   SectionParseWarning,
 } from '../types/profile.js';
 import {
+  extractProfileDateRangeText,
   looksLikeDateRangeText,
   parseProfileDateRange,
 } from '../utils/date-parser.js';
@@ -209,6 +210,21 @@ export class EducationParser {
         !this.looksLikeYear(normalizedLine);
 
       if (isInstitutionLine) {
+        if (
+          currentEducation &&
+          !currentEducation.degree &&
+          !currentEducation.year &&
+          this.looksLikeInstitutionContinuation({
+            institution: currentEducation.institution,
+            line: normalizedLine,
+          })
+        ) {
+          currentEducation.institution = normalizeWhitespace(
+            `${currentEducation.institution ?? ''} ${normalizedLine}`
+          );
+          continue;
+        }
+
         if (currentEducation?.institution) {
           educations.push(this.fillDefaults(currentEducation));
         }
@@ -285,6 +301,12 @@ export class EducationParser {
   }
 
   private static extractYearFromLine(line: string): string {
+    const profileDateRange = this.extractEducationDateRangeText(line);
+
+    if (profileDateRange) {
+      return profileDateRange;
+    }
+
     // Extract year patterns from lines that might contain both degree and year info
     const yearPatterns = [
       EducationParser.YEAR_RANGE_REGEXP,
@@ -305,8 +327,13 @@ export class EducationParser {
   }
 
   private static removeYearFromDegree(line: string): string {
+    const dateText = this.extractYearFromLine(line);
+    const dateStrippedLine = dateText
+      ? this.removeDateTextFromLine(line, dateText)
+      : line;
+
     return normalizeWhitespace(
-      line
+      dateStrippedLine
         .replace(EducationParser.PARENTHESIZED_YEAR_RANGE_PATTERN, ' ')
         .replace(EducationParser.PARENTHESIZED_MONTH_YEAR_PATTERN, ' ')
         .replace(/\s*[·-]?\s*(?:19|20)\d{2}\s*-\s*(?:19|20)\d{2}\s*/g, ' ')
@@ -314,6 +341,36 @@ export class EducationParser {
         .replace(/\s*[·-]?\s*\b(?:19|20)\d{2}\b\s*/g, ' ')
         .replace(/[·()]+$/g, '')
     );
+  }
+
+  private static extractEducationDateRangeText(line: string): string {
+    const parenthesizedDateText = Array.from(
+      line.matchAll(/\(([^)]*(?:19|20)\d{2}[^)]*)\)/gu)
+    )
+      .map(match => match[1])
+      .find(candidate =>
+        candidate ? extractProfileDateRangeText(candidate) !== undefined : false
+      );
+
+    if (parenthesizedDateText) {
+      return extractProfileDateRangeText(parenthesizedDateText) ?? '';
+    }
+
+    return extractProfileDateRangeText(line) ?? '';
+  }
+
+  private static removeDateTextFromLine(
+    line: string,
+    dateText: string
+  ): string {
+    const escapedDateText = escapeRegExp(dateText);
+
+    return line
+      .replace(
+        new RegExp(`\\s*[·-]?\\s*\\(${escapedDateText}\\)\\s*`, 'giu'),
+        ' '
+      )
+      .replace(new RegExp(`\\s*[·-]?\\s*${escapedDateText}\\s*`, 'giu'), ' ');
   }
 
   private static looksLikeLocation(line: string): boolean {
@@ -385,9 +442,24 @@ export class EducationParser {
     education: Partial<Education>;
     line: string;
   }): void {
+    const existingDegree = education.degree || undefined;
+
+    if (
+      existingDegree &&
+      this.hasUnclosedParentheticalDateFragment(existingDegree)
+    ) {
+      const combinedLine = normalizeWhitespace(`${existingDegree} ${line}`);
+      const combinedYear = this.extractYearFromLine(combinedLine);
+
+      if (combinedYear) {
+        education.year = combinedYear;
+        education.degree = this.removeYearFromDegree(combinedLine);
+        return;
+      }
+    }
+
     const year = this.extractYearFromLine(line);
     const degree = year ? this.removeYearFromDegree(line) : line;
-    const existingDegree = education.degree || undefined;
 
     if (
       !existingDegree &&
@@ -513,6 +585,14 @@ export class EducationParser {
     );
   }
 
+  private static hasUnclosedParentheticalDateFragment(line: string): boolean {
+    return (
+      Array.from(line.matchAll(/\(/g)).length >
+        Array.from(line.matchAll(/\)/g)).length &&
+      /\(\s*[\p{L}\p{M}]+\s*$/u.test(line.trim())
+    );
+  }
+
   private static looksLikeDegreeDetail(line: string): boolean {
     return (
       this.looksLikeDegree(line) ||
@@ -614,4 +694,8 @@ export class EducationParser {
 
     return warnings;
   }
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

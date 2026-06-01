@@ -97,6 +97,33 @@ describe('IdentityStructuralParser', () => {
     expect(identity.location).toBe('United States');
   });
 
+  test('keeps localized comma locations out of the headline', () => {
+    const identity = IdentityStructuralParser.parse([
+      line({ fontSize: 26, text: 'Pierre Badin', y: 760 }),
+      line({
+        fontSize: 12,
+        text: 'Entrepreneur, Engineer & Commercial Pilot.',
+        y: 730,
+      }),
+      line({
+        fontSize: 12,
+        text: 'Currently acquiring growing aviation businesses.',
+        y: 710,
+      }),
+      line({
+        fontSize: 12,
+        text: 'Los Angeles, Californie, États-Unis',
+        y: 690,
+      }),
+      line({ fontSize: 16, text: 'Résumé', y: 660 }),
+    ]);
+
+    expect(identity.headline).toBe(
+      'Entrepreneur, Engineer & Commercial Pilot. Currently acquiring growing aviation businesses.'
+    );
+    expect(identity.location).toBe('Los Angeles, Californie, États-Unis');
+  });
+
   test('stops identity extraction at localized experience headers', () => {
     const identity = IdentityStructuralParser.parse([
       line({ fontSize: 26, text: 'Hauk Hofseth', y: 760 }),
@@ -177,6 +204,24 @@ describe('IdentityStructuralParser', () => {
       name: 'Artemis Selene',
       topSkills: ['TypeScript', 'Product Strategy'],
     });
+  });
+
+  test('extracts top skills from localized sidebar headings', () => {
+    const identity = IdentityStructuralParser.parse([
+      line({ column: 'left', text: 'Competenze principali', y: 760 }),
+      line({ column: 'left', text: 'Lingua spagnola', y: 740 }),
+      line({ column: 'left', text: 'Lingua inglese', y: 720 }),
+      line({ column: 'left', text: 'Marketing', y: 700 }),
+      line({ column: 'left', text: 'Languages', y: 680 }),
+      line({ fontSize: 26, text: 'Michele Andreano', y: 760 }),
+      line({ fontSize: 16, text: 'Esperienza', y: 720 }),
+    ]);
+
+    expect(identity.topSkills).toEqual([
+      'Lingua spagnola',
+      'Lingua inglese',
+      'Marketing',
+    ]);
   });
 
   test('merges wrapped top skill lines in the same sidebar column', () => {

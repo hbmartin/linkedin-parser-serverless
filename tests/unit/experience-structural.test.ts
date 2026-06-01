@@ -4699,6 +4699,197 @@ describe('ExperienceStructuralParser', () => {
     ).toBeGreaterThan(0);
   });
 
+  test('separates dotted-suffix companies from adjacent positions', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Global Medical Service (Sold)', y: 730 }),
+      textItem({ text: 'General Manager', y: 710, fontSize: 11.5 }),
+      textItem({
+        text: 'febbraio 2014 - dicembre 2019 (5 anni 11 mesi)',
+        y: 690,
+      }),
+      textItem({ text: 'Napoli, Italia', y: 670 }),
+      textItem({ text: 'Sofar S.p.A.', y: 630 }),
+      textItem({
+        text: 'Sales Manager regione Campania',
+        y: 610,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'aprile 2015 - agosto 2018 (3 anni 5 mesi)',
+        y: 590,
+      }),
+      textItem({ text: 'Napoli, Italia', y: 570 }),
+    ]);
+
+    expect(experiences.map(experience => experience.organization)).toEqual([
+      'Global Medical Service (Sold)',
+      'Sofar S.p.A.',
+    ]);
+    expect(experiences[1]?.positions[0]).toEqual(
+      expect.objectContaining({
+        duration: 'aprile 2015 - agosto 2018',
+        location: 'Napoli, Italia',
+        title: 'Sales Manager regione Campania',
+      })
+    );
+  });
+
+  test('keeps page-break locations and following positions in multi-position companies', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Who What Wear', y: 730 }),
+      textItem({ text: '5 years 7 months', y: 710 }),
+      textItem({ text: 'President & Publisher', y: 690, fontSize: 11.5 }),
+      textItem({
+        text: 'August 2013 - January 2014 (6 months)',
+        y: 670,
+      }),
+      textItem({ text: 'Page 3 of 5', y: 650, fontSize: 9 }),
+      textItem({ text: 'West Hollywood', y: 630 }),
+      textItem({ text: 'COO', y: 610, fontSize: 11.5 }),
+      textItem({
+        text: 'July 2008 - August 2013 (5 years 2 months)',
+        y: 590,
+      }),
+      textItem({ text: 'http://www.whowhatwear.com', y: 570 }),
+      textItem({ text: 'Watertower Group', y: 530 }),
+      textItem({
+        text: 'Media and Technology Venture Capital / Corporate Development - MBA',
+        y: 510,
+        fontSize: 11.5,
+      }),
+      textItem({ text: 'Intern', y: 490, fontSize: 11.5 }),
+      textItem({
+        text: 'September 2007 - May 2008 (9 months)',
+        y: 470,
+      }),
+    ]);
+
+    expect(experiences[0]).toEqual(
+      expect.objectContaining({
+        organization: 'Who What Wear',
+        positions: [
+          expect.objectContaining({
+            location: 'West Hollywood',
+            title: 'President & Publisher',
+          }),
+          expect.objectContaining({
+            title: 'COO',
+          }),
+        ],
+      })
+    );
+    expect(experiences[1]).toEqual(
+      expect.objectContaining({
+        organization: 'Watertower Group',
+        positions: [
+          expect.objectContaining({
+            title:
+              'Media and Technology Venture Capital / Corporate Development - MBA Intern',
+          }),
+        ],
+      })
+    );
+  });
+
+  test('promotes location-shaped organization headers after descriptions', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Pathogenica, Inc.', y: 730 }),
+      textItem({ text: 'Investor', y: 710, fontSize: 11.5 }),
+      textItem({
+        text: 'April 2010 - August 2013 (3 years 5 months)',
+        y: 690,
+      }),
+      textItem({ text: 'Cambridge, Massachusetts', y: 670 }),
+      textItem({
+        text: 'Pathogenica, Inc. is a privately held company, founded in July 2009.',
+        y: 650,
+      }),
+      textItem({ text: 'Avalon Boston', y: 610 }),
+      textItem({ text: 'Promotions Manager', y: 590, fontSize: 11.5 }),
+      textItem({
+        text: 'March 2002 - May 2005 (3 years 3 months)',
+        y: 570,
+      }),
+      textItem({ text: 'Boston, Massachusetts', y: 550 }),
+    ]);
+
+    expect(experiences.map(experience => experience.organization)).toEqual([
+      'Pathogenica, Inc.',
+      'Avalon Boston',
+    ]);
+    expect(experiences[0]?.positions[0]?.location).toBe(
+      'Cambridge, Massachusetts'
+    );
+  });
+
+  test('separates military organizations from prior descriptions', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Satlink Communications', y: 730 }),
+      textItem({
+        text: 'Senior Media Analyst - Ministry of Foreign Affairs',
+        y: 710,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'December 2006 - December 2008 (2 years 1 month)',
+        y: 690,
+      }),
+      textItem({
+        text: 'reduced the Ministry’s media strategy planning costs by 30%',
+        y: 670,
+      }),
+      textItem({ text: 'Israel Defense Forces', y: 630 }),
+      textItem({
+        text: 'Company Commander (Officer) - Paratroopers, 101st Division',
+        y: 610,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'November 2000 - November 2004 (4 years 1 month)',
+        y: 590,
+      }),
+      textItem({ text: 'Page 6 of 7', y: 570, fontSize: 9 }),
+      textItem({ text: 'Israel', y: 550 }),
+    ]);
+
+    expect(experiences.map(experience => experience.organization)).toEqual([
+      'Satlink Communications',
+      'Israel Defense Forces',
+    ]);
+    expect(experiences[1]?.positions[0]?.location).toBe('Israel');
+  });
+
+  test('keeps short monetary amount lines in descriptions', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'DSNR Media Group', y: 730 }),
+      textItem({
+        text: 'Senior Account Manager/Team Leader (Promoted)',
+        y: 710,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'January 2009 - August 2010 (1 year 8 months)',
+        y: 690,
+      }),
+      textItem({
+        text: '• Managed global account managers to plan and execute online strategies for more than 50 clients generating over',
+        y: 670,
+      }),
+      textItem({ text: '$11M of revenue', y: 650 }),
+      textItem({
+        text: '• Developed multi-channel ad distribution strategies.',
+        y: 630,
+      }),
+    ]);
+
+    expect(experience.positions[0]?.description).toContain('$11M of revenue');
+  });
+
   test('covers header helper fallback branches', () => {
     expect(
       ExperienceStructuralParser['nextContentLineStartsCanonicalHeader']({
@@ -4741,6 +4932,109 @@ describe('ExperienceStructuralParser', () => {
         },
       })
     ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser['canStartCanonicalExperienceHeaderAt']({
+        index: 2,
+        lineTexts: ['Only One Header'],
+      })
+    ).toBe(false);
+    expect(
+      ExperienceStructuralParser['previousContentText'](['Page 1 of 1'], 0)
+    ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser['createMultiPositionHeaderCandidate']({
+        lineTexts: ['Example Labs', '2 years'],
+        organizationLine: parserLine({ index: 0, text: 'Example Labs' }),
+        parserLines: [
+          parserLine({ index: 0, text: 'Example Labs' }),
+          parserLine({ index: 1, text: '2 years' }),
+        ],
+        totalDurationLine: parserLine({ index: 1, text: '2 years' }),
+      })
+    ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser['createMultiPositionHeaderCandidate']({
+        lineTexts: ['Example Labs', '2 years', 'Principal Engineer'],
+        organizationLine: parserLine({ index: 0, text: 'Example Labs' }),
+        parserLines: [
+          parserLine({ index: 0, text: 'Example Labs' }),
+          parserLine({ index: 1, text: '2 years' }),
+          parserLine({ index: 2, text: 'Principal Engineer' }),
+        ],
+        totalDurationLine: parserLine({ index: 1, text: '2 years' }),
+      })
+    ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionLine']({
+        allLines: ['Metric: delivered'],
+        index: 0,
+        line: 'Metric: delivered',
+      })
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
+        '(www.example.com)',
+        'Previous description text is long enough'
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
+        'North America',
+        '• Sponsor of Partner acquisition team and mobile web initiative in'
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
+        'platform outcomes',
+        '• Sponsor of Partner acquisition team and mobile web initiative in'
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        index: 0,
+        line: parserLine({ index: 0, text: 'Page 1 of 2' }),
+        lineTexts: ['Page 1 of 2'],
+        state: 'in_description',
+      })
+    ).toBe('other');
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        index: 1,
+        line: parserLine({ index: 1, text: 'Sofar S.p.A.' }),
+        lineTexts: [
+          'Previous description sentence.',
+          'Sofar S.p.A.',
+          'Sales Manager regione Campania',
+          'aprile 2015 - agosto 2018 (3 anni 5 mesi)',
+        ],
+        state: 'seeking_dates',
+      })
+    ).toBe('organization');
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        index: 0,
+        line: parserLine({
+          index: 0,
+          text: 'Standalone descriptor text with enough context.',
+        }),
+        lineTexts: ['Standalone descriptor text with enough context.'],
+        state: 'in_description',
+      })
+    ).toBe('description');
+    expect(
+      ExperienceStructuralParser['looksLikeShortDescriptorEntryHeader'](
+        'Regional Lead',
+        0,
+        ['Regional Lead', '2020 - 2021']
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeShortDescriptorEntryHeader'](
+        'Product Steward',
+        0,
+        ['Product Steward', '2020 - 2021']
+      )
+    ).toBe(true);
   });
 });
 

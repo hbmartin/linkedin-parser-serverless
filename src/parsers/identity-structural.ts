@@ -4,6 +4,11 @@ import type {
   SectionParseWarning,
 } from '../types/profile.js';
 import { TOP_SKILLS_LIMIT } from '../utils/parser-limits.js';
+import { classifyLocationText } from '../utils/location-classifier.js';
+import {
+  getParserLineSectionHeader,
+  type ParserLineSection,
+} from '../utils/parser-lines.js';
 import {
   isLikelyLocationText,
   isSectionHeaderText,
@@ -97,8 +102,14 @@ export class IdentityStructuralParser {
   }
 
   private static isIdentityLocationLine(text: string): boolean {
+    const locationClassification = classifyLocationText({
+      context: { structuralContext: 'metadata' },
+      text,
+    });
+
     return (
       isLikelyLocationText(text) ||
+      locationClassification.isLocation ||
       /^(?:U\.?\s*S\.?\s*A\.?|USA)$/iu.test(text.trim())
     );
   }
@@ -130,7 +141,7 @@ export class IdentityStructuralParser {
 
   private static extractTopSkills(lines: StructuralLine[]): string[] {
     const topSkillsIndex = lines.findIndex(line =>
-      /^top skills$/i.test(line.text)
+      isHeaderForSection(line.text, 'top_skills')
     );
 
     if (topSkillsIndex === -1) {
@@ -199,10 +210,10 @@ export class IdentityStructuralParser {
   ): SectionParseWarning[] {
     const warnings: SectionParseWarning[] = [];
     const hasTopSkillsSection = leftLines.some(line =>
-      /^top skills$/i.test(line.text)
+      isHeaderForSection(line.text, 'top_skills')
     );
     const hasContactSection = leftLines.some(line =>
-      /^contact$/i.test(line.text)
+      isHeaderForSection(line.text, 'contact')
     );
     const hasLinkedInText = leftLines.some(line =>
       /linkedin\.com\/in\//i.test(line.text)
@@ -232,4 +243,10 @@ export class IdentityStructuralParser {
 
 function isSidebarSectionHeader(text: string): boolean {
   return isSectionHeaderText(text);
+}
+
+function isHeaderForSection(text: string, section: ParserLineSection): boolean {
+  const header = getParserLineSectionHeader(text);
+
+  return header?.kind === 'target' && header.section === section;
 }
