@@ -533,7 +533,11 @@ export class ExperienceStructuralParser {
 
     if (
       !previousLine ||
-      !this.canStartCanonicalExperienceHeader(previousLine.text)
+      !this.canStartCanonicalExperienceHeader(previousLine.text) ||
+      !this.hasPreviousHeaderProminence({
+        previousLine,
+        titleLine: line,
+      })
     ) {
       return false;
     }
@@ -546,6 +550,20 @@ export class ExperienceStructuralParser {
       wordCount >= 4 &&
       hasBusinessTitlePunctuation &&
       this.looksLikePotentialPositionTitleLine(normalizedLine)
+    );
+  }
+
+  private static hasPreviousHeaderProminence({
+    previousLine,
+    titleLine,
+  }: {
+    previousLine: NormalizedParserLine;
+    titleLine: NormalizedParserLine;
+  }): boolean {
+    return (
+      previousLine.fontSize === undefined ||
+      titleLine.fontSize === undefined ||
+      previousLine.fontSize + 0.5 >= titleLine.fontSize
     );
   }
 
