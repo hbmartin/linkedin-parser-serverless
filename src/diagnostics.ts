@@ -1,4 +1,5 @@
 import { PROFILE_SECTION_HEADER_ENTRIES } from './utils/profile-section-headers.js';
+import { hasSentenceTerminalPunctuation } from './utils/profile-text.js';
 import type {
   LinkedInProfile,
   ParseDiagnostics,
@@ -65,7 +66,7 @@ function detectSectionsFromWarnings(
 }
 
 function sectionFromLine(line: string): WarningSection | undefined {
-  if (/[.!?]\s*$/u.test(line.trim())) {
+  if (hasSentenceTerminalPunctuation(line)) {
     return undefined;
   }
 

@@ -1,4 +1,8 @@
-import { classifyLocationText } from '../../src/utils/location-classifier.js';
+import {
+  classifyLocationText,
+  isKnownCountryAliasText,
+  normalizeCountryAliasText,
+} from '../../src/utils/location-classifier.js';
 
 describe('location classifier', () => {
   test('rejects empty location text without signals', () => {
@@ -188,6 +192,16 @@ describe('location classifier', () => {
         text: 'US',
       }).isLocation
     ).toBe(false);
+  });
+
+  test('normalizes dotted and spaced country aliases without changing location scoring', () => {
+    for (const text of ['US', 'U.S.', 'U S', 'USA', 'U.S.A.']) {
+      expect(normalizeCountryAliasText(text)).toBe('united states');
+      expect(isKnownCountryAliasText(text)).toBe(true);
+    }
+
+    expect(normalizeCountryAliasText('California')).toBeUndefined();
+    expect(classifyLocationText({ text: 'US' }).isLocation).toBe(false);
   });
 
   test('rejects place-word organization names and prose with ambiguous region-code words', () => {

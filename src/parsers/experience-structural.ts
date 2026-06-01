@@ -65,6 +65,20 @@ interface CombinedOrganizationTitleLine {
   title: string;
 }
 
+const pendingTitleContinuationModifiers: ReadonlySet<string> = new Set([
+  'contract',
+  'contractor',
+  'consultant',
+  'freelance',
+  'full time',
+  'fulltime',
+  'intern',
+  'internship',
+  'part time',
+  'parttime',
+  'promoted',
+]);
+
 interface DescriptionLineParams {
   allLines: string[];
   index: number;
@@ -3039,11 +3053,7 @@ export class ExperienceStructuralParser {
   private static looksLikePendingTitleContinuationLine(line: string): boolean {
     const normalizedLine = line.trim();
 
-    if (
-      /^\(\s*(?:promoted|contractor|contract|consultant|internship|intern|freelance|part[-\s]?time|full[-\s]?time)\s*\)$/iu.test(
-        normalizedLine
-      )
-    ) {
+    if (this.titleContinuationModifierFromParenthetical(normalizedLine)) {
       return true;
     }
 
@@ -3059,6 +3069,53 @@ export class ExperienceStructuralParser {
       !this.looksLikeLocation(normalizedLine) &&
       !isSectionHeaderText(normalizedLine)
     );
+  }
+
+  private static titleContinuationModifierFromParenthetical(
+    line: string
+  ): string | undefined {
+    const innerText = this.unwrapSingleParenthesizedText(line);
+
+    if (innerText === undefined) {
+      return undefined;
+    }
+
+    const normalizedModifier =
+      this.normalizeTitleContinuationModifier(innerText);
+
+    return pendingTitleContinuationModifiers.has(normalizedModifier)
+      ? normalizedModifier
+      : undefined;
+  }
+
+  private static unwrapSingleParenthesizedText(
+    line: string
+  ): string | undefined {
+    if (!line.startsWith('(') || !line.endsWith(')')) {
+      return undefined;
+    }
+
+    const innerText = line.slice(1, -1).trim();
+
+    if (
+      innerText.length === 0 ||
+      innerText.includes('(') ||
+      innerText.includes(')')
+    ) {
+      return undefined;
+    }
+
+    return innerText;
+  }
+
+  private static normalizeTitleContinuationModifier(text: string): string {
+    return text
+      .normalize('NFKC')
+      .replace(/[‐‑‒–—-]/gu, ' ')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
   }
 
   private static looksLikeTerminalTitleContinuationLine(line: string): boolean {

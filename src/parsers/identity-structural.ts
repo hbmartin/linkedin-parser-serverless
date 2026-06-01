@@ -4,7 +4,10 @@ import type {
   SectionParseWarning,
 } from '../types/profile.js';
 import { TOP_SKILLS_LIMIT } from '../utils/parser-limits.js';
-import { classifyLocationText } from '../utils/location-classifier.js';
+import {
+  classifyLocationText,
+  isKnownCountryAliasText,
+} from '../utils/location-classifier.js';
 import {
   getParserLineSectionHeader,
   type ParserLineSection,
@@ -110,7 +113,7 @@ export class IdentityStructuralParser {
     return (
       isLikelyLocationText(text) ||
       locationClassification.isLocation ||
-      /^(?:U\.?\s*S(?:\.?\s*A)?\.?)$/iu.test(text.trim())
+      isKnownCountryAliasText(text)
     );
   }
 

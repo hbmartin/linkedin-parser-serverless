@@ -194,6 +194,9 @@ describe('ExperienceStructuralParser', () => {
       textItem({ text: '( Promoted )', y: 690, fontSize: 11.5 }),
       textItem({ text: 'May 2014 - November 2016 (2 years 7 months)', y: 670 }),
       textItem({ text: 'Mountain View, CA', y: 650 }),
+      textItem({ text: 'Program Manager', y: 610, fontSize: 11.5 }),
+      textItem({ text: '(Part-Time)', y: 590, fontSize: 11.5 }),
+      textItem({ text: 'January 2013 - April 2014 (1 year 4 months)', y: 570 }),
     ]);
 
     expect(experience.positions[0]?.title).toBe(
@@ -202,6 +205,8 @@ describe('ExperienceStructuralParser', () => {
     expect(experience.positions[0]?.duration).toBe(
       'May 2014 - November 2016'
     );
+    expect(experience.positions[1]?.title).toBe('Program Manager (Part-Time)');
+    expect(experience.positions[1]?.duration).toBe('January 2013 - April 2014');
   });
 
   test('splits wrapped title-like experience entities before author roles', () => {

@@ -48,6 +48,9 @@ const visibleTextCache = new BoundedStringCache<string>(
 const lookupTextCache = new BoundedStringCache<string>(
   LOCATION_TEXT_CACHE_LIMIT
 );
+const countryAliasTextCache = new BoundedStringCache<string | undefined>(
+  LOCATION_TEXT_CACHE_LIMIT
+);
 
 const connectorWords: ReadonlySet<string> = new Set([
   'and',
@@ -149,6 +152,13 @@ const countryAndRegionNames: ReadonlySet<string> = new Set([
   'vereinigte arabische emirate',
   'vatican city state holy see',
   'wales',
+]);
+
+const countryAliasByCompactText: ReadonlyMap<string, string> = new Map([
+  ['uae', 'united arab emirates'],
+  ['uk', 'united kingdom'],
+  ['us', 'united states'],
+  ['usa', 'united states'],
 ]);
 
 const adminRegionNames: ReadonlySet<string> = new Set([
@@ -516,6 +526,22 @@ export function isLikelyScoredLocationText(text: string): boolean {
   return classifyLocationText({ text }).isLocation;
 }
 
+export function isKnownCountryAliasText(text: string): boolean {
+  return normalizeCountryAliasText(text) !== undefined;
+}
+
+export function normalizeCountryAliasText(text: string): string | undefined {
+  return countryAliasTextCache.getOrSet(text, () => {
+    const aliasKey = normalizeCountryAliasKey(text);
+
+    if (aliasKey.length === 0) {
+      return undefined;
+    }
+
+    return countryAliasByCompactText.get(aliasKey);
+  });
+}
+
 function normalizeVisibleText(text: string): string {
   return visibleTextCache.getOrSet(text, () =>
     text
@@ -539,6 +565,14 @@ function normalizeLookupText(text: string): string {
       .trim()
       .toLowerCase()
   );
+}
+
+function normalizeCountryAliasKey(text: string): string {
+  return normalizeVisibleText(text)
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^\p{L}\p{N}]+/gu, '')
+    .toLowerCase();
 }
 
 function visibleWords(text: string): string[] {
