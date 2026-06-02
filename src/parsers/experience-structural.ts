@@ -119,6 +119,39 @@ interface CanonicalHeaderCandidateStartParams {
   lineTexts: string[];
 }
 
+const COMMA_SEPARATED_ORGANIZATION_SUFFIX_TEXTS: readonly string[] =
+  Object.freeze([
+    'company',
+    'corp',
+    'corporation',
+    'gmbh',
+    'inc',
+    'labs',
+    'llc',
+    'llp',
+    'lp',
+    'ltd',
+    'partners',
+    's.a.',
+    'solutions',
+    's.p.a.',
+    's.r.l.',
+    'systems',
+    'technologies',
+    'technology',
+    'ventures',
+  ]);
+
+const commaSeparatedOrganizationSuffixes: ReadonlySet<string> = new Set(
+  COMMA_SEPARATED_ORGANIZATION_SUFFIX_TEXTS.map(
+    normalizeOrganizationSuffixLookupText
+  )
+);
+
+function normalizeOrganizationSuffixLookupText(text: string): string {
+  return text.trim().replace(/[.]/g, '').toLowerCase();
+}
+
 interface ClassifyLineTypeParams {
   allLines?: NormalizedParserLine[];
   index: number;
@@ -211,27 +244,7 @@ export class ExperienceStructuralParser {
   private static readonly ORGANIZATION_BOUNDARY_TERMINAL_PUNCTUATION_PATTERN =
     /[.!?]$/u;
   private static readonly COMMA_SEPARATED_ORGANIZATION_SUFFIXES: ReadonlySet<string> =
-    new Set([
-      'company',
-      'corp',
-      'corporation',
-      'gmbh',
-      'inc',
-      'labs',
-      'llc',
-      'llp',
-      'lp',
-      'ltd',
-      'partners',
-      'sa',
-      'solutions',
-      'spa',
-      'srl',
-      'systems',
-      'technologies',
-      'technology',
-      'ventures',
-    ]);
+    commaSeparatedOrganizationSuffixes;
   private static readonly SHORT_HEADER_LOCATION_PARTICLE_PATTERN =
     /^(?:am|an|and|d'|da|de|del|den|der|di|do|dos|du|im|la|of|the|und|van|von|zu)$/iu;
   private static readonly SHORT_HEADER_LOCATION_DESCRIPTOR_WORDS: ReadonlySet<string> =
@@ -3030,7 +3043,7 @@ export class ExperienceStructuralParser {
   ): boolean {
     const parts = line
       .split(',')
-      .map(part => part.trim().replace(/[.]/g, '').toLowerCase())
+      .map(normalizeOrganizationSuffixLookupText)
       .filter(Boolean);
 
     return (
