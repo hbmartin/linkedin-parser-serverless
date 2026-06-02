@@ -256,6 +256,60 @@ describe('source coverage helpers', () => {
     );
   });
 
+  test('classifies short post-duration lines before the next experience header as locations', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Salesforce',
+        'Sales Leader',
+        'November 2013 - July 2015 (1 year 9 months)',
+        'Europe',
+        'Cisco',
+        'Sales Leader',
+        'August 2006 - October 2013 (7 years 3 months)',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'Europe',
+        }),
+        expect.objectContaining({
+          fieldRole: 'organization',
+          text: 'Cisco',
+        }),
+      ])
+    );
+  });
+
+  test('classifies coordinated short post-duration ranges with description evidence as locations', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'The Broadway',
+        'Broadway Performer',
+        '1993 - 2006 (13 years)',
+        'US and Europe',
+        'Toured most of Europe and North America with various Broadway musicals.',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'US and Europe',
+        }),
+        expect.objectContaining({
+          fieldRole: 'description',
+          text: 'Toured most of Europe and North America with various Broadway musicals.',
+        }),
+      ])
+    );
+  });
+
   test('reports location lines misclassified into experience descriptions', () => {
     const report = createSourceCoverageReport({
       layoutText: [
