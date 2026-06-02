@@ -118,6 +118,7 @@ const POSITION_KEYWORDS = [
   'corporate finance',
   'developer',
   'desenvolvedor',
+  'designer',
   'director',
   'diretor',
   'engineer',

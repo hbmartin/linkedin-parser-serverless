@@ -851,6 +851,26 @@ describe('source coverage helpers', () => {
     ]);
   });
 
+  test('treats private-use bullet glyphs as exact punctuation-normalized matches', () => {
+    const report = createSourceCoverageReport({
+      layoutText: [
+        'Summary',
+        '- World traveled and knowledgeable of both foreign and domestic',
+        'economies \uf0b7',
+        '- Refined capacity to disseminate information.',
+      ].join('\n'),
+      parsedJson: parsedJsonWithProfile({
+        summary:
+          '- World traveled and knowledgeable of both foreign and domestic economies - Refined capacity to disseminate information.',
+      }),
+      pdfFileName: 'private-use-bullet.pdf',
+    });
+
+    expect(report.unmatchedSourceSegmentCount).toBe(0);
+    expect(report.looseSourceMatchCount).toBe(0);
+    expect(report.untracedOutputValueCount).toBe(0);
+  });
+
   test('does not require derived date fields or warnings to trace to PDF text', () => {
     const values = collectOutputValues({
       profile: {

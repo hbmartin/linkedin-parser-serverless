@@ -80,7 +80,8 @@
 		"type-coverage": "type-coverage --project tsconfig.json --strict --at-least 100",
 		"types:lint": "npm_config_cache=.npm-cache attw --pack .",
 		"verify:artifacts": "node scripts/verify-artifacts.mjs",
-		"verify:package": "node scripts/verify-packed-package.mjs"
+		"verify:package": "node scripts/verify-packed-package.mjs",
+		"write": "pnpm run build && node bin/cli.js write-json samples"
 	},
 	"files": [
 		"bin",
