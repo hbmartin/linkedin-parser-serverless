@@ -133,6 +133,12 @@ interface WrappedDescriptionContinuationFragmentParams {
   line: NormalizedParserLine;
 }
 
+interface ShortHeaderLocationAfterDurationParams {
+  allLines: NormalizedParserLine[];
+  index: number;
+  line: NormalizedParserLine;
+}
+
 interface ExtractCleanOrganizationNameOptions {
   mode: 'anchored_header' | 'standard';
 }
@@ -173,11 +179,11 @@ export class ExperienceStructuralParser {
   private static readonly COMBINED_ORGANIZATION_TITLE_LINE_PATTERN =
     /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC\.?|LLP\.?|LP\.?|Ltd\.?|N\.?A\.?|PLC\.?|Pte\.?|S\.?A\.?))\s+(.+)$/iu;
   private static readonly ORGANIZATION_SUFFIX_TITLE_FRAGMENT_PATTERN =
-    /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC\.?|LLP\.?|LP\.?|Ltd\.?|N\.?A\.?|PLC\.?|Pte\.?|S\.?A\.?|S\.?P\.?A\.?)$/iu;
+    /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC\.?|LLP\.?|LP\.?|Ltd\.?|N\.?A\.?|PLC\.?|Pte\.?|S\.?A\.?|S\.?P\.?A\.?|S\.?R\.?L\.?)$/iu;
   private static readonly ORGANIZATION_TERMINAL_ABBREVIATION_PATTERN =
-    /\b(?:ag|co|corp|gmbh|inc|llc|llp|lp|ltd|n\.a|plc|pte|s\.a|s\.?p\.?a)\.?$/iu;
+    /\b(?:ag|co|corp|gmbh|inc|llc|llp|lp|ltd|n\.a|plc|pte|s\.a|s\.?p\.?a|s\.?r\.?l)\.?$/iu;
   private static readonly ORGANIZATION_TERMINAL_SUFFIX_PATTERN =
-    /\b(?:agency|ag|co|company|corp|corporation|gmbh|inc|limited|llc|llp|lp|ltd|n\.a|plc|pte|s\.a|s\.?p\.?a)\.?$/iu;
+    /\b(?:agency|ag|co|company|corp|corporation|gmbh|inc|limited|llc|llp|lp|ltd|n\.a|plc|pte|s\.a|s\.?p\.?a|s\.?r\.?l)\.?$/iu;
   private static readonly BROKEN_YORK_LOCATION_PATTERN = /\bY\s+ork\b/g;
   private static readonly AREA_WITH_US_SUFFIX_CANDIDATE_PATTERN =
     /\b(?:Area|Metro(?:politan)?\s+Area)\b.*(?:U\.?\s*S\.?(?:\s*A\.?)?|USA\.?)[,\s]*$/iu;
@@ -217,6 +223,23 @@ export class ExperienceStructuralParser {
       'technologies',
       'technology',
       'ventures',
+    ]);
+  private static readonly SHORT_HEADER_LOCATION_DESCRIPTOR_WORDS: ReadonlySet<string> =
+    new Set([
+      'ai',
+      'audit',
+      'client',
+      'consulting',
+      'data',
+      'finance',
+      'group',
+      'marketing',
+      'operations',
+      'product',
+      'research',
+      'sales',
+      'spatial',
+      'strategy',
     ]);
   static parseExperience(params: ParseExperienceParams): WorkExperience[];
   static parseExperience(
@@ -1230,7 +1253,12 @@ export class ExperienceStructuralParser {
       classifyLocationText({
         context: { structuralContext: 'after-duration' },
         text,
-      }).isLocation
+      }).isLocation ||
+      this.looksLikeShortHeaderLocationAfterDuration({
+        allLines: parserLines,
+        index: possibleLocationLine.index,
+        line: possibleLocationLine,
+      })
       ? possibleLocationLine
       : undefined;
   }
@@ -1639,6 +1667,17 @@ export class ExperienceStructuralParser {
           })
         ) {
           return 'description';
+        }
+
+        if (
+          allLines &&
+          this.looksLikeShortHeaderLocationAfterDuration({
+            allLines,
+            index,
+            line,
+          })
+        ) {
+          return 'location';
         }
 
         if (this.looksLikeOrganizationBeforePosition(text, index, lineTexts)) {
@@ -2696,6 +2735,144 @@ export class ExperienceStructuralParser {
         text: line,
       }).isLocation
     );
+  }
+
+  private static looksLikeShortHeaderLocationAfterDuration({
+    allLines,
+    index,
+    line,
+  }: ShortHeaderLocationAfterDurationParams): boolean {
+    const previousLine = this.previousContentLine(allLines, index - 1);
+
+    if (!previousLine || !this.looksLikeDuration(previousLine.text)) {
+      return false;
+    }
+
+    const lineTexts = allLines.map(candidate => candidate.text);
+    const normalizedLine = this.normalizeCompletedLocationText(line.text);
+
+    if (
+      !this.hasHeaderDetailGeometry({
+        line,
+        previousLine,
+      }) ||
+      !this.looksLikeShortProperHeaderLocationText(normalizedLine)
+    ) {
+      return false;
+    }
+
+    if (
+      !normalizedLine.includes(',') &&
+      this.canStartCanonicalExperienceHeaderAt({
+        index,
+        lineTexts,
+      }) &&
+      (this.hasImmediateTitleAndDurationAfterOrganization(index, lineTexts) ||
+        this.hasTotalDurationThenPosition(index, lineTexts))
+    ) {
+      return false;
+    }
+
+    const nextLine = this.nextContentLine(allLines, index + 1);
+
+    if (!nextLine) {
+      return true;
+    }
+
+    return (
+      isSectionHeaderText(nextLine.text) ||
+      this.looksLikeOrganizationBeforePosition(
+        nextLine.text,
+        nextLine.index,
+        lineTexts
+      ) ||
+      this.looksLikeDescriptionLine({
+        allLines: lineTexts,
+        index: nextLine.index,
+        line: nextLine.text,
+        previousLine: line.text,
+      }) ||
+      nextLine.text.length > this.MIN_DESCRIPTION_LINE_LENGTH
+    );
+  }
+
+  private static hasHeaderDetailGeometry({
+    line,
+    previousLine,
+  }: {
+    line: NormalizedParserLine;
+    previousLine: NormalizedParserLine;
+  }): boolean {
+    const hasAlignedX =
+      line.x === undefined ||
+      previousLine.x === undefined ||
+      Math.abs(line.x - previousLine.x) <=
+        this.EXPERIENCE_HEADER_ALIGNMENT_TOLERANCE;
+    const hasComparableDetailFont =
+      line.fontSize === undefined ||
+      previousLine.fontSize === undefined ||
+      line.fontSize <= previousLine.fontSize + 0.75;
+    const hasSameColumn =
+      line.column === undefined ||
+      previousLine.column === undefined ||
+      line.column === previousLine.column;
+
+    return hasAlignedX && hasComparableDetailFont && hasSameColumn;
+  }
+
+  private static looksLikeShortProperHeaderLocationText(line: string): boolean {
+    const normalizedLine = this.normalizeCompletedLocationText(line);
+
+    if (
+      normalizedLine.length < 2 ||
+      normalizedLine.length > 60 ||
+      /^[-+*•>]/u.test(normalizedLine) ||
+      /[$@!?;:]/u.test(normalizedLine) ||
+      /https?:\/\//iu.test(normalizedLine) ||
+      this.looksLikeDuration(normalizedLine) ||
+      this.looksLikePosition(normalizedLine) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
+      this.looksLikeSentenceLikeDescriptionText(normalizedLine) ||
+      this.looksLikeCommaSeparatedProseText(normalizedLine) ||
+      this.looksLikeCommaSeparatedOrganizationName(normalizedLine) ||
+      isSectionHeaderText(normalizedLine)
+    ) {
+      return false;
+    }
+
+    const words = normalizedLine.split(/\s+/u).filter(Boolean);
+    const meaningfulWords = words
+      .map(word => this.normalizeShortLocationLookupToken(word))
+      .filter(
+        word =>
+          word.length > 0 && !/^(?:d'|da|de|del|di|la|of|the)$/iu.test(word)
+      );
+
+    return (
+      words.length > 0 &&
+      words.length <= 4 &&
+      !meaningfulWords.every(word =>
+        this.SHORT_HEADER_LOCATION_DESCRIPTOR_WORDS.has(word)
+      ) &&
+      words.every(word => this.looksLikeProperLocationToken(word))
+    );
+  }
+
+  private static looksLikeProperLocationToken(word: string): boolean {
+    const normalizedWord = this.normalizeShortLocationToken(word);
+
+    return (
+      /^(?:d'|da|de|del|di|la|of|the)$/iu.test(normalizedWord) ||
+      /^[\p{Lu}\d][\p{L}\p{M}\d.'-]*$/u.test(normalizedWord)
+    );
+  }
+
+  private static normalizeShortLocationToken(word: string): string {
+    return word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}.'-]+$/gu, '');
+  }
+
+  private static normalizeShortLocationLookupToken(word: string): string {
+    return this.normalizeShortLocationToken(word).toLowerCase();
   }
 
   private static looksLikeWrappedDescriptionContinuationFragment({

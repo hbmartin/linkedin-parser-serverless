@@ -18,6 +18,11 @@ interface ProfileSectionHeaderAliasGroup {
   texts: readonly string[];
 }
 
+type ProfileSectionHeaderEntry = readonly [
+  text: string,
+  section: ProfileSectionKey,
+];
+
 const PROFILE_SECTION_HEADER_ALIAS_GROUPS: readonly ProfileSectionHeaderAliasGroup[] =
   [
     {
@@ -126,20 +131,7 @@ const PROFILE_SECTION_HEADER_ALIAS_GROUPS: readonly ProfileSectionHeaderAliasGro
     },
   ];
 
-export const PROFILE_SECTION_HEADER_ENTRIES: ReadonlyArray<
-  readonly [text: string, section: ProfileSectionKey]
-> = PROFILE_SECTION_HEADER_ALIAS_GROUPS.flatMap(group =>
-  group.texts.map(text =>
-    createProfileSectionHeaderEntry({ section: group.section, text })
-  )
-);
-
-function createProfileSectionHeaderEntry({
-  section,
-  text,
-}: {
-  section: ProfileSectionKey;
-  text: string;
-}): readonly [text: string, section: ProfileSectionKey] {
-  return [text, section];
-}
+export const PROFILE_SECTION_HEADER_ENTRIES: ReadonlyArray<ProfileSectionHeaderEntry> =
+  PROFILE_SECTION_HEADER_ALIAS_GROUPS.flatMap(group =>
+    group.texts.map((text): ProfileSectionHeaderEntry => [text, group.section])
+  );
