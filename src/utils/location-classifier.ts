@@ -119,7 +119,9 @@ const knownPlaceNames: ReadonlySet<string> = new Set([
 ]);
 
 const countryAndRegionNames: ReadonlySet<string> = new Set([
+  'antigua and barbuda',
   'australia',
+  'bosnia and herzegovina',
   'brasil',
   'brazil',
   'canada',
@@ -140,12 +142,17 @@ const countryAndRegionNames: ReadonlySet<string> = new Set([
   'mexico',
   'portugal',
   'scotland',
+  'saint kitts and nevis',
+  'saint vincent and the grenadines',
+  'sao tome and principe',
   'singapore',
   'spain',
   'stati uniti',
   'stati uniti d america',
   'netherlands',
   'switzerland',
+  'trinidad and tobago',
+  'turks and caicos islands',
   'united kingdom',
   'united states',
   'united arab emirates',

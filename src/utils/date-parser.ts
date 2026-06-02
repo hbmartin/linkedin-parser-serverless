@@ -218,10 +218,10 @@ function parseCleanProfileDateRange(
   const isCurrent = rangeParts.some(isCurrentText);
 
   if (rangeParts.length >= 2) {
-    const start = parseProfileDate(rangeParts[0]);
+    const start = parseExplicitRangePartProfileDate(rangeParts[0]);
     const end = isCurrentText(rangeParts[1])
       ? undefined
-      : parseProfileDate(rangeParts[1]);
+      : parseExplicitRangePartProfileDate(rangeParts[1]);
 
     if (!start || (!end && !isCurrent)) {
       return undefined;
@@ -421,6 +421,16 @@ function parseProfileDate(text: string): ParsedProfileDate | undefined {
   const chronoRange = parseWithChrono(normalizedText);
 
   return chronoRange?.start;
+}
+
+function parseExplicitRangePartProfileDate(
+  text: string
+): ParsedProfileDate | undefined {
+  if (!hasExplicitYearText(text)) {
+    return undefined;
+  }
+
+  return parseProfileDate(text);
 }
 
 function createParsedProfileDate(
@@ -641,7 +651,11 @@ function looksLikeDurationText(text: string): boolean {
 }
 
 function hasProfileDateSignal(text: string): boolean {
-  return /\b(?:19|20)\d{2}\b/.test(text) || isCurrentText(text);
+  return hasExplicitYearText(text) || isCurrentText(text);
+}
+
+function hasExplicitYearText(text: string): boolean {
+  return /\b(?:19|20)\d{2}\b/.test(text);
 }
 
 function escapeRegExp(text: string): string {

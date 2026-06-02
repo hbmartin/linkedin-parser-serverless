@@ -883,6 +883,70 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('keeps coordinated post-duration labels out of locations', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 900, fontSize: 16 }),
+      textItem({ text: 'DSNR Media Group', y: 870 }),
+      textItem({
+        text: 'Senior Account Manager/Team Leader (Promoted)',
+        y: 850,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'January 2009 - August 2010 (1 year 8 months)',
+        y: 830,
+      }),
+      textItem({ text: 'Leadership and Teamwork', y: 810, fontSize: 10.5 }),
+      textItem({
+        text: '• Managed, trained, and mentored a team of 3 global account managers',
+        y: 790,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Visa', y: 750 }),
+      textItem({ text: 'Sales Director', y: 730, fontSize: 11.5 }),
+      textItem({
+        text: 'September 2007 - November 2010 (3 years 3 months)',
+        y: 710,
+      }),
+      textItem({
+        text: 'Travel and Entertainment Segment',
+        y: 690,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Modern Luxury Media', y: 650 }),
+      textItem({ text: 'Senior Account Director', y: 630, fontSize: 11.5 }),
+      textItem({ text: 'April 2006 - June 2007 (1 year 3 months)', y: 610 }),
+      textItem({
+        text: 'Oversaw all sales, marketing and public relations efforts.',
+        y: 590,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value.map(experience => experience.organization)).toEqual([
+      'DSNR Media Group',
+      'Visa',
+      'Modern Luxury Media',
+    ]);
+
+    const dsnrMediaGroup = result.value.find(
+      experience => experience.organization === 'DSNR Media Group'
+    );
+    const visa = result.value.find(
+      experience => experience.organization === 'Visa'
+    );
+
+    expect(dsnrMediaGroup?.positions[0]?.location).toBeUndefined();
+    expect(dsnrMediaGroup?.positions[0]?.description).toBe(
+      'Leadership and Teamwork • Managed, trained, and mentored a team of 3 global account managers'
+    );
+    expect(visa?.positions[0]?.location).toBeUndefined();
+    expect(visa?.positions[0]?.description).toBe(
+      'Travel and Entertainment Segment'
+    );
+  });
+
   test('does not let sentence-like description lines hide the next organization', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -4997,6 +5061,241 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('extracts international lowercase-particle city lines after date rows', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 900, fontSize: 16 }),
+      textItem({ text: 'Main Analytics', y: 870 }),
+      textItem({ text: 'Advisor', y: 854, fontSize: 11.5 }),
+      textItem({ text: '2022 - Present (4 years)', y: 839, fontSize: 10.5 }),
+      textItem({ text: 'Frankfurt am Main', y: 824, fontSize: 10.5 }),
+      textItem({
+        text: 'Advised the leadership team on European data strategy.',
+        y: 803,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Caribbean Labs', y: 765 }),
+      textItem({ text: 'Board Member', y: 749, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2022 (2 years)', y: 734, fontSize: 10.5 }),
+      textItem({ text: 'Trinidad and Tobago', y: 719, fontSize: 10.5 }),
+      textItem({
+        text: 'Supported market expansion and partner diligence.',
+        y: 698,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Abruzzo Ventures', y: 660 }),
+      textItem({ text: 'Investor', y: 644, fontSize: 11.5 }),
+      textItem({ text: '2019 - 2020 (1 year)', y: 629, fontSize: 10.5 }),
+      textItem({ text: "l'Aquila", y: 614, fontSize: 10.5 }),
+      textItem({
+        text: 'Reviewed product strategy and hiring plans.',
+        y: 593,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Main Analytics',
+        positions: [
+          expect.objectContaining({
+            location: 'Frankfurt am Main',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Caribbean Labs',
+        positions: [
+          expect.objectContaining({
+            location: 'Trinidad and Tobago',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Abruzzo Ventures',
+        positions: [
+          expect.objectContaining({
+            location: "l'Aquila",
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps comma-separated srl organization suffixes out of locations', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Holding Company', y: 730 }),
+      textItem({ text: 'Advisor', y: 714, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2022 (1 year)', y: 699, fontSize: 10.5 }),
+      textItem({ text: 'Ortotek, S.r.l', y: 684, fontSize: 10.5 }),
+      textItem({
+        text: 'Supported clinical device commercialization strategy.',
+        y: 663,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Portfolio Company', y: 625 }),
+      textItem({ text: 'Investor', y: 609, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2021 (1 year)', y: 594, fontSize: 10.5 }),
+      textItem({ text: 'Example, srl', y: 579, fontSize: 10.5 }),
+      textItem({
+        text: 'Reviewed finance and go-to-market plans.',
+        y: 558,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Holding Company',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Ortotek, S.r.l Supported clinical device commercialization strategy.',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Portfolio Company',
+        positions: [
+          expect.objectContaining({
+            description: 'Example, srl Reviewed finance and go-to-market plans.',
+          }),
+        ],
+      }),
+    ]);
+    expect(experiences[0]?.positions[0]).not.toHaveProperty('location');
+    expect(experiences[1]?.positions[0]).not.toHaveProperty('location');
+  });
+
+  test('keeps short post-date descriptor lines out of locations', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 940, fontSize: 16 }),
+      textItem({ text: 'Dodo Brands', y: 910 }),
+      textItem({ text: 'Investor', y: 894, fontSize: 11.5 }),
+      textItem({
+        text: 'December 2017 - Present (8 years 6 months)',
+        y: 879,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Global', y: 864, fontSize: 10.5 }),
+      textItem({
+        text: 'Top-5 fastest-growing global franchisor.',
+        y: 843,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Goldman Sachs', y: 805 }),
+      textItem({
+        text: 'Investment Banking Off-Cycle Analyst',
+        y: 789,
+        fontSize: 11.5,
+      }),
+      textItem({ text: '2014 - 2014 (less than a year)', y: 774 }),
+      textItem({ text: 'CIS Coverage', y: 759, fontSize: 10.5 }),
+      textItem({ text: 'La Biennale di Venezia', y: 721 }),
+      textItem({ text: 'Employee', y: 705, fontSize: 11.5 }),
+      textItem({
+        text: 'August 2002 - October 2002 (3 months)',
+        y: 690,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Venice Film Festival', y: 675, fontSize: 10.5 }),
+      textItem({ text: 'Borden Films', y: 637 }),
+      textItem({ text: 'Co-Founder', y: 621, fontSize: 11.5 }),
+      textItem({
+        text: 'May 2024 - Present (2 years 2 months)',
+        y: 606,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Bordenfilms.com', y: 591, fontSize: 10.5 }),
+      textItem({ text: 'Factify', y: 553 }),
+      textItem({ text: 'Advisor', y: 537, fontSize: 11.5 }),
+      textItem({
+        text: 'March 2025 - Present (1 year 3 months)',
+        y: 522,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'The Post-AI Document Standard',
+        y: 507,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Fresenius Medical Care', y: 469 }),
+      textItem({ text: 'Medical Advisory Board', y: 453, fontSize: 11.5 }),
+      textItem({
+        text: 'January 2013 - January 2020 (7 years 1 month)',
+        y: 438,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Western Division', y: 423, fontSize: 10.5 }),
+      textItem({ text: 'Goldman Sachs', y: 385 }),
+      textItem({ text: 'Vice President', y: 369, fontSize: 11.5 }),
+      textItem({
+        text: 'September 1989 - January 2000 (10 years 5 months)',
+        y: 354,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Private Client Services.', y: 339, fontSize: 10.5 }),
+    ]);
+
+    const [
+      dodoBrands,
+      goldmanCoverage,
+      laBiennale,
+      bordenFilms,
+      factify,
+      fresenius,
+      goldmanServices,
+    ] = experiences;
+
+    expect(dodoBrands).toEqual(
+      expect.objectContaining({
+        organization: 'Dodo Brands',
+        positions: [
+          expect.objectContaining({
+            description: 'Top-5 fastest-growing global franchisor.',
+            location: 'Global',
+          }),
+        ],
+      })
+    );
+
+    const descriptorPositions = [
+      [goldmanCoverage, 'Goldman Sachs', 'CIS Coverage'],
+      [laBiennale, 'La Biennale di Venezia', 'Venice Film Festival'],
+      [bordenFilms, 'Borden Films', 'Bordenfilms.com'],
+      [factify, 'Factify', 'The Post-AI Document Standard'],
+      [fresenius, 'Fresenius Medical Care', 'Western Division'],
+      [goldmanServices, 'Goldman Sachs', 'Private Client Services.'],
+    ] as const;
+
+    for (const [experience, organization, description] of descriptorPositions) {
+      expect(experience?.organization).toBe(organization);
+      expect(experience?.positions[0]).toEqual(
+        expect.objectContaining({ description })
+      );
+      expect(experience?.positions[0]).not.toHaveProperty('location');
+    }
+  });
+
+  test('does not concatenate the same short location twice', () => {
+    const [experience] = ExperienceStructuralParser['buildWorkExperiences']([
+      structuralSection({ text: 'Macquarie Group', type: 'organization' }),
+      structuralSection({
+        text: 'Private Equity Investments, Tech & Internet Growth',
+        type: 'position',
+      }),
+      structuralSection({ text: '2015 - 2017 (2 years)', type: 'duration' }),
+      structuralSection({ text: 'Hong Kong', type: 'location' }),
+      structuralSection({ text: 'Hong Kong', type: 'location' }),
+      structuralSection({
+        text: 'Public Equities - Technology, Internet, Media / Asia Gaming',
+        type: 'description',
+      }),
+    ]);
+
+    expect(experience?.positions[0]?.location).toBe('Hong Kong');
+  });
+
   test('keeps page-break locations and following positions in multi-position companies', () => {
     const experiences = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 760, fontSize: 16 }),
@@ -5153,6 +5452,51 @@ describe('ExperienceStructuralParser', () => {
   });
 
   test('covers header helper fallback branches', () => {
+    const higherFontCandidate: HeaderCandidate = {
+      durationLine: parserLine({ index: 2, text: '2020 - 2021' }),
+      organizationLine: parserLine({
+        fontSize: 14,
+        index: 0,
+        text: 'Example Labs',
+      }),
+      score: 10,
+      titleLine: parserLine({ index: 1, text: 'Principal Engineer' }),
+    };
+    const lowerFontCandidate: HeaderCandidate = {
+      durationLine: parserLine({ index: 2, text: '2020 - 2021' }),
+      organizationLine: parserLine({
+        fontSize: 10,
+        index: 3,
+        text: 'Other Labs',
+      }),
+      score: 10,
+      titleLine: parserLine({ index: 4, text: 'Staff Engineer' }),
+    };
+    const sameScoreNoFontCandidate: HeaderCandidate = {
+      durationLine: parserLine({ index: 3, text: '2021 - 2022' }),
+      organizationLine: parserLine({ index: 2, text: 'No Font Labs' }),
+      score: 10,
+      titleLine: parserLine({ index: 1, text: 'Advisor' }),
+    };
+
+    expect(
+      ExperienceStructuralParser['compareExperienceHeaderCandidates'](
+        higherFontCandidate,
+        lowerFontCandidate
+      )
+    ).toBeLessThan(0);
+    expect(
+      ExperienceStructuralParser['compareExperienceHeaderCandidates'](
+        sameScoreNoFontCandidate,
+        higherFontCandidate
+      )
+    ).toBeGreaterThan(0);
+    expect(
+      ExperienceStructuralParser['compareExperienceHeaderCandidates'](
+        higherFontCandidate,
+        sameScoreNoFontCandidate
+      )
+    ).toBeLessThan(0);
     expect(
       ExperienceStructuralParser['nextContentLineStartsCanonicalHeader']({
         allLines: [parserLine({ index: 0, text: 'Description' })],
@@ -5204,6 +5548,22 @@ describe('ExperienceStructuralParser', () => {
       ExperienceStructuralParser['previousContentText'](['Page 1 of 1'], 0)
     ).toBeUndefined();
     expect(
+      ExperienceStructuralParser['hasTotalDurationThenPosition'](0, [
+        'Example Labs',
+        '2 years',
+        'Principal Engineer',
+        '2020 - 2021',
+      ])
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['hasTotalDurationThenPosition'](0, [
+        'Example Labs',
+        '2 years',
+        'Operations',
+        '2020 - 2021',
+      ])
+    ).toBe(false);
+    expect(
       ExperienceStructuralParser['createMultiPositionHeaderCandidate']({
         lineTexts: ['Example Labs', '2 years'],
         organizationLine: parserLine({ index: 0, text: 'Example Labs' }),
@@ -5234,6 +5594,13 @@ describe('ExperienceStructuralParser', () => {
       })
     ).toBe(true);
     expect(
+      ExperienceStructuralParser['looksLikeDescriptionLine']({
+        allLines: ['No'],
+        index: 0,
+        line: 'No',
+      })
+    ).toBe(false);
+    expect(
       ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
         '(www.example.com)',
         'Previous description text is long enough'
@@ -5252,11 +5619,24 @@ describe('ExperienceStructuralParser', () => {
       )
     ).toBe(true);
     expect(
+      ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
+        'customer systems',
+        '• Built reliable'
+      )
+    ).toBe(true);
+    expect(
       ExperienceStructuralParser['classifyLineType']({
         index: 0,
         line: parserLine({ index: 0, text: 'Page 1 of 2' }),
         lineTexts: ['Page 1 of 2'],
         state: 'in_description',
+      })
+    ).toBe('other');
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        index: 0,
+        line: parserLine({ index: 0, text: 'Short' }),
+        state: 'seeking_company',
       })
     ).toBe('other');
     expect(
@@ -5297,6 +5677,91 @@ describe('ExperienceStructuralParser', () => {
         ['Product Steward', '2020 - 2021']
       )
     ).toBe(true);
+    expect(
+      ExperienceStructuralParser['normalizeDurationLineText'](
+        'January\u00A02020 \u2013 Present'
+      )
+    ).toBe('January 2020 - Present');
+    expect(
+      ExperienceStructuralParser['normalizeDurationLineText'](
+        'January  2020   -   Present'
+      )
+    ).toBe('January 2020 - Present');
+    expect(
+      ExperienceStructuralParser['normalizeDurationLineText']('2020-2021')
+    ).toBe('2020-2021');
+    expect(
+      ExperienceStructuralParser['completeWorkExperience']({
+        descriptionLines: [],
+        position: {
+          title: 'Advisor',
+        },
+        workExperience: {
+          organization: 'Example Labs',
+        },
+      })
+    ).toEqual({
+      organization: 'Example Labs',
+      positions: [
+        {
+          description: '',
+          duration: '',
+          title: 'Advisor',
+        },
+      ],
+      totalDuration: undefined,
+    });
+    expect(
+      ExperienceStructuralParser['completeWorkExperience']({
+        descriptionLines: [],
+        position: null,
+        workExperience: {
+          organization: 'Example Labs',
+        },
+      })
+    ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser['completePosition']({
+        descriptionLines: ['Cataloged archives.'],
+        position: {
+          duration: '1888 - 1889',
+          title: 'Cataloger',
+        },
+      })
+    ).toEqual({
+      description: 'Cataloged archives.',
+      duration: '1888 - 1889',
+      title: 'Cataloger',
+    });
+    expect(
+      ExperienceStructuralParser['titleContinuationModifierFromParenthetical'](
+        '(Contractor)'
+      )
+    ).toBe('contractor');
+    expect(
+      ExperienceStructuralParser['titleContinuationModifierFromParenthetical'](
+        '(Unknown)'
+      )
+    ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser['unwrapSingleParenthesizedText']('(Nested (x))')
+    ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser['extractCleanOrganizationName']('Example Labs')
+    ).toBe('Example Labs');
+    expect(
+      ExperienceStructuralParser['extractCleanDuration'](
+        'Managed work before June 2020'
+      )
+    ).toBe('June 2020');
+    expect(
+      ExperienceStructuralParser['extractCleanDuration'](
+        'Managed archive operations in 1888'
+      )
+    ).toBe('in 1888');
+    expect(
+      ExperienceStructuralParser['extractCleanDuration']('No duration available')
+    ).toBe('No duration available');
   });
 });
 

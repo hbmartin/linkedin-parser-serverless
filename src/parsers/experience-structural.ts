@@ -139,6 +139,11 @@ interface ShortHeaderLocationAfterDurationParams {
   line: NormalizedParserLine;
 }
 
+interface HeaderDetailGeometryParams {
+  line: NormalizedParserLine;
+  previousLine: NormalizedParserLine;
+}
+
 interface ExtractCleanOrganizationNameOptions {
   mode: 'anchored_header' | 'standard';
 }
@@ -219,26 +224,37 @@ export class ExperienceStructuralParser {
       'ltd',
       'partners',
       'solutions',
+      'srl',
       'systems',
       'technologies',
       'technology',
       'ventures',
     ]);
+  private static readonly SHORT_HEADER_LOCATION_PARTICLE_PATTERN =
+    /^(?:am|an|and|d'|da|de|del|den|der|di|do|dos|du|im|la|of|the|und|van|von|zu)$/iu;
   private static readonly SHORT_HEADER_LOCATION_DESCRIPTOR_WORDS: ReadonlySet<string> =
     new Set([
       'ai',
       'audit',
       'client',
       'consulting',
+      'coverage',
       'data',
+      'division',
+      'document',
+      'festival',
       'finance',
+      'film',
       'group',
       'marketing',
       'operations',
       'product',
+      'private',
       'research',
       'sales',
+      'services',
       'spatial',
+      'standard',
       'strategy',
     ]);
   static parseExperience(params: ParseExperienceParams): WorkExperience[];
@@ -1250,10 +1266,7 @@ export class ExperienceStructuralParser {
     }
 
     return this.looksLikeLocation(text) ||
-      classifyLocationText({
-        context: { structuralContext: 'after-duration' },
-        text,
-      }).isLocation ||
+      this.looksLikeContextualLocationAfterDuration(text) ||
       this.looksLikeShortHeaderLocationAfterDuration({
         allLines: parserLines,
         index: possibleLocationLine.index,
@@ -2713,10 +2726,7 @@ export class ExperienceStructuralParser {
     return (
       previousLine !== undefined &&
       this.looksLikeDuration(previousLine) &&
-      classifyLocationText({
-        context: { structuralContext: 'after-duration' },
-        text: line,
-      }).isLocation
+      this.looksLikeContextualLocationAfterDuration(line)
     );
   }
 
@@ -2730,9 +2740,20 @@ export class ExperienceStructuralParser {
     return (
       nextLine !== undefined &&
       this.looksLikeDuration(nextLine) &&
+      this.looksLikeContextualLocationAfterDuration(line)
+    );
+  }
+
+  private static looksLikeContextualLocationAfterDuration(
+    line: string
+  ): boolean {
+    const normalizedLine = this.normalizeCompletedLocationText(line);
+
+    return (
+      !this.looksLikeCommaSeparatedOrganizationName(normalizedLine) &&
       classifyLocationText({
         context: { structuralContext: 'after-duration' },
-        text: line,
+        text: normalizedLine,
       }).isLocation
     );
   }
@@ -2756,7 +2777,8 @@ export class ExperienceStructuralParser {
         line,
         previousLine,
       }) ||
-      !this.looksLikeShortProperHeaderLocationText(normalizedLine)
+      !this.looksLikeShortProperHeaderLocationText(normalizedLine) ||
+      this.looksLikeAmbiguousCoordinatedShortLocationText(normalizedLine)
     ) {
       return false;
     }
@@ -2799,10 +2821,7 @@ export class ExperienceStructuralParser {
   private static hasHeaderDetailGeometry({
     line,
     previousLine,
-  }: {
-    line: NormalizedParserLine;
-    previousLine: NormalizedParserLine;
-  }): boolean {
+  }: HeaderDetailGeometryParams): boolean {
     const hasAlignedX =
       line.x === undefined ||
       previousLine.x === undefined ||
@@ -2820,14 +2839,16 @@ export class ExperienceStructuralParser {
     return hasAlignedX && hasComparableDetailFont && hasSameColumn;
   }
 
-  private static looksLikeShortProperHeaderLocationText(line: string): boolean {
-    const normalizedLine = this.normalizeCompletedLocationText(line);
-
+  private static looksLikeShortProperHeaderLocationText(
+    normalizedLine: string
+  ): boolean {
     if (
       normalizedLine.length < 2 ||
       normalizedLine.length > 60 ||
       /^[-+*•>]/u.test(normalizedLine) ||
       /[$@!?;:]/u.test(normalizedLine) ||
+      /\b[\p{L}\p{N}][\p{L}\p{N}-]*\.[\p{L}]{2,}\b/iu.test(normalizedLine) ||
+      /[.]$/u.test(normalizedLine) ||
       /https?:\/\//iu.test(normalizedLine) ||
       this.looksLikeDuration(normalizedLine) ||
       this.looksLikePosition(normalizedLine) ||
@@ -2845,25 +2866,45 @@ export class ExperienceStructuralParser {
       .map(word => this.normalizeShortLocationLookupToken(word))
       .filter(
         word =>
-          word.length > 0 && !/^(?:d'|da|de|del|di|la|of|the)$/iu.test(word)
+          word.length > 0 &&
+          !this.SHORT_HEADER_LOCATION_PARTICLE_PATTERN.test(word)
       );
 
     return (
       words.length > 0 &&
       words.length <= 4 &&
-      !meaningfulWords.every(word =>
+      !meaningfulWords.some(word =>
         this.SHORT_HEADER_LOCATION_DESCRIPTOR_WORDS.has(word)
       ) &&
       words.every(word => this.looksLikeProperLocationToken(word))
     );
   }
 
+  private static looksLikeAmbiguousCoordinatedShortLocationText(
+    normalizedLine: string
+  ): boolean {
+    const tokens = normalizedLine.split(/\s+/u).filter(Boolean);
+    const hasCoordinator = tokens.some(
+      token =>
+        token === '&' || this.normalizeShortLocationLookupToken(token) === 'and'
+    );
+
+    if (!hasCoordinator) {
+      return false;
+    }
+
+    return !classifyLocationText({
+      context: { structuralContext: 'after-duration' },
+      text: normalizedLine,
+    }).isLocation;
+  }
+
   private static looksLikeProperLocationToken(word: string): boolean {
     const normalizedWord = this.normalizeShortLocationToken(word);
 
     return (
-      /^(?:d'|da|de|del|di|la|of|the)$/iu.test(normalizedWord) ||
-      /^[\p{Lu}\d][\p{L}\p{M}\d.'-]*$/u.test(normalizedWord)
+      this.SHORT_HEADER_LOCATION_PARTICLE_PATTERN.test(normalizedWord) ||
+      /^(?:[\p{Ll}]')?[\p{Lu}\d][\p{L}\p{M}\d.'-]*$/u.test(normalizedWord)
     );
   }
 
@@ -2956,14 +2997,14 @@ export class ExperienceStructuralParser {
   /**
    * Detects comma-separated organization suffixes such as "Company, Inc" while
    * preserving locations like "Los Angeles, California" and "Denver, CO".
-   * Parts are normalized by trimming whitespace and trailing dots first.
+   * Parts are normalized by trimming whitespace and legal-suffix dots first.
    */
   private static looksLikeCommaSeparatedOrganizationName(
     line: string
   ): boolean {
     const parts = line
       .split(',')
-      .map(part => part.trim().replace(/[.]+$/, '').toLowerCase())
+      .map(part => part.trim().replace(/[.]/g, '').toLowerCase())
       .filter(Boolean);
 
     return (
@@ -3123,9 +3164,12 @@ export class ExperienceStructuralParser {
 
         case 'location':
           if (currentPosition) {
-            const locationText = currentPosition.location
-              ? `${currentPosition.location} ${section.text}`
-              : section.text;
+            const locationText =
+              currentPosition.location &&
+              this.normalizeCompletedLocationText(currentPosition.location) !==
+                this.normalizeCompletedLocationText(section.text)
+                ? `${currentPosition.location} ${section.text}`
+                : section.text;
             currentPosition.location = this.normalizeLocationText(locationText);
           }
           break;

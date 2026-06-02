@@ -5,7 +5,6 @@ interface LocalizedHeaderWarningCase {
   readonly alias: string;
   readonly field: 'contact' | 'summary';
   readonly language: string;
-  readonly section: 'contact' | 'summary';
 }
 
 describe('BasicInfoParser', () => {
@@ -127,31 +126,27 @@ describe('BasicInfoParser', () => {
       alias: 'forbindelse',
       field: 'contact',
       language: 'Danish',
-      section: 'contact',
     },
     {
       alias: 'kontakt',
       field: 'contact',
       language: 'Norwegian',
-      section: 'contact',
     },
     {
       alias: 'coordonnées',
       field: 'contact',
       language: 'French',
-      section: 'contact',
     },
     {
       alias: 'riepilogo',
       field: 'summary',
       language: 'Italian',
-      section: 'summary',
     },
   ];
 
   test.each(localizedHeaderWarningCases)(
-    'recognizes the $language $alias header as a $section section warning',
-    ({ alias, field, section }) => {
+    'recognizes the $language $alias header as a $field section warning',
+    ({ alias, field }) => {
       const result = BasicInfoParser.parseWithWarnings(`
         Apollo Helios
         Principal Advisor
@@ -163,7 +158,7 @@ describe('BasicInfoParser', () => {
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
           field,
-          section,
+          section: field,
         })
       );
     }
@@ -296,6 +291,10 @@ describe('BasicInfoParser', () => {
 
     const longSummaryLine =
       'Builds durable platform systems for operating teams with enough detail to exceed the fallback parser stop threshold.';
+    const firstFallbackSummaryLine =
+      'Builds reliable platform workflows for operating teams across regions.';
+    const secondFallbackSummaryLine =
+      'Keeps delivery metrics visible while coordinating product launches.';
 
     expect(
       BasicInfoParser['extractSummary'](
@@ -310,6 +309,19 @@ describe('BasicInfoParser', () => {
         ].join('\n')
       )
     ).toBe(longSummaryLine);
+    expect(
+      BasicInfoParser['extractSummary'](
+        [
+          'Alpha',
+          'Beta',
+          'Gamma',
+          'Delta',
+          'Epsilon',
+          firstFallbackSummaryLine,
+          secondFallbackSummaryLine,
+        ].join('\n')
+      )
+    ).toBe(`${firstFallbackSummaryLine} ${secondFallbackSummaryLine}`);
 
     expect(
       BasicInfoParser['extractStructuralSummary']([
@@ -782,6 +794,17 @@ describe('BasicInfoParser', () => {
         '                8765 4321                 '
       )
     ).toBe(true);
+    expect(
+      BasicInfoParser['extractPhoneCandidate'](
+        'Phone +123 4567 8901 2345 6789'
+      )
+    ).toBe('+123 4567 8901');
+    expect(BasicInfoParser['extractPhoneFromLines'](['Phone unavailable'])).toBe(
+      undefined
+    );
+    expect(
+      BasicInfoParser['extractPhoneCandidate']('Phone unavailable')
+    ).toBeUndefined();
   });
 
   test('uses the multiline engineering manager headline fallback', () => {
@@ -919,6 +942,28 @@ describe('BasicInfoParser', () => {
     });
 
     expect(links).toEqual([]);
+    expect(
+      BasicInfoParser['extractContactLinks']([
+        'docs.example.com/api',
+        'not a continuation',
+      ])
+    ).toEqual([
+      expect.objectContaining({
+        rawText: 'docs.example.com/api',
+        url: 'https://docs.example.com/api',
+      }),
+    ]);
+    expect(
+      BasicInfoParser['extractContactLinks']([
+        'docs.example.com/api',
+        '(Documentation)',
+      ])
+    ).toEqual([
+      expect.objectContaining({
+        label: 'Documentation',
+        rawText: 'docs.example.com/api (Documentation)',
+      }),
+    ]);
     expect(
       BasicInfoParser['extractStructuralSummary']([
         structuralLine({ column: 'right', text: 'Summary', y: 700 }),

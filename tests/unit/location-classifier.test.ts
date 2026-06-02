@@ -116,6 +116,7 @@ describe('location classifier', () => {
       'West Hollywood',
       'États Unis',
       "Stati Uniti d'America",
+      'Trinidad and Tobago',
     ]) {
       expect(
         classifyLocationText({
@@ -208,6 +209,7 @@ describe('location classifier', () => {
     expect(normalizeCountryAliasText('us')).toBe('united states');
     expect(isKnownCountryAliasText('us')).toBe(true);
     expect(isUnambiguousCountryAliasText('us')).toBe(false);
+    expect(normalizeCountryAliasText('   ')).toBeUndefined();
     expect(normalizeCountryAliasText('California')).toBeUndefined();
     expect(classifyLocationText({ text: 'US' }).isLocation).toBe(false);
   });
