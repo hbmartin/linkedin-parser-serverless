@@ -4997,6 +4997,241 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('extracts international lowercase-particle city lines after date rows', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 900, fontSize: 16 }),
+      textItem({ text: 'Main Analytics', y: 870 }),
+      textItem({ text: 'Advisor', y: 854, fontSize: 11.5 }),
+      textItem({ text: '2022 - Present (4 years)', y: 839, fontSize: 10.5 }),
+      textItem({ text: 'Frankfurt am Main', y: 824, fontSize: 10.5 }),
+      textItem({
+        text: 'Advised the leadership team on European data strategy.',
+        y: 803,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Caribbean Labs', y: 765 }),
+      textItem({ text: 'Board Member', y: 749, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2022 (2 years)', y: 734, fontSize: 10.5 }),
+      textItem({ text: 'Trinidad and Tobago', y: 719, fontSize: 10.5 }),
+      textItem({
+        text: 'Supported market expansion and partner diligence.',
+        y: 698,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Abruzzo Ventures', y: 660 }),
+      textItem({ text: 'Investor', y: 644, fontSize: 11.5 }),
+      textItem({ text: '2019 - 2020 (1 year)', y: 629, fontSize: 10.5 }),
+      textItem({ text: "l'Aquila", y: 614, fontSize: 10.5 }),
+      textItem({
+        text: 'Reviewed product strategy and hiring plans.',
+        y: 593,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Main Analytics',
+        positions: [
+          expect.objectContaining({
+            location: 'Frankfurt am Main',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Caribbean Labs',
+        positions: [
+          expect.objectContaining({
+            location: 'Trinidad and Tobago',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Abruzzo Ventures',
+        positions: [
+          expect.objectContaining({
+            location: "l'Aquila",
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  test('keeps comma-separated srl organization suffixes out of locations', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Holding Company', y: 730 }),
+      textItem({ text: 'Advisor', y: 714, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2022 (1 year)', y: 699, fontSize: 10.5 }),
+      textItem({ text: 'Ortotek, S.r.l', y: 684, fontSize: 10.5 }),
+      textItem({
+        text: 'Supported clinical device commercialization strategy.',
+        y: 663,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Portfolio Company', y: 625 }),
+      textItem({ text: 'Investor', y: 609, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2021 (1 year)', y: 594, fontSize: 10.5 }),
+      textItem({ text: 'Example, srl', y: 579, fontSize: 10.5 }),
+      textItem({
+        text: 'Reviewed finance and go-to-market plans.',
+        y: 558,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Holding Company',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Ortotek, S.r.l Supported clinical device commercialization strategy.',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Portfolio Company',
+        positions: [
+          expect.objectContaining({
+            description: 'Example, srl Reviewed finance and go-to-market plans.',
+          }),
+        ],
+      }),
+    ]);
+    expect(experiences[0]?.positions[0]).not.toHaveProperty('location');
+    expect(experiences[1]?.positions[0]).not.toHaveProperty('location');
+  });
+
+  test('keeps short post-date descriptor lines out of locations', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 940, fontSize: 16 }),
+      textItem({ text: 'Dodo Brands', y: 910 }),
+      textItem({ text: 'Investor', y: 894, fontSize: 11.5 }),
+      textItem({
+        text: 'December 2017 - Present (8 years 6 months)',
+        y: 879,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Global', y: 864, fontSize: 10.5 }),
+      textItem({
+        text: 'Top-5 fastest-growing global franchisor.',
+        y: 843,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Goldman Sachs', y: 805 }),
+      textItem({
+        text: 'Investment Banking Off-Cycle Analyst',
+        y: 789,
+        fontSize: 11.5,
+      }),
+      textItem({ text: '2014 - 2014 (less than a year)', y: 774 }),
+      textItem({ text: 'CIS Coverage', y: 759, fontSize: 10.5 }),
+      textItem({ text: 'La Biennale di Venezia', y: 721 }),
+      textItem({ text: 'Employee', y: 705, fontSize: 11.5 }),
+      textItem({
+        text: 'August 2002 - October 2002 (3 months)',
+        y: 690,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Venice Film Festival', y: 675, fontSize: 10.5 }),
+      textItem({ text: 'Borden Films', y: 637 }),
+      textItem({ text: 'Co-Founder', y: 621, fontSize: 11.5 }),
+      textItem({
+        text: 'May 2024 - Present (2 years 2 months)',
+        y: 606,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Bordenfilms.com', y: 591, fontSize: 10.5 }),
+      textItem({ text: 'Factify', y: 553 }),
+      textItem({ text: 'Advisor', y: 537, fontSize: 11.5 }),
+      textItem({
+        text: 'March 2025 - Present (1 year 3 months)',
+        y: 522,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'The Post-AI Document Standard',
+        y: 507,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Fresenius Medical Care', y: 469 }),
+      textItem({ text: 'Medical Advisory Board', y: 453, fontSize: 11.5 }),
+      textItem({
+        text: 'January 2013 - January 2020 (7 years 1 month)',
+        y: 438,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Western Division', y: 423, fontSize: 10.5 }),
+      textItem({ text: 'Goldman Sachs', y: 385 }),
+      textItem({ text: 'Vice President', y: 369, fontSize: 11.5 }),
+      textItem({
+        text: 'September 1989 - January 2000 (10 years 5 months)',
+        y: 354,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Private Client Services.', y: 339, fontSize: 10.5 }),
+    ]);
+
+    const [
+      dodoBrands,
+      goldmanCoverage,
+      laBiennale,
+      bordenFilms,
+      factify,
+      fresenius,
+      goldmanServices,
+    ] = experiences;
+
+    expect(dodoBrands).toEqual(
+      expect.objectContaining({
+        organization: 'Dodo Brands',
+        positions: [
+          expect.objectContaining({
+            description: 'Top-5 fastest-growing global franchisor.',
+            location: 'Global',
+          }),
+        ],
+      })
+    );
+
+    const descriptorPositions = [
+      [goldmanCoverage, 'Goldman Sachs', 'CIS Coverage'],
+      [laBiennale, 'La Biennale di Venezia', 'Venice Film Festival'],
+      [bordenFilms, 'Borden Films', 'Bordenfilms.com'],
+      [factify, 'Factify', 'The Post-AI Document Standard'],
+      [fresenius, 'Fresenius Medical Care', 'Western Division'],
+      [goldmanServices, 'Goldman Sachs', 'Private Client Services.'],
+    ] as const;
+
+    for (const [experience, organization, description] of descriptorPositions) {
+      expect(experience?.organization).toBe(organization);
+      expect(experience?.positions[0]).toEqual(
+        expect.objectContaining({ description })
+      );
+      expect(experience?.positions[0]).not.toHaveProperty('location');
+    }
+  });
+
+  test('does not concatenate the same short location twice', () => {
+    const [experience] = ExperienceStructuralParser['buildWorkExperiences']([
+      structuralSection({ text: 'Macquarie Group', type: 'organization' }),
+      structuralSection({
+        text: 'Private Equity Investments, Tech & Internet Growth',
+        type: 'position',
+      }),
+      structuralSection({ text: '2015 - 2017 (2 years)', type: 'duration' }),
+      structuralSection({ text: 'Hong Kong', type: 'location' }),
+      structuralSection({ text: 'Hong Kong', type: 'location' }),
+      structuralSection({
+        text: 'Public Equities - Technology, Internet, Media / Asia Gaming',
+        type: 'description',
+      }),
+    ]);
+
+    expect(experience?.positions[0]?.location).toBe('Hong Kong');
+  });
+
   test('keeps page-break locations and following positions in multi-position companies', () => {
     const experiences = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 760, fontSize: 16 }),

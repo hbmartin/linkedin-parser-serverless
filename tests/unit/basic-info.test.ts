@@ -5,7 +5,6 @@ interface LocalizedHeaderWarningCase {
   readonly alias: string;
   readonly field: 'contact' | 'summary';
   readonly language: string;
-  readonly section: 'contact' | 'summary';
 }
 
 describe('BasicInfoParser', () => {
@@ -127,31 +126,27 @@ describe('BasicInfoParser', () => {
       alias: 'forbindelse',
       field: 'contact',
       language: 'Danish',
-      section: 'contact',
     },
     {
       alias: 'kontakt',
       field: 'contact',
       language: 'Norwegian',
-      section: 'contact',
     },
     {
       alias: 'coordonnées',
       field: 'contact',
       language: 'French',
-      section: 'contact',
     },
     {
       alias: 'riepilogo',
       field: 'summary',
       language: 'Italian',
-      section: 'summary',
     },
   ];
 
   test.each(localizedHeaderWarningCases)(
-    'recognizes the $language $alias header as a $section section warning',
-    ({ alias, field, section }) => {
+    'recognizes the $language $alias header as a $field section warning',
+    ({ alias, field }) => {
       const result = BasicInfoParser.parseWithWarnings(`
         Apollo Helios
         Principal Advisor
@@ -163,7 +158,7 @@ describe('BasicInfoParser', () => {
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
           field,
-          section,
+          section: field,
         })
       );
     }
