@@ -116,6 +116,7 @@ describe('location classifier', () => {
       'West Hollywood',
       'États Unis',
       "Stati Uniti d'America",
+      'Trinidad and Tobago',
     ]) {
       expect(
         classifyLocationText({

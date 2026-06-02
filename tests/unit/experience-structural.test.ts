@@ -883,6 +883,70 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('keeps coordinated post-duration labels out of locations', () => {
+    const result = ExperienceStructuralParser.parseExperienceWithWarnings([
+      textItem({ text: 'Experience', y: 900, fontSize: 16 }),
+      textItem({ text: 'DSNR Media Group', y: 870 }),
+      textItem({
+        text: 'Senior Account Manager/Team Leader (Promoted)',
+        y: 850,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'January 2009 - August 2010 (1 year 8 months)',
+        y: 830,
+      }),
+      textItem({ text: 'Leadership and Teamwork', y: 810, fontSize: 10.5 }),
+      textItem({
+        text: '• Managed, trained, and mentored a team of 3 global account managers',
+        y: 790,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Visa', y: 750 }),
+      textItem({ text: 'Sales Director', y: 730, fontSize: 11.5 }),
+      textItem({
+        text: 'September 2007 - November 2010 (3 years 3 months)',
+        y: 710,
+      }),
+      textItem({
+        text: 'Travel and Entertainment Segment',
+        y: 690,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Modern Luxury Media', y: 650 }),
+      textItem({ text: 'Senior Account Director', y: 630, fontSize: 11.5 }),
+      textItem({ text: 'April 2006 - June 2007 (1 year 3 months)', y: 610 }),
+      textItem({
+        text: 'Oversaw all sales, marketing and public relations efforts.',
+        y: 590,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(result.warnings).toEqual([]);
+    expect(result.value.map(experience => experience.organization)).toEqual([
+      'DSNR Media Group',
+      'Visa',
+      'Modern Luxury Media',
+    ]);
+
+    const dsnrMediaGroup = result.value.find(
+      experience => experience.organization === 'DSNR Media Group'
+    );
+    const visa = result.value.find(
+      experience => experience.organization === 'Visa'
+    );
+
+    expect(dsnrMediaGroup?.positions[0]?.location).toBeUndefined();
+    expect(dsnrMediaGroup?.positions[0]?.description).toBe(
+      'Leadership and Teamwork • Managed, trained, and mentored a team of 3 global account managers'
+    );
+    expect(visa?.positions[0]?.location).toBeUndefined();
+    expect(visa?.positions[0]?.description).toBe(
+      'Travel and Entertainment Segment'
+    );
+  });
+
   test('does not let sentence-like description lines hide the next organization', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),

@@ -2777,7 +2777,8 @@ export class ExperienceStructuralParser {
         line,
         previousLine,
       }) ||
-      !this.looksLikeShortProperHeaderLocationText(normalizedLine)
+      !this.looksLikeShortProperHeaderLocationText(normalizedLine) ||
+      this.looksLikeAmbiguousCoordinatedShortLocationText(normalizedLine)
     ) {
       return false;
     }
@@ -2877,6 +2878,25 @@ export class ExperienceStructuralParser {
       ) &&
       words.every(word => this.looksLikeProperLocationToken(word))
     );
+  }
+
+  private static looksLikeAmbiguousCoordinatedShortLocationText(
+    normalizedLine: string
+  ): boolean {
+    const tokens = normalizedLine.split(/\s+/u).filter(Boolean);
+    const hasCoordinator = tokens.some(
+      token =>
+        token === '&' || this.normalizeShortLocationLookupToken(token) === 'and'
+    );
+
+    if (!hasCoordinator) {
+      return false;
+    }
+
+    return !classifyLocationText({
+      context: { structuralContext: 'after-duration' },
+      text: normalizedLine,
+    }).isLocation;
   }
 
   private static looksLikeProperLocationToken(word: string): boolean {
