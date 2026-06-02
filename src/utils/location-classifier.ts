@@ -129,7 +129,6 @@ const countryAndRegionNames: ReadonlySet<string> = new Set([
   'england',
   'estonia',
   'etats unis',
-  'états unis',
   'france',
   'germany',
   'deutschland',
@@ -160,6 +159,9 @@ const countryAndRegionNames: ReadonlySet<string> = new Set([
   'vatican city state holy see',
   'wales',
 ]);
+const countryAndRegionLookupNames = accentFoldedLookupSet(
+  countryAndRegionNames
+);
 
 const countryAliasByCompactText: ReadonlyMap<string, string> = new Map([
   ['uae', 'united arab emirates'],
@@ -330,7 +332,7 @@ interface KnownPhraseIndex {
 
 const knownPlacePhraseIndex = createKnownPhraseIndex(knownPlaceNames);
 const countryAndRegionPhraseIndex = createKnownPhraseIndex(
-  countryAndRegionNames
+  countryAndRegionLookupNames
 );
 const adminRegionPhraseIndex = createKnownPhraseIndex(adminRegionNames);
 
@@ -394,6 +396,10 @@ function classifyLocationTextUncached({
   const words = visibleWords(normalizedText);
   const lookupWords = lookupWordsFor(lookupText);
   const lookupCommaSegments = lookupCommaSegmentsFor(normalizedText);
+  const countryAndRegionLookupText = foldLookupTextAccents(lookupText);
+  const countryAndRegionLookupWords = lookupWordsFor(
+    countryAndRegionLookupText
+  );
 
   if (startsWithSentenceVerb(lookupWords)) {
     add('sentence-verb', -4);
@@ -430,12 +436,15 @@ function classifyLocationTextUncached({
       text: lookupText,
       words: lookupWords,
     });
+  const isExactCountryOrRegion = countryAndRegionLookupNames.has(
+    countryAndRegionLookupText
+  );
   const hasCountryOrRegion =
-    countryAndRegionNames.has(lookupText) ||
+    isExactCountryOrRegion ||
     containsKnownPhrase({
       phraseIndex: countryAndRegionPhraseIndex,
-      text: lookupText,
-      words: lookupWords,
+      text: countryAndRegionLookupText,
+      words: countryAndRegionLookupWords,
     });
   const hasAdminRegion =
     adminRegionNames.has(lookupText) ||
@@ -490,7 +499,7 @@ function classifyLocationTextUncached({
   }
 
   if (hasCountryOrRegion) {
-    add('country-or-region', countryAndRegionNames.has(lookupText) ? 4 : 3);
+    add('country-or-region', isExactCountryOrRegion ? 4 : 3);
   }
 
   if (hasAdminRegion) {
@@ -582,6 +591,16 @@ function normalizeLookupText(text: string): string {
       .trim()
       .toLowerCase()
   );
+}
+
+function foldLookupTextAccents(lookupText: string): string {
+  return lookupText.normalize('NFKD').replace(/\p{M}/gu, '');
+}
+
+function accentFoldedLookupSet(
+  values: ReadonlySet<string>
+): ReadonlySet<string> {
+  return new Set([...values].map(foldLookupTextAccents));
 }
 
 function isAmbiguousLowercaseUnitedStatesAlias(text: string): boolean {
@@ -789,7 +808,7 @@ function hasCommaSeparatedRegionEvidence(
     .some(
       part =>
         (regionCodes.has(part) && !ambiguousRegionCodes.has(part)) ||
-        countryAndRegionNames.has(part) ||
+        countryAndRegionLookupNames.has(foldLookupTextAccents(part)) ||
         adminRegionNames.has(part)
     );
 }

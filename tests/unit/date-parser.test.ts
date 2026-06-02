@@ -246,6 +246,10 @@ describe('profile date parser', () => {
         'January 2020 - March 2021 (contract ended 2021)'
       )
     ).toBe('January 2020 - March 2021 (contract ended 2021)');
+    expect(parseProfileDateRange('January - March 2021')).toBeUndefined();
+    expect(extractProfileDateRangeText('January - March 2021')).toBeUndefined();
+    expect(parseProfileDateRange('January 2020 - March')).toBeUndefined();
+    expect(extractProfileDateRangeText('January 2020 - March')).toBeUndefined();
   });
 
   test('rejects empty and incomplete date ranges', () => {
