@@ -727,10 +727,10 @@ A local run on Node v24.16.0 (`darwin/arm64`) produced:
 
 | Input | Kind | Size | Average | Median | p95 | Max heap delta |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| `Profile.pdf` | PDF | 49.25 KiB | 7.7ms | 7.7ms | 8.2ms | 7.62 MiB |
-| `test_resume.pdf` | PDF | 81.30 KiB | 24.6ms | 24.6ms | 25.9ms | 35.51 MiB |
-| `Profile.txt` | text | 1.54 KiB | 0.4ms | 0.4ms | 0.5ms | 471.70 KiB |
-| `test_resume.txt` | text | 12.60 KiB | 1.8ms | 1.8ms | 1.9ms | 1.30 MiB |
+| `Profile.pdf` | PDF | 49.25 KiB | 8.5ms | 8.4ms | 9.5ms | 8.65 MiB |
+| `test_resume.pdf` | PDF | 81.30 KiB | 31.8ms | 29.4ms | 40.8ms | 39.36 MiB |
+| `Profile.txt` | text | 1.54 KiB | 0.4ms | 0.5ms | 0.6ms | 455.77 KiB |
+| `test_resume.txt` | text | 12.60 KiB | 1.4ms | 1.4ms | 1.6ms | 846.96 KiB |
 
 PDF timings include `unpdf` extraction plus structural parsing. Text timings
 start after text extraction. Heap deltas are the maximum heap growth observed
@@ -741,10 +741,10 @@ The package keeps runtime dependencies external. Current built artifact sizes:
 
 | Artifact | Raw | Gzip |
 | --- | ---: | ---: |
-| `dist/index.js` | 249.37 KiB | 46.88 KiB |
-| `dist/index.cjs` | 250.96 KiB | 47.15 KiB |
-| `dist/index.min.js` | 108.38 KiB | 29.75 KiB |
-| `dist/cli.js` | 28.83 KiB | 5.77 KiB |
+| `dist/index.js` | 279.09 KiB | 51.74 KiB |
+| `dist/index.cjs` | 280.68 KiB | 52.02 KiB |
+| `dist/index.min.js` | 121.90 KiB | 32.82 KiB |
+| `dist/cli.js` | 28.85 KiB | 5.78 KiB |
 
 ## 🤝 Contributing
 

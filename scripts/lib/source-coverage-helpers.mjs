@@ -106,7 +106,7 @@ export function normalizeText(value) {
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
     .replace(/[‐‑‒–—]/g, '-')
-    .replace(/[•·]/g, ' ')
+    .replace(/[•·\uf0b7]/g, ' ')
     .replace(/\u00a0/g, ' ')
     .replace(/([a-z])\.([A-Z])/g, '$1. $2')
     .replace(/\s+([,.;:!?])/g, '$1')

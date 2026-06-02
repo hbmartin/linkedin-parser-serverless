@@ -948,30 +948,32 @@ describe('ExperienceStructuralParser', () => {
   });
 
   test('accepts coordinated post-duration place pairs as locations', () => {
-    const [experience] = ExperienceStructuralParser.parseExperience([
-      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
-      textItem({ text: 'European Labs', y: 730 }),
-      textItem({ text: 'Regional Lead', y: 714, fontSize: 11.5 }),
-      textItem({ text: '2021 - 2023 (2 years)', y: 699, fontSize: 10.5 }),
-      textItem({ text: 'Berlin & Munich', y: 684, fontSize: 10.5 }),
-      textItem({
-        text: 'Expanded product operations across regional offices.',
-        y: 663,
-        fontSize: 10.5,
-      }),
-    ]);
+    for (const location of ['Berlin & Munich', 'Berlin and Munich']) {
+      const [experience] = ExperienceStructuralParser.parseExperience([
+        textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+        textItem({ text: 'European Labs', y: 730 }),
+        textItem({ text: 'Regional Lead', y: 714, fontSize: 11.5 }),
+        textItem({ text: '2021 - 2023 (2 years)', y: 699, fontSize: 10.5 }),
+        textItem({ text: location, y: 684, fontSize: 10.5 }),
+        textItem({
+          text: 'Expanded product operations across regional offices.',
+          y: 663,
+          fontSize: 10.5,
+        }),
+      ]);
 
-    expect(experience).toEqual(
-      expect.objectContaining({
-        organization: 'European Labs',
-        positions: [
-          expect.objectContaining({
-            description: 'Expanded product operations across regional offices.',
-            location: 'Berlin & Munich',
-          }),
-        ],
-      })
-    );
+      expect(experience).toEqual(
+        expect.objectContaining({
+          organization: 'European Labs',
+          positions: [
+            expect.objectContaining({
+              description: 'Expanded product operations across regional offices.',
+              location,
+            }),
+          ],
+        })
+      );
+    }
   });
 
   test('does not let sentence-like description lines hide the next organization', () => {
@@ -5232,6 +5234,52 @@ describe('ExperienceStructuralParser', () => {
     expect(experiences[3]?.positions[0]).not.toHaveProperty('location');
   });
 
+  test('keeps spaced dotted legal suffix organization names out of locations', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Market Holdings', y: 730 }),
+      textItem({ text: 'Advisor', y: 714, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2022 (1 year)', y: 699, fontSize: 10.5 }),
+      textItem({ text: 'Acme, S. A.', y: 684, fontSize: 10.5 }),
+      textItem({
+        text: 'Reviewed cross-border operating plans.',
+        y: 663,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Portfolio Company', y: 625 }),
+      textItem({ text: 'Investor', y: 609, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2021 (1 year)', y: 594, fontSize: 10.5 }),
+      textItem({ text: 'Foo, S. R. L.', y: 579, fontSize: 10.5 }),
+      textItem({
+        text: 'Reviewed finance and go-to-market plans.',
+        y: 558,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Market Holdings',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Acme, S. A. Reviewed cross-border operating plans.',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Portfolio Company',
+        positions: [
+          expect.objectContaining({
+            description: 'Foo, S. R. L. Reviewed finance and go-to-market plans.',
+          }),
+        ],
+      }),
+    ]);
+    expect(experiences[0]?.positions[0]).not.toHaveProperty('location');
+    expect(experiences[1]?.positions[0]).not.toHaveProperty('location');
+  });
+
   test('keeps short post-date descriptor lines out of locations', () => {
     const experiences = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 940, fontSize: 16 }),
@@ -5368,6 +5416,86 @@ describe('ExperienceStructuralParser', () => {
     }
   });
 
+  test('keeps parenthesized descriptor continuations in descriptions', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Bank of America Merrill Lynch', y: 730 }),
+      textItem({
+        text: 'Private Banking and Investment Analysis Summer Associate',
+        y: 714,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'July 2015 - August 2015 (2 months)',
+        y: 699,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Greater New York City Area',
+        y: 684,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: '- Concentrated on various aspects of Wealth Strategy including High Net',
+        y: 663,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Worth Trust/Estate Planning, Tax Planning and Investment Planning/Allocation',
+        y: 648,
+        fontSize: 10.5,
+      }),
+      textItem({ text: '(Risk Based)', y: 633, fontSize: 10.5 }),
+      textItem({
+        text: '- Collaboratively worked with range of internal specialists.',
+        y: 618,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'Bank of America Merrill Lynch',
+        positions: [
+          expect.objectContaining({
+            description:
+              '- Concentrated on various aspects of Wealth Strategy including High Net Worth Trust/Estate Planning, Tax Planning and Investment Planning/Allocation (Risk Based) - Collaboratively worked with range of internal specialists.',
+            location: 'Greater New York City Area',
+          }),
+        ],
+      })
+    );
+  });
+
+  test('keeps unscored single-token post-date desk labels out of locations', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'J.P. Morgan', y: 730 }),
+      textItem({ text: 'Summer Analyst', y: 714, fontSize: 11.5 }),
+      textItem({
+        text: 'June 2015 - August 2015 (3 months)',
+        y: 699,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Rates', y: 684, fontSize: 10.5 }),
+      textItem({ text: 'Education', y: 650, fontSize: 16 }),
+      textItem({ text: 'Penn State University', y: 630 }),
+    ]);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'J.P. Morgan',
+        positions: [
+          expect.objectContaining({
+            description: 'Rates',
+            title: 'Summer Analyst',
+          }),
+        ],
+      })
+    );
+    expect(experience?.positions[0]).not.toHaveProperty('location');
+  });
+
   test('does not concatenate the same short location twice', () => {
     const [experience] = ExperienceStructuralParser['buildWorkExperiences']([
       structuralSection({ text: 'Macquarie Group', type: 'organization' }),
@@ -5439,6 +5567,119 @@ describe('ExperienceStructuralParser', () => {
           expect.objectContaining({
             title:
               'Media and Technology Venture Capital / Corporate Development - MBA Intern',
+          }),
+        ],
+      })
+    );
+  });
+
+  test('keeps page-break designer roles inside multi-position company groups', () => {
+    const [attn, variousClients] = ExperienceStructuralParser.parseExperience({
+      layout: { type: 'two-column' },
+      textItems: [],
+      structuralLines: [
+        structuralLine({ text: 'Experience', y: 760 }),
+        structuralLine({ text: 'ATTN:', y: 730 }),
+        structuralLine({ text: '3 years 11 months', y: 714, fontSize: 10.5 }),
+        structuralLine({
+          text: 'Sr. Motion Designer & AI Creative Lead',
+          y: 698,
+          fontSize: 11.5,
+        }),
+        structuralLine({
+          text: 'April 2026 - Present (3 months)',
+          y: 682,
+          fontSize: 10.5,
+        }),
+        structuralLine({ text: 'Los Angeles, CA', y: 666, fontSize: 10.5 }),
+        structuralLine({
+          text: 'As Senior Motion Designer & AI Creative Lead, I fuse high-end motion',
+          y: 650,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          text: 'without sacrificing craft or brand integrity.',
+          y: 634,
+          fontSize: 10.5,
+        }),
+        structuralLine({ text: 'Page 1 of 4', y: 618, fontSize: 9 }),
+        structuralLine({
+          column: 'single',
+          text: 'Sr. Motion & AI Designer',
+          y: -200,
+          fontSize: 11.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'August 2022 - April 2026 (3 years 9 months)',
+          y: -216,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'Los Angeles, California, United States',
+          y: -232,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'I create animations and motion design for original content and social media,',
+          y: -248,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'clients including Amazon, Google, TikTok, Cocomelon, Lionsgate, ABC,',
+          y: -264,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'Various Clients',
+          y: -296,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'Freelance Video Artist & Motion Designer',
+          y: -312,
+          fontSize: 11.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'April 2013 - Present (13 years 3 months)',
+          y: -328,
+          fontSize: 10.5,
+        }),
+      ],
+    });
+
+    expect(attn).toEqual(
+      expect.objectContaining({
+        organization: 'ATTN',
+        positions: [
+          expect.objectContaining({
+            description:
+              'As Senior Motion Designer & AI Creative Lead, I fuse high-end motion without sacrificing craft or brand integrity.',
+            duration: 'April 2026 - Present',
+            title: 'Sr. Motion Designer & AI Creative Lead',
+          }),
+          expect.objectContaining({
+            description:
+              'I create animations and motion design for original content and social media, clients including Amazon, Google, TikTok, Cocomelon, Lionsgate, ABC,',
+            duration: 'August 2022 - April 2026',
+            location: 'Los Angeles, California, United States',
+            title: 'Sr. Motion & AI Designer',
+          }),
+        ],
+        totalDuration: '3 years 11 months',
+      })
+    );
+    expect(variousClients).toEqual(
+      expect.objectContaining({
+        organization: 'Various Clients',
+        positions: [
+          expect.objectContaining({
+            title: 'Freelance Video Artist & Motion Designer',
           }),
         ],
       })

@@ -128,6 +128,40 @@ describe('location classifier', () => {
     }
   });
 
+  test('canonicalizes apostrophes for exact translated country lookups', () => {
+    expect(
+      classifyLocationText({
+        context: { structuralContext: 'after-duration' },
+        text: "Stati Uniti d'America",
+      })
+    ).toEqual(
+      expect.objectContaining({
+        isLocation: true,
+        score: 5,
+        signals: expect.arrayContaining([
+          'country-or-region',
+          'after-duration',
+        ]),
+      })
+    );
+
+    expect(
+      classifyLocationText({
+        context: { structuralContext: 'after-duration' },
+        text: 'Stati Uniti d’America',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        isLocation: true,
+        score: 5,
+        signals: expect.arrayContaining([
+          'country-or-region',
+          'after-duration',
+        ]),
+      })
+    );
+  });
+
   test('recognizes proper qualified area and after-duration comma location shapes', () => {
     for (const location of [
       'Salt Lake City Metropolitan Area',

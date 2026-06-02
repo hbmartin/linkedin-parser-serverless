@@ -594,7 +594,12 @@ function normalizeLookupText(text: string): string {
 }
 
 function foldLookupTextAccents(lookupText: string): string {
-  return lookupText.normalize('NFKD').replace(/\p{M}/gu, '');
+  return lookupText
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
 }
 
 function accentFoldedLookupSet(

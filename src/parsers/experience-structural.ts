@@ -149,7 +149,10 @@ const commaSeparatedOrganizationSuffixes: ReadonlySet<string> = new Set(
 );
 
 function normalizeOrganizationSuffixLookupText(text: string): string {
-  return text.trim().replace(/[.]/g, '').toLowerCase();
+  return text
+    .trim()
+    .replace(/[.\s]+/g, '')
+    .toLowerCase();
 }
 
 interface ClassifyLineTypeParams {
@@ -2514,6 +2517,16 @@ export class ExperienceStructuralParser {
 
     if (
       normalizedPreviousLine &&
+      this.looksLikeParenthesizedDescriptionFragment(
+        normalizedLine,
+        normalizedPreviousLine
+      )
+    ) {
+      return true;
+    }
+
+    if (
+      normalizedPreviousLine &&
       this.looksLikeShortDescriptorLine(normalizedLine) &&
       !this.looksLikeShortDescriptorEntryHeader(normalizedLine, index, allLines)
     ) {
@@ -2791,13 +2804,15 @@ export class ExperienceStructuralParser {
       this.looksLikeShortProperHeaderLocationText(normalizedLine);
     const hasShortLocationShape =
       this.looksLikeCoordinatedShortHeaderLocationText(normalizedLine);
+    const locationClassification = classifyLocationText({
+      context: { structuralContext: 'after-duration' },
+      text: normalizedLine,
+    });
     const hasAmbiguousCoordinator =
       isShortProperLocation &&
       this.hasShortLocationCoordinator(normalizedLine) &&
-      !classifyLocationText({
-        context: { structuralContext: 'after-duration' },
-        text: normalizedLine,
-      }).isLocation;
+      !hasShortLocationShape &&
+      !locationClassification.isLocation;
 
     if (
       !this.hasHeaderDetailGeometry({
@@ -2823,9 +2838,26 @@ export class ExperienceStructuralParser {
     }
 
     const nextLine = this.nextContentLine(allLines, index + 1);
+    const needsDescriptionEvidence =
+      this.shortHeaderLocationNeedsDescriptionEvidence({
+        hasShortLocationShape,
+        isScoredLocation: locationClassification.isLocation,
+        normalizedLine,
+      });
 
     if (!nextLine) {
-      return true;
+      return !needsDescriptionEvidence;
+    }
+
+    if (needsDescriptionEvidence) {
+      return (
+        this.looksLikeDescriptionLine({
+          allLines: lineTexts,
+          index: nextLine.index,
+          line: nextLine.text,
+          previousLine: line.text,
+        }) || nextLine.text.length > this.MIN_DESCRIPTION_LINE_LENGTH
+      );
     }
 
     return (
@@ -2843,6 +2875,35 @@ export class ExperienceStructuralParser {
       }) ||
       nextLine.text.length > this.MIN_DESCRIPTION_LINE_LENGTH
     );
+  }
+
+  private static shortHeaderLocationNeedsDescriptionEvidence({
+    hasShortLocationShape,
+    isScoredLocation,
+    normalizedLine,
+  }: {
+    hasShortLocationShape: boolean;
+    isScoredLocation: boolean;
+    normalizedLine: string;
+  }): boolean {
+    if (
+      hasShortLocationShape ||
+      isScoredLocation ||
+      normalizedLine.includes(',')
+    ) {
+      return false;
+    }
+
+    const meaningfulWords = normalizedLine
+      .split(/\s+/u)
+      .map(word => this.normalizeShortLocationLookupToken(word))
+      .filter(
+        word =>
+          word.length > 0 &&
+          !this.SHORT_HEADER_LOCATION_PARTICLE_PATTERN.test(word)
+      );
+
+    return meaningfulWords.length <= 1;
   }
 
   private static hasHeaderDetailGeometry({
@@ -3606,6 +3667,35 @@ export class ExperienceStructuralParser {
   private static looksLikeParenthesizedUrlText(line: string): boolean {
     return /^\((?:https?:\/\/|www\.)?[\p{L}\p{N}.-]+\.[\p{L}]{2,}(?:\/[^)]*)?\)$/iu.test(
       line.trim()
+    );
+  }
+
+  private static looksLikeParenthesizedDescriptionFragment(
+    line: string,
+    previousLine: string
+  ): boolean {
+    const innerText = this.unwrapSingleParenthesizedText(line);
+    const normalizedPreviousLine = previousLine.trim();
+
+    if (
+      innerText === undefined ||
+      normalizedPreviousLine.length <
+        this.MIN_DESCRIPTION_CONTINUATION_CONTEXT_LENGTH
+    ) {
+      return false;
+    }
+
+    const normalizedInnerText = innerText.trim();
+
+    return (
+      normalizedInnerText.length >= 2 &&
+      normalizedInnerText.length <= 60 &&
+      normalizedInnerText.split(/\s+/u).length <= 8 &&
+      !this.looksLikeDuration(normalizedInnerText) &&
+      !this.looksLikeLocation(normalizedInnerText) &&
+      !this.looksLikePosition(normalizedInnerText) &&
+      !looksLikeOrganizationNameText(normalizedInnerText) &&
+      !isSectionHeaderText(normalizedInnerText)
     );
   }
 
