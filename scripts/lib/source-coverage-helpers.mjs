@@ -383,7 +383,9 @@ function experienceFieldRole({ entries, entryIndex, entryState, text }) {
 
   if (
     (entryState === 'afterDuration' || entryState === 'afterLocation') &&
-    isLikelyStandaloneLocation(text) &&
+    (isLikelyStandaloneLocation(text) ||
+      (entryState === 'afterDuration' &&
+        isStructurallyLikelyStandaloneLocation({ entries, entryIndex, text }))) &&
     !startsExperienceEntry(entries, entryIndex)
   ) {
     return 'location';
@@ -423,6 +425,7 @@ function nextEntryState(role) {
 
 function startsExperienceEntry(entries, entryIndex) {
   return (
+    entries[entryIndex] !== undefined &&
     !isDurationText(entries[entryIndex].segment.text) &&
     entries[entryIndex + 1] !== undefined &&
     entries[entryIndex + 2] !== undefined &&
@@ -438,6 +441,24 @@ function nextEntryTextIsDuration(entries, entryIndex) {
     nextEntry !== undefined &&
     (isDurationText(nextEntry.segment.text) ||
       isEducationYearText(nextEntry.segment.text))
+  );
+}
+
+function isStructurallyLikelyStandaloneLocation({ entries, entryIndex, text }) {
+  if (!looksLikeShortProperStandaloneLocationText(text)) {
+    return false;
+  }
+
+  if (startsExperienceEntry(entries, entryIndex + 1)) {
+    return true;
+  }
+
+  const nextEntry = entries[entryIndex + 1];
+
+  return (
+    nextEntry !== undefined &&
+    hasCoordinatedStandaloneLocationRangeEvidence(text) &&
+    looksLikeDescriptionEvidenceText(nextEntry.segment.text)
   );
 }
 
@@ -480,6 +501,43 @@ function isLikelyStandaloneLocation(value) {
   }
 
   return standaloneLocationScore({ normalizedValue, value }) >= 4;
+}
+
+function looksLikeShortProperStandaloneLocationText(value) {
+  const normalizedValue = normalizeText(value);
+
+  return (
+    normalizedValue.length >= 2 &&
+    normalizedValue.length <= 60 &&
+    !isDurationText(normalizedValue) &&
+    !/[$@!?;:]/u.test(normalizedValue) &&
+    looksLikeLocationWords(value)
+  );
+}
+
+function hasCoordinatedStandaloneLocationRangeEvidence(value) {
+  if (!/\s(?:&|and)\s/iu.test(value)) {
+    return false;
+  }
+
+  const parts = value
+    .split(/\s+(?:&|and)\s+/iu)
+    .map(part => part.trim())
+    .filter(Boolean);
+
+  return (
+    parts.length >= 2 &&
+    parts.length <= 3 &&
+    parts.every(part => looksLikeShortProperStandaloneLocationText(part)) &&
+    parts.some(part => isLikelyStandaloneLocation(part))
+  );
+}
+
+function looksLikeDescriptionEvidenceText(value) {
+  return (
+    !isDurationText(value) &&
+    (startsWithSentenceVerb(value) || normalizeText(value).length > 30)
+  );
 }
 
 function standaloneLocationScore({ normalizedValue, value }) {

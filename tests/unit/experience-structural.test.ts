@@ -5496,6 +5496,72 @@ describe('ExperienceStructuralParser', () => {
     expect(experience?.positions[0]).not.toHaveProperty('location');
   });
 
+  test('keeps short header-detail lines before the next visual header as locations', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Salesforce', y: 730 }),
+      textItem({ text: 'Sales Leader', y: 714, fontSize: 11.5 }),
+      textItem({
+        text: 'November 2013 - July 2015 (1 year 9 months)',
+        y: 699,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Europe', y: 684, fontSize: 10.5 }),
+      textItem({ text: 'Cisco', y: 650 }),
+      textItem({ text: 'Sales Leader', y: 634, fontSize: 11.5 }),
+      textItem({
+        text: 'August 2006 - October 2013 (7 years 3 months)',
+        y: 619,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'Salesforce',
+        positions: [
+          expect.objectContaining({
+            description: '',
+            location: 'Europe',
+            title: 'Sales Leader',
+          }),
+        ],
+      })
+    );
+  });
+
+  test('keeps short coordinated header-detail lines before descriptions as locations', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'The Broadway', y: 730 }),
+      textItem({ text: 'Broadway Performer', y: 714, fontSize: 11.5 }),
+      textItem({
+        text: '1993 - 2006 (13 years)',
+        y: 699,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'US and Europe', y: 684, fontSize: 10.5 }),
+      textItem({
+        text: 'Toured most of Europe and North America with various Broadway musicals.',
+        y: 663,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        positions: [
+          expect.objectContaining({
+            description:
+              'Toured most of Europe and North America with various Broadway musicals.',
+            location: 'US and Europe',
+            title: 'Broadway Performer',
+          }),
+        ],
+      })
+    );
+  });
+
   test('does not concatenate the same short location twice', () => {
     const [experience] = ExperienceStructuralParser['buildWorkExperiences']([
       structuralSection({ text: 'Macquarie Group', type: 'organization' }),

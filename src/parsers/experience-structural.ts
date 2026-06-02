@@ -13,7 +13,10 @@ import {
   extractProfileDateRangeText,
   parseProfileDateRange,
 } from '../utils/date-parser.js';
-import { classifyLocationText } from '../utils/location-classifier.js';
+import {
+  classifyLocationText,
+  isUnambiguousCountryAliasText,
+} from '../utils/location-classifier.js';
 import {
   cleanOrganizationNameText,
   isEducationSectionHeaderText,
@@ -178,6 +181,16 @@ interface ShortHeaderLocationAfterDurationParams {
 interface HeaderDetailGeometryParams {
   line: NormalizedParserLine;
   previousLine: NormalizedParserLine;
+}
+
+interface HeaderBoundaryTypographyParams {
+  line: NormalizedParserLine;
+  nextLine: NormalizedParserLine;
+  previousLine: NormalizedParserLine;
+}
+
+interface FollowingExperienceHeaderBoundaryParams extends HeaderBoundaryTypographyParams {
+  lineTexts: string[];
 }
 
 interface ExtractCleanOrganizationNameOptions {
@@ -1092,6 +1105,20 @@ export class ExperienceStructuralParser {
     );
   }
 
+  private static startsCanonicalExperienceHeaderAt({
+    index,
+    lineTexts,
+  }: CanonicalHeaderCandidateStartParams): boolean {
+    return (
+      this.canStartCanonicalExperienceHeaderAt({
+        index,
+        lineTexts,
+      }) &&
+      (this.hasImmediateTitleAndDurationAfterOrganization(index, lineTexts) ||
+        this.hasTotalDurationThenPosition(index, lineTexts))
+    );
+  }
+
   private static looksLikeAmbiguousCanonicalOrganizationHeader({
     index,
     line,
@@ -1267,18 +1294,10 @@ export class ExperienceStructuralParser {
     const text = possibleLocationLine.text;
 
     if (
-      this.canStartCanonicalExperienceHeaderAt({
+      this.startsCanonicalExperienceHeaderAt({
         index: possibleLocationLine.index,
         lineTexts,
-      }) &&
-      (this.hasImmediateTitleAndDurationAfterOrganization(
-        possibleLocationLine.index,
-        lineTexts
-      ) ||
-        this.hasTotalDurationThenPosition(
-          possibleLocationLine.index,
-          lineTexts
-        ))
+      })
     ) {
       return undefined;
     }
@@ -2804,6 +2823,8 @@ export class ExperienceStructuralParser {
       this.looksLikeShortProperHeaderLocationText(normalizedLine);
     const hasShortLocationShape =
       this.looksLikeCoordinatedShortHeaderLocationText(normalizedLine);
+    const hasCoordinatedLocationRangeEvidence =
+      this.looksLikeCoordinatedShortHeaderLocationRangeText(normalizedLine);
     const locationClassification = classifyLocationText({
       context: { structuralContext: 'after-duration' },
       text: normalizedLine,
@@ -2812,6 +2833,7 @@ export class ExperienceStructuralParser {
       isShortProperLocation &&
       this.hasShortLocationCoordinator(normalizedLine) &&
       !hasShortLocationShape &&
+      !hasCoordinatedLocationRangeEvidence &&
       !locationClassification.isLocation;
 
     if (
@@ -2819,7 +2841,9 @@ export class ExperienceStructuralParser {
         line,
         previousLine,
       }) ||
-      (!isShortProperLocation && !hasShortLocationShape) ||
+      (!isShortProperLocation &&
+        !hasShortLocationShape &&
+        !hasCoordinatedLocationRangeEvidence) ||
       hasAmbiguousCoordinator
     ) {
       return false;
@@ -2856,7 +2880,14 @@ export class ExperienceStructuralParser {
           index: nextLine.index,
           line: nextLine.text,
           previousLine: line.text,
-        }) || nextLine.text.length > this.MIN_DESCRIPTION_LINE_LENGTH
+        }) ||
+        nextLine.text.length > this.MIN_DESCRIPTION_LINE_LENGTH ||
+        this.hasFollowingExperienceHeaderBoundaryEvidence({
+          line,
+          lineTexts,
+          nextLine,
+          previousLine,
+        })
       );
     }
 
@@ -2927,6 +2958,68 @@ export class ExperienceStructuralParser {
     return hasAlignedX && hasComparableDetailFont && hasSameColumn;
   }
 
+  private static hasFollowingExperienceHeaderBoundaryEvidence({
+    line,
+    lineTexts,
+    nextLine,
+    previousLine,
+  }: FollowingExperienceHeaderBoundaryParams): boolean {
+    return (
+      this.startsCanonicalExperienceHeaderAt({
+        index: nextLine.index,
+        lineTexts,
+      }) &&
+      this.hasShortHeaderLocationBoundaryTypography({
+        line,
+        nextLine,
+        previousLine,
+      })
+    );
+  }
+
+  private static hasShortHeaderLocationBoundaryTypography({
+    line,
+    nextLine,
+    previousLine,
+  }: HeaderBoundaryTypographyParams): boolean {
+    const hasAlignedX =
+      line.x !== undefined &&
+      nextLine.x !== undefined &&
+      Math.abs(line.x - nextLine.x) <=
+        this.EXPERIENCE_HEADER_ALIGNMENT_TOLERANCE;
+    const hasSameColumn =
+      line.column !== undefined &&
+      nextLine.column !== undefined &&
+      line.column === nextLine.column;
+    const hasProminentBoundaryFont =
+      line.fontSize !== undefined &&
+      nextLine.fontSize !== undefined &&
+      nextLine.fontSize > line.fontSize + 0.5;
+    const detailGap = this.verticalGapBetween(previousLine, line);
+    const boundaryGap = this.verticalGapBetween(line, nextLine);
+    const hasBoundaryGap =
+      detailGap !== undefined &&
+      boundaryGap !== undefined &&
+      boundaryGap >= Math.max(detailGap * 1.5, detailGap + 8);
+
+    return (
+      hasAlignedX && hasSameColumn && hasProminentBoundaryFont && hasBoundaryGap
+    );
+  }
+
+  private static verticalGapBetween(
+    upperLine: NormalizedParserLine,
+    lowerLine: NormalizedParserLine
+  ): number | undefined {
+    if (upperLine.y === undefined || lowerLine.y === undefined) {
+      return undefined;
+    }
+
+    const gap = upperLine.y - lowerLine.y;
+
+    return Number.isFinite(gap) && gap >= 0 ? gap : undefined;
+  }
+
   private static looksLikeShortProperHeaderLocationText(
     normalizedLine: string
   ): boolean {
@@ -2992,6 +3085,36 @@ export class ExperienceStructuralParser {
           context: { structuralContext: 'after-duration' },
           text: part,
         }).isLocation
+    );
+  }
+
+  private static looksLikeCoordinatedShortHeaderLocationRangeText(
+    normalizedLine: string
+  ): boolean {
+    if (!this.hasShortLocationCoordinator(normalizedLine)) {
+      return false;
+    }
+
+    const parts = normalizedLine
+      .split(/\s+(?:&|and)\s+/iu)
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    return (
+      parts.length >= 2 &&
+      parts.length <= 3 &&
+      parts.every(part => this.looksLikeShortProperHeaderLocationText(part)) &&
+      parts.some(part => this.hasIndependentShortLocationEvidence(part))
+    );
+  }
+
+  private static hasIndependentShortLocationEvidence(text: string): boolean {
+    return (
+      isUnambiguousCountryAliasText(text) ||
+      classifyLocationText({
+        context: { structuralContext: 'after-duration' },
+        text,
+      }).isLocation
     );
   }
 
