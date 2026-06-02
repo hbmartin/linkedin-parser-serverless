@@ -2157,12 +2157,59 @@ describe('ExperienceStructuralParser', () => {
       'Staff Engineer',
       '2022 - Present',
     ];
+    const lowercaseReplacementOrganizationHeader = [
+      'Northstar Solutions',
+      'bpg advertising',
+      'Sr. Interactive Producer',
+      'March 2010 - March 2013',
+    ];
+    const domainReplacementOrganizationHeader = [
+      'Self-Employed',
+      'autonow.io',
+      'Advisory Board',
+      'February 2020 - February 2021',
+    ];
 
     expect(
       ExperienceStructuralParser['looksLikeOrganizationBoundaryCandidate'](
         'Cobalt Systems',
         1,
         replacementOrganizationHeader
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeOrganizationBoundaryCandidate'](
+        'bpg advertising',
+        1,
+        lowercaseReplacementOrganizationHeader
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeOrganization'](
+        'bpg advertising',
+        12,
+        1,
+        lowercaseReplacementOrganizationHeader
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser[
+        'looksLikeLowercaseVisualOrganizationHeaderText'
+      ]('autonow.io')
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeOrganizationBoundaryCandidate'](
+        'autonow.io',
+        1,
+        domainReplacementOrganizationHeader
+      )
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['looksLikeOrganization'](
+        'autonow.io',
+        12,
+        1,
+        domainReplacementOrganizationHeader
       )
     ).toBe(true);
     expect(
@@ -2185,6 +2232,94 @@ describe('ExperienceStructuralParser', () => {
         'Built APIs safely.'
       )
     ).toBe(false);
+  });
+
+  test('rejects generic lowercase phrases as visual organization headers', () => {
+    const genericLowercasePhrases = [
+      'research and development',
+      'product strategy',
+    ];
+
+    for (const phrase of genericLowercasePhrases) {
+      const candidateLines = [phrase, 'Principal Engineer', '2020 - Present'];
+
+      expect(
+        ExperienceStructuralParser[
+          'looksLikeLowercaseVisualOrganizationHeaderText'
+        ](phrase)
+      ).toBe(false);
+      expect(
+        ExperienceStructuralParser['canStartCanonicalExperienceHeader'](phrase)
+      ).toBe(false);
+      expect(
+        ExperienceStructuralParser['looksLikeOrganizationBoundaryCandidate'](
+          phrase,
+          0,
+          candidateLines
+        )
+      ).toBe(false);
+      expect(
+        ExperienceStructuralParser['looksLikeOrganization'](
+          phrase,
+          12,
+          0,
+          candidateLines
+        )
+      ).toBe(false);
+    }
+  });
+
+  test('separates domain-shaped lowercase organization headers after page breaks', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 700, fontSize: 16 }),
+      textItem({ text: 'Self-Employed', y: 670 }),
+      textItem({
+        text: 'Equity Derivatives Trader',
+        y: 650,
+        fontSize: 11.5,
+      }),
+      textItem({
+        text: 'March 2012 - March 2021 (9 years 1 month)',
+        y: 630,
+      }),
+      textItem({ text: 'San Francisco Bay Area', y: 610 }),
+      textItem({ text: 'Page 9 of 12', y: 590, fontSize: 9 }),
+      textItem({ text: 'autonow.io', y: 560 }),
+      textItem({ text: 'Advisory Board', y: 540, fontSize: 11.5 }),
+      textItem({
+        text: 'February 2020 - February 2021 (1 year 1 month)',
+        y: 520,
+      }),
+      textItem({ text: 'San Francisco Bay Area', y: 500 }),
+      textItem({
+        text: 'Proud advisor to autonow, a new technology that streamlines servicing.',
+        y: 480,
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Self-Employed',
+        positions: [
+          expect.objectContaining({
+            description: '',
+            title: 'Equity Derivatives Trader',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'autonow.io',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Proud advisor to autonow, a new technology that streamlines servicing.',
+            duration: 'February 2020 - February 2021',
+            location: 'San Francisco Bay Area',
+            title: 'Advisory Board',
+          }),
+        ],
+      }),
+    ]);
   });
 
   test('detects generic organizations without a source allowlist', () => {
