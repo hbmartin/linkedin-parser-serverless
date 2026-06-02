@@ -288,6 +288,25 @@ export class ExperienceStructuralParser {
       'standard',
       'strategy',
     ]);
+  private static readonly SHORT_HEADER_LOCATION_RANGE_REGION_TEXTS: ReadonlySet<string> =
+    new Set([
+      'africa',
+      'apac',
+      'asia',
+      'asia pacific',
+      'asia-pacific',
+      'emea',
+      'europe',
+      'european union',
+      'gcc',
+      'latin america',
+      'mena',
+      'middle east',
+      'north africa',
+      'north america',
+      'south america',
+      'southeast asia',
+    ]);
   static parseExperience(params: ParseExperienceParams): WorkExperience[];
   static parseExperience(
     textItems: TextItem[],
@@ -1224,11 +1243,14 @@ export class ExperienceStructuralParser {
       this.looksLikeKnownLowercaseOrganization(normalizedLine);
     const isLowerCamelOrganization =
       this.looksLikeLowerCamelOrganization(normalizedLine);
+    const isLowercaseVisualOrganization =
+      this.looksLikeLowercaseVisualOrganizationHeaderText(normalizedLine);
 
     if (
       /^[a-z]/u.test(normalizedLine) &&
       !isKnownLowercaseOrganization &&
-      !isLowerCamelOrganization
+      !isLowerCamelOrganization &&
+      !isLowercaseVisualOrganization
     ) {
       return false;
     }
@@ -1986,6 +2008,52 @@ export class ExperienceStructuralParser {
     );
   }
 
+  private static looksLikeLowercaseVisualOrganizationHeaderText(
+    line: string
+  ): boolean {
+    const normalizedLine = line.trim();
+
+    if (
+      !/^[\p{Ll}0-9]/u.test(normalizedLine) ||
+      /[\p{Lu}]/u.test(normalizedLine) ||
+      normalizedLine.length < 2 ||
+      normalizedLine.length > 60 ||
+      normalizedLine.includes('@') ||
+      normalizedLine.includes('•') ||
+      /https?:\/\//iu.test(normalizedLine) ||
+      this.hasDisallowedOrganizationTerminalPunctuation(
+        normalizedLine,
+        this.ORGANIZATION_HEADER_TERMINAL_PUNCTUATION_PATTERN
+      ) ||
+      this.looksLikeDuration(normalizedLine) ||
+      this.looksLikeLocation(normalizedLine) ||
+      this.looksLikePosition(normalizedLine) ||
+      this.looksLikeMediaDescriptionLine(normalizedLine) ||
+      this.looksLikeSentenceLikeDescriptionText(normalizedLine) ||
+      isSectionHeaderText(normalizedLine)
+    ) {
+      return false;
+    }
+
+    const words = normalizedLine.split(/\s+/u).filter(Boolean);
+
+    return (
+      words.length > 0 &&
+      words.length <= 5 &&
+      words.some(
+        word => !this.ORGANIZATION_CONNECTOR_WORD_PATTERN.test(word)
+      ) &&
+      words.every(
+        word =>
+          this.ORGANIZATION_CONNECTOR_WORD_PATTERN.test(word) ||
+          this.looksLikeOrganizationSuffixText(word) ||
+          /^&$/u.test(word) ||
+          /^[-–]$/u.test(word) ||
+          /^[\p{Ll}0-9][\p{Ll}\p{M}0-9&.'+!–-]*$/u.test(word)
+      )
+    );
+  }
+
   private static hasInlineOrganizationDelimiterCueText(text: string): boolean {
     return /\s(?:&|\||[-–])\s/u.test(text);
   }
@@ -2128,6 +2196,12 @@ export class ExperienceStructuralParser {
     allLines: string[]
   ): boolean {
     const normalizedLine = line.trim();
+    const isKnownLowercaseOrganization =
+      this.looksLikeKnownLowercaseOrganization(normalizedLine);
+    const isLowerCamelOrganization =
+      this.looksLikeLowerCamelOrganization(normalizedLine);
+    const isLowercaseVisualOrganization =
+      this.looksLikeLowercaseVisualOrganizationHeaderText(normalizedLine);
     const isLongAcademicOrganization =
       this.looksLikeLongAcademicOrganizationHeaderText(normalizedLine);
     const isWrappedExperienceEntity =
@@ -2142,7 +2216,9 @@ export class ExperienceStructuralParser {
       !hasLocationShape && looksLikeOrganizationNameText(normalizedLine);
     const hasOrganizationCue =
       isLongAcademicOrganization ||
-      this.looksLikeLowerCamelOrganization(normalizedLine) ||
+      isKnownLowercaseOrganization ||
+      isLowerCamelOrganization ||
+      isLowercaseVisualOrganization ||
       this.hasOrganizationDomainCueText(normalizedLine) ||
       this.hasOrganizationSuffixText(normalizedLine) ||
       hasNonLocationOrganizationNameShape ||
@@ -2155,7 +2231,9 @@ export class ExperienceStructuralParser {
         !isLongAcademicOrganization &&
         !isWrappedExperienceEntity) ||
       (/^[a-z]/.test(normalizedLine) &&
-        !this.looksLikeLowerCamelOrganization(normalizedLine)) ||
+        !isKnownLowercaseOrganization &&
+        !isLowerCamelOrganization &&
+        !isLowercaseVisualOrganization) ||
       (!isWrappedExperienceEntity &&
         this.hasDisallowedOrganizationTerminalPunctuation(
           normalizedLine,
@@ -3104,18 +3182,29 @@ export class ExperienceStructuralParser {
       parts.length >= 2 &&
       parts.length <= 3 &&
       parts.every(part => this.looksLikeShortProperHeaderLocationText(part)) &&
-      parts.some(part => this.hasIndependentShortLocationEvidence(part))
+      parts.every(part => this.hasIndependentShortLocationEvidence(part))
     );
   }
 
   private static hasIndependentShortLocationEvidence(text: string): boolean {
     return (
       isUnambiguousCountryAliasText(text) ||
+      this.isShortHeaderLocationRangeRegionText(text) ||
       classifyLocationText({
         context: { structuralContext: 'after-duration' },
         text,
       }).isLocation
     );
+  }
+
+  private static isShortHeaderLocationRangeRegionText(text: string): boolean {
+    const normalizedText = text
+      .split(/\s+/u)
+      .map(word => this.normalizeShortLocationLookupToken(word))
+      .filter(Boolean)
+      .join(' ');
+
+    return this.SHORT_HEADER_LOCATION_RANGE_REGION_TEXTS.has(normalizedText);
   }
 
   private static hasShortLocationCoordinator(normalizedLine: string): boolean {

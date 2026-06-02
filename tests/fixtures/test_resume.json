@@ -742,13 +742,7 @@
       }
     ]
   },
-  "warnings": [
-    {
-      "code": "missing_profile_field",
-      "field": "profile.contact.email",
-      "message": "Could not extract contact email"
-    }
-  ],
+  "warnings": [],
   "diagnostics": {
     "confidence": 1,
     "isEmpty": false,

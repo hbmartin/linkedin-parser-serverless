@@ -408,13 +408,5 @@ function createParseWarnings(profile: LinkedInProfile): ParseWarning[] {
     });
   }
 
-  if (!profile.contact.email) {
-    warnings.push({
-      code: 'missing_profile_field',
-      field: 'profile.contact.email',
-      message: 'Could not extract contact email',
-    });
-  }
-
   return warnings;
 }

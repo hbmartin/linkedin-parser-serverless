@@ -688,11 +688,6 @@ describe('LinkedIn PDF Parser Library', () => {
       expect(result.profile.contact.email).toBeUndefined();
       expect(result.warnings).toEqual([
         {
-          code: 'missing_profile_field',
-          field: 'profile.contact.email',
-          message: 'Could not extract contact email',
-        },
-        {
           code: 'section_parse_warning',
           field: 'entry',
           message:

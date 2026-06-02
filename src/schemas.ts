@@ -97,7 +97,7 @@ export const LinkedInProfileSchema = z.object({
 
 const MissingProfileFieldWarningSchema = z.object({
   code: z.literal('missing_profile_field'),
-  field: z.enum(['profile.name', 'profile.contact.email']),
+  field: z.literal('profile.name'),
   message: z.string(),
 });
 
