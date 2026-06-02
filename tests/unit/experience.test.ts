@@ -135,6 +135,24 @@ describe('ExperienceParser', () => {
     );
   });
 
+  test('ignores short non-location detail lines after a duration', () => {
+    const [experience] = ExperienceParser.parse(`
+      Experience
+      Northstar AI
+      Principal Software Engineer
+      2021 - 2024
+      OK
+      Built customer-facing systems for operators.
+    `);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        description: 'Built customer-facing systems for operators.',
+        duration: '2021 - 2024',
+      })
+    );
+  });
+
   test('normalizes irregular spaces around duration separators', () => {
     const [experience] = ExperienceParser.parse(`
       Experience

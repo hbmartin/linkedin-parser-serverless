@@ -257,6 +257,31 @@ describe('ListParser', () => {
     });
   });
 
+  test('keeps buffering structural language continuations until parentheses close', () => {
+    const result = ListParser.parseStructuralLanguagesWithWarnings([
+      structuralLine({ column: 'left', text: 'Languages', y: 700 }),
+      structuralLine({
+        column: 'left',
+        text: 'Chinese (Traditional)',
+        y: 680,
+      }),
+      structuralLine({ column: 'left', text: '(Limited', y: 660 }),
+      structuralLine({ column: 'left', text: 'Working', y: 640 }),
+      structuralLine({ column: 'left', text: 'Proficiency)', y: 620 }),
+      structuralLine({ column: 'left', text: 'Experience', y: 600 }),
+    ]);
+
+    expect(result).toEqual({
+      value: [
+        {
+          language: 'Chinese (Traditional)',
+          proficiency: 'Limited Working Proficiency',
+        },
+      ],
+      warnings: [],
+    });
+  });
+
   test('salvages unclosed structural language proficiency at section end', () => {
     const result = ListParser.parseStructuralLanguagesWithWarnings([
       structuralLine({ column: 'left', text: 'Languages', y: 700 }),

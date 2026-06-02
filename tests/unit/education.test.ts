@@ -815,6 +815,12 @@ describe('EducationParser', () => {
       location: '',
       year: '',
     };
+    const educationWithUnclosedDateFragment = {
+      degree: 'Certificate (January',
+      institution: 'Example University',
+      location: '',
+      year: '',
+    };
 
     EducationParser['addStructuralEducationDetail']({
       education: educationWithDatedDegree,
@@ -823,6 +829,10 @@ describe('EducationParser', () => {
     EducationParser['addStructuralEducationDetail']({
       education: educationWithStandaloneYear,
       line: '2016',
+    });
+    EducationParser['addStructuralEducationDetail']({
+      education: educationWithUnclosedDateFragment,
+      line: 'Program',
     });
 
     expect(educationWithDatedDegree).toEqual(
@@ -837,6 +847,12 @@ describe('EducationParser', () => {
         year: '2016',
       })
     );
+    expect(educationWithUnclosedDateFragment).toEqual({
+      degree: 'Certificate (January',
+      institution: 'Example University',
+      location: '',
+      year: '',
+    });
 
     expect(
       EducationParser['shouldAppendStructuralDegreePart']({
@@ -854,6 +870,43 @@ describe('EducationParser', () => {
         year: '2020',
       })
     ).toBe(false);
+    expect(
+      EducationParser['shouldAppendStructuralDegreePart']({
+        degreePart: 'Product Design',
+        existingDegree: 'Bachelor of Science',
+        line: 'Product Design 2020',
+        year: '2020',
+      })
+    ).toBe(true);
+    expect(EducationParser['removeYearFromDegree']('Graduate Diploma')).toBe(
+      'Graduate Diploma'
+    );
+    expect(
+      EducationParser['fillDefaults']({
+        degree: 'Graduate Diploma',
+        institution: 'Example University',
+        location: '',
+        year: '',
+      })
+    ).toEqual({
+      degree: 'Graduate Diploma',
+      institution: 'Example University',
+      location: '',
+      year: '',
+    });
+    expect(
+      EducationParser['fillDefaults']({
+        degree: 'Graduate Diploma',
+        location: '',
+        year: '',
+      })
+    ).toEqual({
+      degree: 'Graduate Diploma',
+      institution: '',
+      location: '',
+      year: '',
+    });
+    expect(EducationParser['looksLikeLocation']('Not A Location')).toBe(false);
     expect(
       EducationParser['looksLikeInstitutionContinuation']({
         line: 'Business',

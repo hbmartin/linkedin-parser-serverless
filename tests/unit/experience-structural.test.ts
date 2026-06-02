@@ -5452,6 +5452,51 @@ describe('ExperienceStructuralParser', () => {
   });
 
   test('covers header helper fallback branches', () => {
+    const higherFontCandidate: HeaderCandidate = {
+      durationLine: parserLine({ index: 2, text: '2020 - 2021' }),
+      organizationLine: parserLine({
+        fontSize: 14,
+        index: 0,
+        text: 'Example Labs',
+      }),
+      score: 10,
+      titleLine: parserLine({ index: 1, text: 'Principal Engineer' }),
+    };
+    const lowerFontCandidate: HeaderCandidate = {
+      durationLine: parserLine({ index: 2, text: '2020 - 2021' }),
+      organizationLine: parserLine({
+        fontSize: 10,
+        index: 3,
+        text: 'Other Labs',
+      }),
+      score: 10,
+      titleLine: parserLine({ index: 4, text: 'Staff Engineer' }),
+    };
+    const sameScoreNoFontCandidate: HeaderCandidate = {
+      durationLine: parserLine({ index: 3, text: '2021 - 2022' }),
+      organizationLine: parserLine({ index: 2, text: 'No Font Labs' }),
+      score: 10,
+      titleLine: parserLine({ index: 1, text: 'Advisor' }),
+    };
+
+    expect(
+      ExperienceStructuralParser['compareExperienceHeaderCandidates'](
+        higherFontCandidate,
+        lowerFontCandidate
+      )
+    ).toBeLessThan(0);
+    expect(
+      ExperienceStructuralParser['compareExperienceHeaderCandidates'](
+        sameScoreNoFontCandidate,
+        higherFontCandidate
+      )
+    ).toBeGreaterThan(0);
+    expect(
+      ExperienceStructuralParser['compareExperienceHeaderCandidates'](
+        higherFontCandidate,
+        sameScoreNoFontCandidate
+      )
+    ).toBeLessThan(0);
     expect(
       ExperienceStructuralParser['nextContentLineStartsCanonicalHeader']({
         allLines: [parserLine({ index: 0, text: 'Description' })],
@@ -5503,6 +5548,22 @@ describe('ExperienceStructuralParser', () => {
       ExperienceStructuralParser['previousContentText'](['Page 1 of 1'], 0)
     ).toBeUndefined();
     expect(
+      ExperienceStructuralParser['hasTotalDurationThenPosition'](0, [
+        'Example Labs',
+        '2 years',
+        'Principal Engineer',
+        '2020 - 2021',
+      ])
+    ).toBe(true);
+    expect(
+      ExperienceStructuralParser['hasTotalDurationThenPosition'](0, [
+        'Example Labs',
+        '2 years',
+        'Operations',
+        '2020 - 2021',
+      ])
+    ).toBe(false);
+    expect(
       ExperienceStructuralParser['createMultiPositionHeaderCandidate']({
         lineTexts: ['Example Labs', '2 years'],
         organizationLine: parserLine({ index: 0, text: 'Example Labs' }),
@@ -5533,6 +5594,13 @@ describe('ExperienceStructuralParser', () => {
       })
     ).toBe(true);
     expect(
+      ExperienceStructuralParser['looksLikeDescriptionLine']({
+        allLines: ['No'],
+        index: 0,
+        line: 'No',
+      })
+    ).toBe(false);
+    expect(
       ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
         '(www.example.com)',
         'Previous description text is long enough'
@@ -5551,11 +5619,24 @@ describe('ExperienceStructuralParser', () => {
       )
     ).toBe(true);
     expect(
+      ExperienceStructuralParser['looksLikeDescriptionContinuationLine'](
+        'customer systems',
+        '• Built reliable'
+      )
+    ).toBe(true);
+    expect(
       ExperienceStructuralParser['classifyLineType']({
         index: 0,
         line: parserLine({ index: 0, text: 'Page 1 of 2' }),
         lineTexts: ['Page 1 of 2'],
         state: 'in_description',
+      })
+    ).toBe('other');
+    expect(
+      ExperienceStructuralParser['classifyLineType']({
+        index: 0,
+        line: parserLine({ index: 0, text: 'Short' }),
+        state: 'seeking_company',
       })
     ).toBe('other');
     expect(
@@ -5596,6 +5677,91 @@ describe('ExperienceStructuralParser', () => {
         ['Product Steward', '2020 - 2021']
       )
     ).toBe(true);
+    expect(
+      ExperienceStructuralParser['normalizeDurationLineText'](
+        'January\u00A02020 \u2013 Present'
+      )
+    ).toBe('January 2020 - Present');
+    expect(
+      ExperienceStructuralParser['normalizeDurationLineText'](
+        'January  2020   -   Present'
+      )
+    ).toBe('January 2020 - Present');
+    expect(
+      ExperienceStructuralParser['normalizeDurationLineText']('2020-2021')
+    ).toBe('2020-2021');
+    expect(
+      ExperienceStructuralParser['completeWorkExperience']({
+        descriptionLines: [],
+        position: {
+          title: 'Advisor',
+        },
+        workExperience: {
+          organization: 'Example Labs',
+        },
+      })
+    ).toEqual({
+      organization: 'Example Labs',
+      positions: [
+        {
+          description: '',
+          duration: '',
+          title: 'Advisor',
+        },
+      ],
+      totalDuration: undefined,
+    });
+    expect(
+      ExperienceStructuralParser['completeWorkExperience']({
+        descriptionLines: [],
+        position: null,
+        workExperience: {
+          organization: 'Example Labs',
+        },
+      })
+    ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser['completePosition']({
+        descriptionLines: ['Cataloged archives.'],
+        position: {
+          duration: '1888 - 1889',
+          title: 'Cataloger',
+        },
+      })
+    ).toEqual({
+      description: 'Cataloged archives.',
+      duration: '1888 - 1889',
+      title: 'Cataloger',
+    });
+    expect(
+      ExperienceStructuralParser['titleContinuationModifierFromParenthetical'](
+        '(Contractor)'
+      )
+    ).toBe('contractor');
+    expect(
+      ExperienceStructuralParser['titleContinuationModifierFromParenthetical'](
+        '(Unknown)'
+      )
+    ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser['unwrapSingleParenthesizedText']('(Nested (x))')
+    ).toBeUndefined();
+    expect(
+      ExperienceStructuralParser['extractCleanOrganizationName']('Example Labs')
+    ).toBe('Example Labs');
+    expect(
+      ExperienceStructuralParser['extractCleanDuration'](
+        'Managed work before June 2020'
+      )
+    ).toBe('June 2020');
+    expect(
+      ExperienceStructuralParser['extractCleanDuration'](
+        'Managed archive operations in 1888'
+      )
+    ).toBe('in 1888');
+    expect(
+      ExperienceStructuralParser['extractCleanDuration']('No duration available')
+    ).toBe('No duration available');
   });
 });
 

@@ -222,6 +222,32 @@ describe('profile date parser', () => {
     );
   });
 
+  test('parses ISO, chrono, and parenthetical date edge cases', () => {
+    expect(parseProfileDateRange('2020')).toEqual({
+      kind: 'single',
+      originalText: '2020',
+      start: {
+        iso: '2020',
+        precision: 'year',
+        text: '2020',
+      },
+    });
+    expect(parseProfileDateRange('January 5 2020')).toEqual({
+      kind: 'single',
+      originalText: 'January 5 2020',
+      start: {
+        iso: '2020-01-05',
+        precision: 'day',
+        text: 'January 5 2020',
+      },
+    });
+    expect(
+      extractProfileDateRangeText(
+        'January 2020 - March 2021 (contract ended 2021)'
+      )
+    ).toBe('January 2020 - March 2021 (contract ended 2021)');
+  });
+
   test('rejects empty and incomplete date ranges', () => {
     expect(parseProfileDateRange('')).toBeUndefined();
     expect(parseProfileDateRange('2020 - eventually')).toBeUndefined();
