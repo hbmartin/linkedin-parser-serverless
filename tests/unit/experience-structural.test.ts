@@ -947,6 +947,33 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('accepts coordinated post-duration place pairs as locations', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'European Labs', y: 730 }),
+      textItem({ text: 'Regional Lead', y: 714, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2023 (2 years)', y: 699, fontSize: 10.5 }),
+      textItem({ text: 'Berlin & Munich', y: 684, fontSize: 10.5 }),
+      textItem({
+        text: 'Expanded product operations across regional offices.',
+        y: 663,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'European Labs',
+        positions: [
+          expect.objectContaining({
+            description: 'Expanded product operations across regional offices.',
+            location: 'Berlin & Munich',
+          }),
+        ],
+      })
+    );
+  });
+
   test('does not let sentence-like description lines hide the next organization', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -5142,6 +5169,24 @@ describe('ExperienceStructuralParser', () => {
         y: 558,
         fontSize: 10.5,
       }),
+      textItem({ text: 'Market Holdings', y: 520 }),
+      textItem({ text: 'Advisor', y: 504, fontSize: 11.5 }),
+      textItem({ text: '2019 - 2020 (1 year)', y: 489, fontSize: 10.5 }),
+      textItem({ text: 'Acme, S.A.', y: 474, fontSize: 10.5 }),
+      textItem({
+        text: 'Reviewed cross-border operating plans.',
+        y: 453,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Mobility Ventures', y: 415 }),
+      textItem({ text: 'Consultant', y: 399, fontSize: 11.5 }),
+      textItem({ text: '2018 - 2019 (1 year)', y: 384, fontSize: 10.5 }),
+      textItem({ text: 'Example, S.P.A.', y: 369, fontSize: 10.5 }),
+      textItem({
+        text: 'Supported logistics portfolio analysis.',
+        y: 348,
+        fontSize: 10.5,
+      }),
     ]);
 
     expect(experiences).toEqual([
@@ -5162,9 +5207,29 @@ describe('ExperienceStructuralParser', () => {
           }),
         ],
       }),
+      expect.objectContaining({
+        organization: 'Market Holdings',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Acme, S.A. Reviewed cross-border operating plans.',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'Mobility Ventures',
+        positions: [
+          expect.objectContaining({
+            description:
+              'Example, S.P.A. Supported logistics portfolio analysis.',
+          }),
+        ],
+      }),
     ]);
     expect(experiences[0]?.positions[0]).not.toHaveProperty('location');
     expect(experiences[1]?.positions[0]).not.toHaveProperty('location');
+    expect(experiences[2]?.positions[0]).not.toHaveProperty('location');
+    expect(experiences[3]?.positions[0]).not.toHaveProperty('location');
   });
 
   test('keeps short post-date descriptor lines out of locations', () => {
@@ -5235,6 +5300,24 @@ describe('ExperienceStructuralParser', () => {
         fontSize: 10.5,
       }),
       textItem({ text: 'Private Client Services.', y: 339, fontSize: 10.5 }),
+      textItem({ text: 'Article Partners', y: 301 }),
+      textItem({ text: 'Advisor', y: 285, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2022 (1 year)', y: 270, fontSize: 10.5 }),
+      textItem({ text: 'de la', y: 255, fontSize: 10.5 }),
+      textItem({
+        text: 'Reviewed portfolio reporting.',
+        y: 234,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'Family Office', y: 196 }),
+      textItem({ text: 'Advisor', y: 180, fontSize: 11.5 }),
+      textItem({ text: '2020 - 2021 (1 year)', y: 165, fontSize: 10.5 }),
+      textItem({ text: "d'Angelo", y: 150, fontSize: 10.5 }),
+      textItem({
+        text: 'Reviewed operating plans.',
+        y: 129,
+        fontSize: 10.5,
+      }),
     ]);
 
     const [
@@ -5245,6 +5328,8 @@ describe('ExperienceStructuralParser', () => {
       factify,
       fresenius,
       goldmanServices,
+      articlePartners,
+      familyOffice,
     ] = experiences;
 
     expect(dodoBrands).toEqual(
@@ -5266,6 +5351,12 @@ describe('ExperienceStructuralParser', () => {
       [factify, 'Factify', 'The Post-AI Document Standard'],
       [fresenius, 'Fresenius Medical Care', 'Western Division'],
       [goldmanServices, 'Goldman Sachs', 'Private Client Services.'],
+      [
+        articlePartners,
+        'Article Partners',
+        'de la Reviewed portfolio reporting.',
+      ],
+      [familyOffice, 'Family Office', "d'Angelo Reviewed operating plans."],
     ] as const;
 
     for (const [experience, organization, description] of descriptorPositions) {

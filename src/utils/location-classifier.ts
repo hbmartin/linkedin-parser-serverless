@@ -144,6 +144,7 @@ const countryAndRegionNames: ReadonlySet<string> = new Set([
   'scotland',
   'saint kitts and nevis',
   'saint vincent and the grenadines',
+  'são tomé and príncipe',
   'sao tome and principe',
   'singapore',
   'spain',

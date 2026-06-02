@@ -151,6 +151,7 @@ describe('ExperienceParser', () => {
         duration: '2021 - 2024',
       })
     );
+    expect(experience?.location).toBeFalsy();
   });
 
   test('normalizes irregular spaces around duration separators', () => {

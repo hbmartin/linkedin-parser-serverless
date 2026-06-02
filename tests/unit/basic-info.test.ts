@@ -796,7 +796,7 @@ describe('BasicInfoParser', () => {
     ).toBe(true);
     expect(
       BasicInfoParser['extractPhoneCandidate'](
-        'Phone +123 4567 8901 2345 6789'
+        'Phone +123 4567 8901 ext. xxxx'
       )
     ).toBe('+123 4567 8901');
     expect(BasicInfoParser['extractPhoneFromLines'](['Phone unavailable'])).toBe(
