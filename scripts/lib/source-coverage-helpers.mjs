@@ -95,6 +95,9 @@ const standaloneLocationRegionCodes = setFromList(
 const standaloneLocationGenericQualifiers = setFromList(
   'area|bay|county|metropolitan|metro|province|region|state'
 );
+const standaloneLocationRangeRegions = setFromList(
+  'africa|apac|asia|asia pacific|asia-pacific|emea|europe|european union|gcc|latin america|mena|middle east|north africa|north america|south america|southeast asia'
+);
 const standaloneLocationNegativeWords = setFromList(
   'assistant|associate|chief|college|company|consulate|consultant|corporate|corporation|director|engineer|federation|finance|fellow|foundation|founder|forex|group|head|intern|investor|law|manager|officer|partner|partners|president|principal|professor|researcher|school|scientist|service|services|university'
 );
@@ -529,7 +532,14 @@ function hasCoordinatedStandaloneLocationRangeEvidence(value) {
     parts.length >= 2 &&
     parts.length <= 3 &&
     parts.every(part => looksLikeShortProperStandaloneLocationText(part)) &&
-    parts.some(part => isLikelyStandaloneLocation(part))
+    parts.every(part => hasIndependentStandaloneLocationRangeEvidence(part))
+  );
+}
+
+function hasIndependentStandaloneLocationRangeEvidence(value) {
+  return (
+    standaloneLocationRangeRegions.has(normalizeLocationLookupText(value)) ||
+    isLikelyStandaloneLocation(value)
   );
 }
 

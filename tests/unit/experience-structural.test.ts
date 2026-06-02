@@ -976,6 +976,58 @@ describe('ExperienceStructuralParser', () => {
     }
   });
 
+  test('accepts coordinated post-duration geographic regions as locations', () => {
+    for (const location of ['US and Europe', 'Europe & Middle East']) {
+      const [experience] = ExperienceStructuralParser.parseExperience([
+        textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+        textItem({ text: 'Regional Touring Group', y: 730 }),
+        textItem({ text: 'Program Lead', y: 714, fontSize: 11.5 }),
+        textItem({ text: '2021 - 2023 (2 years)', y: 699, fontSize: 10.5 }),
+        textItem({ text: location, y: 684, fontSize: 10.5 }),
+        textItem({
+          text: 'Built repeatable operations across regional teams.',
+          y: 663,
+          fontSize: 10.5,
+        }),
+      ]);
+
+      expect(experience).toEqual(
+        expect.objectContaining({
+          positions: [
+            expect.objectContaining({
+              description: 'Built repeatable operations across regional teams.',
+              location,
+              title: 'Program Lead',
+            }),
+          ],
+        })
+      );
+    }
+  });
+
+  test('keeps mixed location and non-location coordinated post-duration text out of locations', () => {
+    const [experience] = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Example Co', y: 730 }),
+      textItem({ text: 'Program Lead', y: 714, fontSize: 11.5 }),
+      textItem({ text: '2021 - 2023 (2 years)', y: 699, fontSize: 10.5 }),
+      textItem({ text: 'US and Teamwork', y: 684, fontSize: 10.5 }),
+      textItem({
+        text: 'Led training across regional account teams.',
+        y: 663,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experience?.positions[0]).toEqual(
+      expect.objectContaining({
+        description: 'US and Teamwork Led training across regional account teams.',
+        title: 'Program Lead',
+      })
+    );
+    expect(experience?.positions[0]?.location).toBeUndefined();
+  });
+
   test('does not let sentence-like description lines hide the next organization', () => {
     const result = ExperienceStructuralParser.parseExperienceWithWarnings([
       textItem({ text: 'Experience', y: 700, fontSize: 16 }),
@@ -5746,6 +5798,115 @@ describe('ExperienceStructuralParser', () => {
         positions: [
           expect.objectContaining({
             title: 'Freelance Video Artist & Motion Designer',
+          }),
+        ],
+      })
+    );
+  });
+
+  test('separates lowercase organization headers after page breaks', () => {
+    const experiences = ExperienceStructuralParser.parseExperience({
+      layout: { type: 'two-column' },
+      textItems: [],
+      structuralLines: [
+        structuralLine({ text: 'Experience', y: 760 }),
+        structuralLine({
+          column: 'single',
+          text: 'Stun Creative',
+          y: 730,
+          fontSize: 12,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'Animator/Motion Designer/Video Editor',
+          y: 714,
+          fontSize: 11.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'November 2013 - March 2020 (6 years 5 months)',
+          y: 698,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'Los Angeles, CA',
+          y: 682,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'continued working with Stun Creative which has merged and is',
+          y: 666,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'now known as Known.',
+          y: 650,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'Page 2 of 4',
+          y: 634,
+          fontSize: 9,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'bpg advertising',
+          y: -200,
+          fontSize: 12,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'Sr. Interactive Producer',
+          y: -216,
+          fontSize: 11.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'March 2010 - March 2013 (3 years 1 month)',
+          y: -232,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'Los Angeles, California, United States',
+          y: -248,
+          fontSize: 10.5,
+        }),
+        structuralLine({
+          column: 'single',
+          text: 'Accounts: Showtime, HBO, USA Network',
+          y: -264,
+          fontSize: 10.5,
+        }),
+      ],
+    });
+
+    expect(experiences).toHaveLength(2);
+    expect(experiences[0]).toEqual(
+      expect.objectContaining({
+        organization: 'Stun Creative',
+        positions: [
+          expect.objectContaining({
+            description:
+              'continued working with Stun Creative which has merged and is now known as Known.',
+            title: 'Animator/Motion Designer/Video Editor',
+          }),
+        ],
+      })
+    );
+    expect(experiences[1]).toEqual(
+      expect.objectContaining({
+        organization: 'bpg advertising',
+        positions: [
+          expect.objectContaining({
+            description: 'Accounts: Showtime, HBO, USA Network',
+            duration: 'March 2010 - March 2013',
+            location: 'Los Angeles, California, United States',
+            title: 'Sr. Interactive Producer',
           }),
         ],
       })

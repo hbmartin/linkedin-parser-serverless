@@ -310,6 +310,36 @@ describe('source coverage helpers', () => {
     );
   });
 
+  test('keeps mixed coordinated short post-duration text out of locations', () => {
+    const sourceView = createSourceSegmentsFromLayoutText(
+      [
+        'Experience',
+        'Example Co',
+        'Program Lead',
+        '2021 - 2023 (2 years)',
+        'US and Teamwork',
+        'Led training across regional account teams.',
+      ].join('\n')
+    );
+
+    expect(sourceView.segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'description',
+          text: 'US and Teamwork',
+        }),
+      ])
+    );
+    expect(sourceView.segments).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldRole: 'location',
+          text: 'US and Teamwork',
+        }),
+      ])
+    );
+  });
+
   test('reports location lines misclassified into experience descriptions', () => {
     const report = createSourceCoverageReport({
       layoutText: [
