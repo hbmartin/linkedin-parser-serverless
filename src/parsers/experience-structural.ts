@@ -1905,6 +1905,8 @@ export class ExperienceStructuralParser {
       this.looksLikeKnownLowercaseOrganization(normalizedLine);
     const isLowerCamelOrganization =
       this.looksLikeLowerCamelOrganization(normalizedLine);
+    const isLowercaseVisualOrganization =
+      this.looksLikeLowercaseVisualOrganizationHeaderText(normalizedLine);
     const isLongAcademicOrganization =
       this.looksLikeLongAcademicOrganizationHeaderText(normalizedLine);
     const isWrappedOrganization =
@@ -1918,6 +1920,7 @@ export class ExperienceStructuralParser {
     const hasVisualOrganizationCue =
       isKnownLowercaseOrganization ||
       isLowerCamelOrganization ||
+      isLowercaseVisualOrganization ||
       isLongAcademicOrganization ||
       isWrappedOrganization ||
       isWrappedExperienceEntity ||
@@ -1939,7 +1942,8 @@ export class ExperienceStructuralParser {
       ) ||
       (/^[a-z]/.test(normalizedLine) &&
         !isKnownLowercaseOrganization &&
-        !isLowerCamelOrganization) ||
+        !isLowerCamelOrganization &&
+        !isLowercaseVisualOrganization) ||
       this.looksLikeDuration(normalizedLine) ||
       (!hasJobDetailsAfter && this.looksLikeLocation(normalizedLine)) ||
       this.looksLikePosition(normalizedLine) ||
@@ -1957,6 +1961,7 @@ export class ExperienceStructuralParser {
       looksLikeOrganizationNameText(normalizedLine) ||
       isKnownLowercaseOrganization ||
       isLowerCamelOrganization ||
+      isLowercaseVisualOrganization ||
       isLongAcademicOrganization ||
       isWrappedOrganization ||
       isWrappedExperienceEntity ||
@@ -2040,6 +2045,7 @@ export class ExperienceStructuralParser {
     return (
       words.length > 0 &&
       words.length <= 5 &&
+      this.hasLowercaseVisualOrganizationCueText(normalizedLine, words) &&
       words.some(
         word => !this.ORGANIZATION_CONNECTOR_WORD_PATTERN.test(word)
       ) &&
@@ -2051,6 +2057,39 @@ export class ExperienceStructuralParser {
           /^[-–]$/u.test(word) ||
           /^[\p{Ll}0-9][\p{Ll}\p{M}0-9&.'+!–-]*$/u.test(word)
       )
+    );
+  }
+
+  private static hasLowercaseVisualOrganizationCueText(
+    line: string,
+    words: readonly string[]
+  ): boolean {
+    const [firstWord] = words;
+    const normalizedFirstWord = firstWord?.replace(
+      /^[('"]+|[),.'+!–-]+$/gu,
+      ''
+    );
+    const hasLeadingCompactBrandToken =
+      normalizedFirstWord !== undefined &&
+      /^[\p{Ll}0-9]{2,4}$/u.test(normalizedFirstWord) &&
+      /[\p{Ll}]/u.test(normalizedFirstWord) &&
+      !this.ORGANIZATION_CONNECTOR_WORD_PATTERN.test(normalizedFirstWord);
+
+    return (
+      this.hasInlineOrganizationDelimiterCueText(line) ||
+      this.hasOrganizationSuffixText(line) ||
+      this.hasStandaloneOrganizationDomainCueText(line) ||
+      (words.length >= 2 && hasLeadingCompactBrandToken)
+    );
+  }
+
+  private static hasStandaloneOrganizationDomainCueText(text: string): boolean {
+    const normalizedText = text.trim().replace(/^\(([a-z0-9.-]+)\)$/iu, '$1');
+
+    return (
+      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/iu.test(
+        normalizedText
+      ) && /\.[a-z]{2,}$/iu.test(normalizedText)
     );
   }
 
@@ -2435,6 +2474,8 @@ export class ExperienceStructuralParser {
       this.looksLikeKnownLowercaseOrganization(normalizedLine);
     const isLowerCamelOrganization =
       this.looksLikeLowerCamelOrganization(normalizedLine);
+    const isLowercaseVisualOrganization =
+      this.looksLikeLowercaseVisualOrganizationHeaderText(normalizedLine);
     const isLongAcademicOrganization =
       this.looksLikeLongAcademicOrganizationHeaderText(normalizedLine);
 
@@ -2443,7 +2484,8 @@ export class ExperienceStructuralParser {
       (normalizedLine.length > 90 && !isLongAcademicOrganization) ||
       (/^[a-z]/.test(normalizedLine) &&
         !isKnownLowercaseOrganization &&
-        !isLowerCamelOrganization) ||
+        !isLowerCamelOrganization &&
+        !isLowercaseVisualOrganization) ||
       this.hasDisallowedOrganizationTerminalPunctuation(
         normalizedLine,
         this.ORGANIZATION_BOUNDARY_TERMINAL_PUNCTUATION_PATTERN
@@ -2464,6 +2506,7 @@ export class ExperienceStructuralParser {
       looksLikeOrganizationNameText(normalizedLine) ||
       isKnownLowercaseOrganization ||
       isLowerCamelOrganization ||
+      isLowercaseVisualOrganization ||
       isLongAcademicOrganization ||
       this.looksLikeVisualOrganizationHeaderText(normalizedLine);
 
