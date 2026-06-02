@@ -980,7 +980,8 @@ describe('source coverage helpers', () => {
       warnings: [
         {
           code: 'missing_profile_field',
-          message: 'Could not extract contact email',
+          field: 'profile.name',
+          message: 'Could not extract profile name',
         },
       ],
     });

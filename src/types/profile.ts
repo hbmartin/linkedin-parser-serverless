@@ -107,7 +107,7 @@ export interface ParseDiagnostics {
 
 export interface MissingProfileFieldWarning {
   code: 'missing_profile_field';
-  field: 'profile.name' | 'profile.contact.email';
+  field: 'profile.name';
   message: string;
 }
 
