@@ -5717,6 +5717,53 @@ describe('ExperienceStructuralParser', () => {
     );
   });
 
+  test('starts a new same-title position after an existing duration', () => {
+    const [experience] = ExperienceStructuralParser['buildWorkExperiences']([
+      structuralSection({ text: 'Salesforce', type: 'organization' }),
+      structuralSection({
+        fontSize: 11.5,
+        text: 'Sales Leader',
+        type: 'position',
+      }),
+      structuralSection({
+        text: 'August 2015 - January 2018 (2 years 6 months)',
+        type: 'duration',
+      }),
+      structuralSection({
+        text: 'San Francisco Bay Area',
+        type: 'location',
+      }),
+      structuralSection({
+        fontSize: 11.5,
+        text: 'Sales Leader',
+        type: 'position',
+      }),
+      structuralSection({
+        text: 'November 2013 - July 2015 (1 year 9 months)',
+        type: 'duration',
+      }),
+      structuralSection({ text: 'Europe', type: 'location' }),
+    ]);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'Salesforce',
+        positions: [
+          expect.objectContaining({
+            duration: 'August 2015 - January 2018',
+            location: 'San Francisco Bay Area',
+            title: 'Sales Leader',
+          }),
+          expect.objectContaining({
+            duration: 'November 2013 - July 2015',
+            location: 'Europe',
+            title: 'Sales Leader',
+          }),
+        ],
+      })
+    );
+  });
+
   test('keeps short coordinated header-detail lines before descriptions as locations', () => {
     const [experience] = ExperienceStructuralParser.parseExperience([
       textItem({ text: 'Experience', y: 760, fontSize: 16 }),
@@ -5766,6 +5813,126 @@ describe('ExperienceStructuralParser', () => {
     ]);
 
     expect(experience?.positions[0]?.location).toBe('Hong Kong');
+  });
+
+  test('treats lowercase continuation fragment as description before a position title', () => {
+    const lines = [
+      parserLine({
+        fontSize: 12,
+        index: 0,
+        text: 'Evita, Cats, Annie, Beauty and the Beast, and',
+      }),
+      parserLine({ fontSize: 12, index: 1, text: 'many more' }),
+      parserLine({ fontSize: 11.5, index: 2, text: 'Broadway Performer' }),
+      parserLine({
+        fontSize: 10.5,
+        index: 3,
+        text: '1993 - 2006 (13 years)',
+      }),
+    ];
+
+    expect(
+      ExperienceStructuralParser[
+        'looksLikeWrappedDescriptionContinuationFragment'
+      ]({
+        allLines: lines,
+        index: 1,
+        line: lines[1],
+      })
+    ).toBe(true);
+  });
+
+  test('drops lower-prominence duplicate title descriptions after duration', () => {
+    const [experience] = ExperienceStructuralParser['buildWorkExperiences']([
+      structuralSection({ text: 'Rotary International', type: 'organization' }),
+      structuralSection({ fontSize: 11.5, text: 'Member', type: 'position' }),
+      structuralSection({
+        text: '2009 - Present (17 years)',
+        type: 'duration',
+      }),
+      structuralSection({
+        fontSize: 10.5,
+        text: 'Member',
+        type: 'description',
+      }),
+      structuralSection({
+        fontSize: 11.5,
+        text: 'Angel Investor',
+        type: 'position',
+      }),
+      structuralSection({
+        text: 'January 2014 - January 2024 (10 years 1 month)',
+        type: 'duration',
+      }),
+    ]);
+
+    expect(experience).toEqual(
+      expect.objectContaining({
+        organization: 'Rotary International',
+        positions: [
+          expect.objectContaining({
+            description: '',
+            duration: '2009 - Present',
+            title: 'Member',
+          }),
+          expect.objectContaining({
+            duration: 'January 2014 - January 2024',
+            title: 'Angel Investor',
+          }),
+        ],
+      })
+    );
+  });
+
+  test('drops lower-prominence duplicate title invalid organizations after duration', () => {
+    const [experience] = ExperienceStructuralParser['buildWorkExperiences']([
+      structuralSection({ text: 'Rotary International', type: 'organization' }),
+      structuralSection({ fontSize: 11.5, text: 'Member', type: 'position' }),
+      structuralSection({
+        text: '2009 - Present (17 years)',
+        type: 'duration',
+      }),
+      structuralSection({
+        fontSize: 10.5,
+        text: 'Member',
+        type: 'organization',
+      }),
+      structuralSection({
+        fontSize: 11.5,
+        text: 'Angel Investor',
+        type: 'position',
+      }),
+      structuralSection({
+        text: 'January 2014 - January 2024 (10 years 1 month)',
+        type: 'duration',
+      }),
+    ]);
+
+    expect(experience?.positions[0]).toEqual(
+      expect.objectContaining({
+        description: '',
+        duration: '2009 - Present',
+        title: 'Member',
+      })
+    );
+  });
+
+  test('keeps same-title description when it is not lower prominence', () => {
+    const [experience] = ExperienceStructuralParser['buildWorkExperiences']([
+      structuralSection({ text: 'Rotary International', type: 'organization' }),
+      structuralSection({ fontSize: 11.5, text: 'Member', type: 'position' }),
+      structuralSection({
+        text: '2009 - Present (17 years)',
+        type: 'duration',
+      }),
+      structuralSection({
+        fontSize: 11.5,
+        text: 'Member',
+        type: 'description',
+      }),
+    ]);
+
+    expect(experience?.positions[0]?.description).toBe('Member');
   });
 
   test('keeps page-break locations and following positions in multi-position companies', () => {
@@ -6460,15 +6627,17 @@ describe('ExperienceStructuralParser', () => {
 });
 
 function structuralSection({
+  fontSize = 12,
   text,
   type,
 }: {
+  fontSize?: number;
   text: string;
   type: StructuralSection['type'];
 }): StructuralSection {
   return {
     confidence: 1,
-    fontSize: 12,
+    fontSize,
     headerProvenance: 'inferred',
     text,
     type,

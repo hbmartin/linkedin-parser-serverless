@@ -98,6 +98,10 @@ interface ExperienceHeaderCandidate {
   totalDurationLine?: NormalizedParserLine;
 }
 
+interface PendingPosition extends Partial<Position> {
+  titleFontSize?: number;
+}
+
 interface CanonicalHeaderLineTypes {
   lineTypes: Map<number, StructuralSection['type']>;
   organizationIndexes: ReadonlySet<number>;
@@ -3304,7 +3308,8 @@ export class ExperienceStructuralParser {
       line.fontSize === undefined ||
       nextLine.fontSize === undefined ||
       nextLine.fontSize > line.fontSize + 0.5 ||
-      this.looksLikeDuration(nextLine.text);
+      this.looksLikeDuration(nextLine.text) ||
+      this.looksLikePotentialPositionTitleLine(nextLine.text);
 
     return (
       previousLineContinuesDescription &&
@@ -3312,6 +3317,7 @@ export class ExperienceStructuralParser {
       nextLineLooksMoreProminent &&
       !this.looksLikeDuration(normalizedLine) &&
       !this.looksLikePosition(normalizedLine) &&
+      !this.looksLikeLocation(normalizedLine) &&
       !this.hasStrongOrganizationCueText(normalizedLine) &&
       !isSectionHeaderText(normalizedLine)
     );
@@ -3414,7 +3420,7 @@ export class ExperienceStructuralParser {
   ): WorkExperience[] {
     const workExperiences: WorkExperience[] = [];
     let currentWorkExperience: Partial<WorkExperience> | null = null;
-    let currentPosition: Partial<Position> | null = null;
+    let currentPosition: PendingPosition | null = null;
     let descriptionLines: string[] = [];
 
     for (const section of sections) {
@@ -3432,6 +3438,16 @@ export class ExperienceStructuralParser {
             );
 
             if (!cleanOrgName) {
+              if (
+                this.isLowerProminenceDuplicateTitleDescription({
+                  descriptionLines,
+                  position: currentPosition,
+                  section,
+                })
+              ) {
+                break;
+              }
+
               if (currentWorkExperience || currentPosition) {
                 descriptionLines.push(section.text);
               }
@@ -3470,6 +3486,10 @@ export class ExperienceStructuralParser {
               )
             ) {
               currentPosition.title = section.text;
+              currentPosition.titleFontSize = this.maxOptionalNumber(
+                currentPosition.titleFontSize,
+                section.fontSize
+              );
               break;
             }
 
@@ -3490,6 +3510,7 @@ export class ExperienceStructuralParser {
           currentPosition = {
             title: section.text,
             duration: '',
+            titleFontSize: section.fontSize,
           };
           descriptionLines = [];
           break;
@@ -3530,6 +3551,16 @@ export class ExperienceStructuralParser {
           break;
 
         case 'description':
+          if (
+            this.isLowerProminenceDuplicateTitleDescription({
+              descriptionLines,
+              position: currentPosition,
+              section,
+            })
+          ) {
+            break;
+          }
+
           descriptionLines.push(section.text);
           break;
       }
@@ -3549,13 +3580,47 @@ export class ExperienceStructuralParser {
     return workExperiences;
   }
 
+  private static isLowerProminenceDuplicateTitleDescription({
+    descriptionLines,
+    position,
+    section,
+  }: {
+    descriptionLines: string[];
+    position: PendingPosition | null;
+    section: StructuralSection;
+  }): boolean {
+    return (
+      position?.title !== undefined &&
+      Boolean(position.duration) &&
+      descriptionLines.length === 0 &&
+      position.title.trim() === section.text.trim() &&
+      position.titleFontSize !== undefined &&
+      section.fontSize <= position.titleFontSize - 0.5
+    );
+  }
+
+  private static maxOptionalNumber(
+    first: number | undefined,
+    second: number | undefined
+  ): number | undefined {
+    if (first === undefined) {
+      return second;
+    }
+
+    if (second === undefined) {
+      return first;
+    }
+
+    return Math.max(first, second);
+  }
+
   private static completeWorkExperience({
     workExperience,
     position,
     descriptionLines,
   }: {
     workExperience: Partial<WorkExperience> | null;
-    position: Partial<Position> | null;
+    position: PendingPosition | null;
     descriptionLines: string[];
   }): WorkExperience | undefined {
     if (!workExperience?.organization) {
@@ -3585,7 +3650,7 @@ export class ExperienceStructuralParser {
     position,
     descriptionLines,
   }: {
-    position: Partial<Position> | null;
+    position: PendingPosition | null;
     descriptionLines: string[];
   }): Position | undefined {
     if (!position?.title) {
