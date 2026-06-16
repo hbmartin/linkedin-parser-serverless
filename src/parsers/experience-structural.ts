@@ -235,13 +235,13 @@ export class ExperienceStructuralParser {
   private static readonly ORGANIZATION_CONNECTOR_WORD_PATTERN =
     /^(?:a|an|and|at|by|da|de|di|do|du|for|in|la|le|of|on|or|than|the|to|van|von|with|à)$/iu;
   private static readonly COMBINED_ORGANIZATION_TITLE_LINE_PATTERN =
-    /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC\.?|LLP\.?|LP\.?|Ltd\.?|N\.?A\.?|PLC\.?|Pte\.?|S\.?A\.?))\s+(.+)$/iu;
+    /^(.+\b(?:Agency|AG|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC\.?|LLP\.?|LP\.?|Ltd\.?|N\.?A\.?|Partners|PLC\.?|Pte\.?|S\.?A\.?))\s+(.+)$/iu;
   private static readonly ORGANIZATION_SUFFIX_TITLE_FRAGMENT_PATTERN =
-    /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC\.?|LLP\.?|LP\.?|Ltd\.?|N\.?A\.?|PLC\.?|Pte\.?|S\.?A\.?|S\.?P\.?A\.?|S\.?R\.?L\.?)$/iu;
+    /^(?:Agency|AG|Co\.?|Company|Corp\.?|Corporation|GmbH\.?|Inc\.?|Limited|LLC\.?|LLP\.?|LP\.?|Ltd\.?|N\.?A\.?|Partners|PLC\.?|Pte\.?|S\.?A\.?|S\.?P\.?A\.?|S\.?R\.?L\.?)$/iu;
   private static readonly ORGANIZATION_TERMINAL_ABBREVIATION_PATTERN =
     /\b(?:ag|co|corp|gmbh|inc|llc|llp|lp|ltd|n\.a|plc|pte|s\.a|s\.?p\.?a|s\.?r\.?l)\.?$/iu;
   private static readonly ORGANIZATION_TERMINAL_SUFFIX_PATTERN =
-    /\b(?:agency|ag|co|company|corp|corporation|gmbh|inc|limited|llc|llp|lp|ltd|n\.a|plc|pte|s\.a|s\.?p\.?a|s\.?r\.?l)\.?$/iu;
+    /\b(?:agency|ag|co|company|corp|corporation|gmbh|inc|limited|llc|llp|lp|ltd|n\.a|partners|plc|pte|s\.a|s\.?p\.?a|s\.?r\.?l)\.?$/iu;
   private static readonly BROKEN_YORK_LOCATION_PATTERN = /\bY\s+ork\b/g;
   private static readonly AREA_WITH_US_SUFFIX_CANDIDATE_PATTERN =
     /\b(?:Area|Metro(?:politan)?\s+Area)\b.*(?:U\.?\s*S\.?(?:\s*A\.?)?|USA\.?)[,\s]*$/iu;
@@ -3593,7 +3593,7 @@ export class ExperienceStructuralParser {
       position?.title !== undefined &&
       Boolean(position.duration) &&
       descriptionLines.length === 0 &&
-      position.title.trim() === section.text.trim() &&
+      this.areEquivalentPositionTitles(position.title, section.text) &&
       position.titleFontSize !== undefined &&
       section.fontSize <= position.titleFontSize - 0.5
     );

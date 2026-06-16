@@ -9,6 +9,26 @@ describe('parser line utilities', () => {
       kind: 'target',
       section: 'honors_awards',
     });
+    expect(getParserLineSectionHeader('Coordonnées')).toEqual({
+      kind: 'target',
+      section: 'contact',
+    });
+    expect(getParserLineSectionHeader('Contatta')).toEqual({
+      kind: 'target',
+      section: 'contact',
+    });
+    expect(getParserLineSectionHeader('Forbindelse')).toEqual({
+      kind: 'target',
+      section: 'contact',
+    });
+    expect(getParserLineSectionHeader('Principales compétences')).toEqual({
+      kind: 'target',
+      section: 'top_skills',
+    });
+    expect(getParserLineSectionHeader('Competenze principali')).toEqual({
+      kind: 'target',
+      section: 'top_skills',
+    });
     expect(getParserLineSectionHeader('Experiência')).toEqual({
       kind: 'target',
       section: 'experience',
@@ -32,6 +52,28 @@ describe('parser line utilities', () => {
     expect(getParserLineSectionHeader('Utdanning')).toEqual({
       kind: 'target',
       section: 'education',
+    });
+    expect(getParserLineSectionHeader('Langues')).toEqual({
+      kind: 'target',
+      section: 'languages',
+    });
+    expect(getParserLineSectionHeader('Lingue')).toEqual({
+      kind: 'target',
+      section: 'languages',
+    });
+    expect(getParserLineSectionHeader('Språk')).toEqual({
+      kind: 'target',
+      section: 'languages',
+    });
+    expect(
+      getParserLineSectionHeader('Licenze e certificazioni')
+    ).toEqual({
+      kind: 'target',
+      section: 'certifications',
+    });
+    expect(getParserLineSectionHeader('Prix et distinctions')).toEqual({
+      kind: 'target',
+      section: 'honors_awards',
     });
     expect(getParserLineSectionHeader('Recommendations')).toEqual({
       kind: 'boundary',
