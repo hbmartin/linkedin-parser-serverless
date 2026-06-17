@@ -1842,6 +1842,60 @@ describe('ExperienceStructuralParser', () => {
     ]);
   });
 
+  test('recognizes lowercase partners organization headers after description text', () => {
+    const experiences = ExperienceStructuralParser.parseExperience([
+      textItem({ text: 'Experience', y: 760, fontSize: 16 }),
+      textItem({ text: 'Freelance', y: 730 }),
+      textItem({ text: 'Angel Investor', y: 714, fontSize: 11.5 }),
+      textItem({
+        text: 'January 2025 - Present (1 year 6 months)',
+        y: 699,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'angel investing in seed to series A tech companies',
+        y: 678,
+        fontSize: 10.5,
+      }),
+      textItem({ text: 'talisman advisory partners', y: 640 }),
+      textItem({ text: 'Managing Consultant', y: 624, fontSize: 11.5 }),
+      textItem({
+        text: 'October 2022 - March 2024 (1 year 6 months)',
+        y: 609,
+        fontSize: 10.5,
+      }),
+      textItem({
+        text: 'Los Angeles, California, United States',
+        y: 594,
+        fontSize: 10.5,
+      }),
+    ]);
+
+    expect(experiences).toEqual([
+      expect.objectContaining({
+        organization: 'Freelance',
+        positions: [
+          expect.objectContaining({
+            description: 'angel investing in seed to series A tech companies',
+            duration: 'January 2025 - Present',
+            title: 'Angel Investor',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        organization: 'talisman advisory partners',
+        positions: [
+          expect.objectContaining({
+            description: '',
+            duration: 'October 2022 - March 2024',
+            location: 'Los Angeles, California, United States',
+            title: 'Managing Consultant',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   test('classifies n.a. legal suffix organizations across boundary paths', () => {
     const organization = 'Santander Bank, N.A.';
     const lines = [
@@ -5880,6 +5934,30 @@ describe('ExperienceStructuralParser', () => {
             title: 'Angel Investor',
           }),
         ],
+      })
+    );
+  });
+
+  test('drops lower-prominence equivalent duplicate title descriptions after duration', () => {
+    const [experience] = ExperienceStructuralParser['buildWorkExperiences']([
+      structuralSection({ text: 'Rotary International', type: 'organization' }),
+      structuralSection({ fontSize: 11.5, text: 'Member', type: 'position' }),
+      structuralSection({
+        text: '2009 - Present (17 years)',
+        type: 'duration',
+      }),
+      structuralSection({
+        fontSize: 10.5,
+        text: 'member',
+        type: 'description',
+      }),
+    ]);
+
+    expect(experience?.positions[0]).toEqual(
+      expect.objectContaining({
+        description: '',
+        duration: '2009 - Present',
+        title: 'Member',
       })
     );
   });

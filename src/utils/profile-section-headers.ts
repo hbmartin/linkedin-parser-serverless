@@ -57,7 +57,7 @@ const PROFILE_SECTION_HEADER_ALIAS_GROUPS: readonly ProfileSectionHeaderAliasGro
     },
     {
       section: 'languages',
-      texts: ['languages', 'idiomas'],
+      texts: ['languages', 'idiomas', 'langues', 'lingue', 'sprak', 'språk'],
     },
     {
       section: 'experience',
@@ -88,10 +88,15 @@ const PROFILE_SECTION_HEADER_ALIAS_GROUPS: readonly ProfileSectionHeaderAliasGro
         'certifications',
         'licenses and certifications',
         'licences and certifications',
+        'licences et certifications',
         'certificacoes',
         'certificações',
         'certificacoes e licencas',
         'certificações e licenças',
+        'certificazioni',
+        'licenze e certificazioni',
+        'sertifiseringer',
+        'sertifikater',
       ],
     },
     {
@@ -101,6 +106,10 @@ const PROFILE_SECTION_HEADER_ALIAS_GROUPS: readonly ProfileSectionHeaderAliasGro
         'honors and awards',
         'honours awards',
         'honours and awards',
+        'prix distinctions',
+        'prix et distinctions',
+        'riconoscimenti e premi',
+        'utmerkelser',
       ],
     },
     {
